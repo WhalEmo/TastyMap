@@ -1,1 +1,1 @@
-rootProject.name = "TasteMap"
+rootProject.name = "TastyMap"
