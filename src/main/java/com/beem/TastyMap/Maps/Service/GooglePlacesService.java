@@ -14,14 +14,12 @@ import java.util.List;
 public class GooglePlacesService {
 
     private final WebClient webClient;
-    private final PlaceRepo placeRepo;
 
     @Value("${google.maps.api.key}")
     private String apiKey;
 
-    public GooglePlacesService(WebClient webClient, PlaceRepo placeRepo) {
+    public GooglePlacesService(WebClient webClient) {
         this.webClient = webClient;
-        this.placeRepo = placeRepo;
     }
 
     public PlacesResponse getNearbyFoodPlaces(ScanRequest requestDto) {
@@ -33,19 +31,13 @@ public class GooglePlacesService {
                         .host("maps.googleapis.com")
                         .path("/maps/api/place/nearbysearch/json")
                         .queryParam("location", requestDto.getLat() + "," + requestDto.getLng())
-                        .queryParam("radius", requestDto.getRadius())
+                        .queryParam("radius", 500)
                         .queryParam("keyword", requestDto.joiningFormat())
                         .queryParam("key", apiKey)
                         .build())
                 .retrieve()
                 .bodyToMono(PlacesResponse.class)
                 .block();
-
-        List<PlaceEntity> places = response.getResults()
-                .stream()
-                .map(PlaceEntity::fromDto).toList();
-
-        placeRepo.saveAll(places);
 
         return response;
     }

@@ -21,7 +21,7 @@ public class PlacesController {
     }
 
     @GetMapping("/nearby")
-    public PlacesResponse nearbyPlaces(@RequestBody ScanRequest requestDto) throws JsonProcessingException {
-        return placesService.getNearbyFoodPlaces(requestDto);
+    public PlacesResponse nearbyPlaces(@RequestBody ScanRequest requestDto){
+        return placesService.getPlaces(requestDto);
     }
 }

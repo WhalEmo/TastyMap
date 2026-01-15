@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Maps.Data;
 
+import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
@@ -22,6 +23,31 @@ public class PlaceResult {
 
 
     public PlaceResult() {
+    }
+
+    public static PlaceResult fromEntity(PlaceEntity entity){
+        PlaceResult result = new PlaceResult();
+        result.setName(entity.getName());
+        result.setVicinity(entity.getVicinity());
+        result.setRating(entity.getRating());
+        result.setPrice_level(entity.getPriceLevel());
+        result.setUser_ratings_total(entity.getUserRatingsTotal());
+        result.setBusiness_status(entity.getBusinessStatus());
+        result.setPlace_id(entity.getPlaceId());
+        result.setTypes(entity.getTypes().stream().toList());
+
+        Location location = new Location();
+        location.setLat(entity.getLatitude());
+        location.setLng(entity.getLongitude());
+
+        Geometry geo = new Geometry();
+        geo.setLocation(location);
+
+        result.setGeometry(geo);
+
+        result.setPhotos(entity.getPhotos().stream().map(Photo::fromEntity).toList());
+
+        return result;
     }
 
     public String getName() {

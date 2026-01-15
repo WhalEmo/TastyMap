@@ -3,6 +3,7 @@ package com.beem.TastyMap.Maps.Entity;
 import com.beem.TastyMap.Maps.Data.PlaceResult;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -17,7 +18,7 @@ public class PlaceEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String placeId;
 
     @Column(nullable = false)
@@ -36,6 +37,12 @@ public class PlaceEntity {
     private Double latitude;
 
     private Double longitude;
+
+    @Column(name = "grid_lat", nullable = false, precision = 8, scale = 4)
+    private BigDecimal gridLat;
+
+    @Column(name = "grid_lng", nullable = false, precision = 8, scale = 4)
+    private BigDecimal gridLng;
 
     private LocalDateTime createdAt;
 
@@ -89,6 +96,22 @@ public class PlaceEntity {
         }
 
         return entity;
+    }
+
+    public BigDecimal getGridLat() {
+        return gridLat;
+    }
+
+    public void setGridLat(BigDecimal gridLat) {
+        this.gridLat = gridLat;
+    }
+
+    public BigDecimal getGridLng() {
+        return gridLng;
+    }
+
+    public void setGridLng(BigDecimal gridLng) {
+        this.gridLng = gridLng;
     }
 
     public LocalDateTime getCreatedAt() {
