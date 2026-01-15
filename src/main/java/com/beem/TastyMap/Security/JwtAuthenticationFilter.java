@@ -27,31 +27,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String header=request.getHeader("Authorization");
         String token=null;
+
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         if(header != null && header.startsWith("Bearer ")){
             token=header.substring(7);
         }
-        if(token!=null&&jwtUtill.validateAccessToken(token)){
-            String username=jwtUtill.getUsername(token);
-            String role = jwtUtill.getRole(token);
+        try {
+            if (token != null && jwtUtill.validateAccessToken(token)) {
+                Long userId = jwtUtill.getUserId(token);
+                String role = jwtUtill.getRole(token);
 
-            var authorities = List.of(
-                    new SimpleGrantedAuthority("ROLE_" + role)
-            );
+                var authorities = List.of(
+                        new SimpleGrantedAuthority("ROLE_" + role)
+                );
 
+                UserDetails user = userService.loadUserById(userId);
 
-            UserDetails user=userService.loadUserByUsername(username);
-            Long userId=userService.getUserIdByUsername(username);
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(
+                                user,
+                                null,
+                                authorities
+                        );
 
+                auth.setDetails(userId);
+                SecurityContextHolder.getContext().setAuthentication(auth);
 
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(
-                            user,
-                            null,
-                            authorities
-                    );
-            auth.setDetails(userId);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
+            }
+        } catch (Exception e) {
+            logger.error("JWT Authentication hatası: ", e);
         }
         filterChain.doFilter(request, response);
     }

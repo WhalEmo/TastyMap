@@ -18,9 +18,28 @@ public class RefreshTokenEntity {
 
     private String deviceId;
 
+    private String userAgent;
+
     private LocalDateTime expiryDate;
 
     private boolean revoked = false;
+    public RefreshTokenEntity(){}
+    public RefreshTokenEntity(Long userId, String token, String deviceId, String userAgent, LocalDateTime expiryDate, boolean revoked) {
+        this.userId = userId;
+        this.token = token;
+        this.deviceId = deviceId;
+        this.userAgent = userAgent;
+        this.expiryDate = expiryDate;
+        this.revoked = revoked;
+    }
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
 
     public Long getId() {
         return id;

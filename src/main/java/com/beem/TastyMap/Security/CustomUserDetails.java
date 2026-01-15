@@ -15,7 +15,6 @@ public class CustomUserDetails implements UserDetails {
     public CustomUserDetails(UserEntity user) {
         this.user = user;
     }
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
 
@@ -24,6 +23,9 @@ public class CustomUserDetails implements UserDetails {
         );
     }
 
+    public Long getUserId() {
+        return user.getId();
+    }
     @Override
     public String getPassword() {
         return user.getPassword();

@@ -4,11 +4,39 @@ public class LoginResponseDTO {
     private String accessToken;
     private String refreshToken;
     private UserResponseDTO userResponseDTO;
+    private LoginStatus status;
+    private String message;
 
+    public LoginResponseDTO() {}
     public LoginResponseDTO(String accessToken, String refreshToken, UserResponseDTO userResponseDTO) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.userResponseDTO = userResponseDTO;
+        this.status = LoginStatus.SUCCESS;
+        this.message = "Giriş başarılı";
+    }
+    public static LoginResponseDTO pendingSecurity(UserResponseDTO user) {
+        LoginResponseDTO dto = new LoginResponseDTO();
+        dto.status = LoginStatus.PENDING_SECURITY;
+        dto.message = "Yeni cihaz tespit edildi. Güvenlik onayı bekleniyor.";
+        dto.userResponseDTO = user;
+        return dto;
+    }
+
+    public LoginStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(LoginStatus status) {
+        this.status = status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 
     public String getAccessToken() {

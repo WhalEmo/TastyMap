@@ -41,7 +41,7 @@ public class UserEntity {
     @Column(nullable = true)
     private String biography;
 
-    private boolean emailVerified = false;
+    private boolean emailVerified = true;
 
     public Long getId() {
         return id;

@@ -31,32 +31,33 @@ public class JWTUtill {
     public JWTUtill(){}
 
 
-    public String generateAccessToken(UserDetails user){
-        Date now=new Date();
-        Date exp=new Date(now.getTime()+expirationMs);
+    public String generateAccessToken(Long userId, String role) {
 
-        String role = user.getAuthorities()
-                .iterator()
-                .next()
-                .getAuthority()
-                .replace("ROLE_", "");
-
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .setSubject(user.getUsername())
+                .setSubject(userId.toString())
                 .claim("role", role)
+                .claim("type", "access")
                 .setIssuedAt(now)
                 .setExpiration(exp)
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+                .signWith(
+                        Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)),
+                        SignatureAlgorithm.HS256
+                )
                 .compact();
     }
 
-    public String generateRefreshToken(String username) {
+    public String generateRefreshToken(Long userId, String deviceId) {
+
         Date now = new Date();
         Date exp = new Date(now.getTime() + refreshExp);
 
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(userId.toString())
+                .claim("deviceId", deviceId)
+                .claim("type", "refresh")
                 .setIssuedAt(now)
                 .setExpiration(exp)
                 .signWith(
@@ -65,6 +66,7 @@ public class JWTUtill {
                 )
                 .compact();
     }
+
 
     public boolean validateAccessToken(String token){
         try{
@@ -91,8 +93,10 @@ public class JWTUtill {
         }
     }
 
-    public String getUsername(String token) {
-        return getClaims(token).getSubject();
+    public Long getUserId(String token) {
+        return Long.parseLong(
+                getClaims(token).getSubject()
+        );
     }
 
     public String getRole(String token) {
