@@ -1,5 +1,6 @@
 package com.beem.TastyMap.RegisterLogin;
 
+import com.beem.TastyMap.Security.ApprovedRefreshRequestDTO;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import com.beem.TastyMap.Security.RefreshTokenResponseDTO;
 import com.beem.TastyMap.Security.RefreshTokenService;
@@ -34,6 +35,12 @@ public class UserController {
             @RequestBody RefreshTokenRequestDTO dto
     ) {
         return refreshTokenService.refresh(dto);
+    }
+    @PostMapping("/refresh/approved")
+    public RefreshTokenResponseDTO refreshApproved(
+            @RequestBody ApprovedRefreshRequestDTO dto
+    ) {
+        return refreshTokenService.refreshApproved(dto);
     }
 
     @PostMapping("/logout")

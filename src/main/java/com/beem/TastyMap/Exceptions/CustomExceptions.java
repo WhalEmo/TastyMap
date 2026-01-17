@@ -1,6 +1,6 @@
 package com.beem.TastyMap.Exceptions;
 
-public class Exception {
+public class CustomExceptions {
     public static class UserAlreadyExistsException extends RuntimeException {
         public UserAlreadyExistsException(String message) {
             super(message);

@@ -18,6 +18,15 @@ public class NotificationEntity {
     private Status status;
 
     private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
 
     public Long getId() {
         return id;

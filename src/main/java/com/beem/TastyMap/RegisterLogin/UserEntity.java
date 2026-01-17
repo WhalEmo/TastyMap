@@ -41,7 +41,17 @@ public class UserEntity {
     @Column(nullable = true)
     private String biography;
 
+    private LocalDateTime lastInteractionAt;
+
     private boolean emailVerified = true;
+
+    public LocalDateTime getLastInteractionAt() {
+        return lastInteractionAt;
+    }
+
+    public void setLastInteractionAt(LocalDateTime lastInteractionAt) {
+        this.lastInteractionAt = lastInteractionAt;
+    }
 
     public Long getId() {
         return id;

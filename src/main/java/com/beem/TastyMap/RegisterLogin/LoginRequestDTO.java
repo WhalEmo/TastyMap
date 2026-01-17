@@ -4,6 +4,15 @@ public class LoginRequestDTO {
     private String username;
     private String password;
     private String deviceId;
+    private String fcmToken;
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
 
     public String getUsername() {
         return username;

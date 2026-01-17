@@ -21,16 +21,36 @@ public class RefreshTokenEntity {
     private String userAgent;
 
     private LocalDateTime expiryDate;
+    private String fcmToken;
+    private LocalDateTime lastUsedAt;
 
     private boolean revoked = false;
     public RefreshTokenEntity(){}
-    public RefreshTokenEntity(Long userId, String token, String deviceId, String userAgent, LocalDateTime expiryDate, boolean revoked) {
+    public RefreshTokenEntity(Long userId, String token, String deviceId, String userAgent, LocalDateTime expiryDate, boolean revoked,String fcmToken,LocalDateTime lastUsedAt) {
         this.userId = userId;
         this.token = token;
         this.deviceId = deviceId;
         this.userAgent = userAgent;
         this.expiryDate = expiryDate;
         this.revoked = revoked;
+        this.fcmToken=fcmToken;
+        this.lastUsedAt=lastUsedAt;
+    }
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
+
+    public LocalDateTime getLastUsedAt() {
+        return lastUsedAt;
+    }
+
+    public void setLastUsedAt(LocalDateTime lastUsedAt) {
+        this.lastUsedAt = lastUsedAt;
     }
 
     public String getUserAgent() {
