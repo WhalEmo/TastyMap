@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Security.Notification;
+package com.beem.TastyMap.Notification;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

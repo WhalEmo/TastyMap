@@ -43,8 +43,4 @@ public class UserController {
         return refreshTokenService.refreshApproved(dto);
     }
 
-    @PostMapping("/logout")
-    public void logout(@RequestBody RefreshTokenRequestDTO dto) {
-        refreshTokenService.logout(dto);
-    }
 }

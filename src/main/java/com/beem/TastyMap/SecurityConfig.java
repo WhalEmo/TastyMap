@@ -1,8 +1,8 @@
 package com.beem.TastyMap;
 
 import com.beem.TastyMap.RegisterLogin.UserService;
-import com.beem.TastyMap.Security.JWTUtill;
-import com.beem.TastyMap.Security.JwtAuthenticationFilter;
+import com.beem.TastyMap.Security.Verification.ServletFilter.JWTUtill;
+import com.beem.TastyMap.Security.Verification.ServletFilter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -44,7 +44,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         //login gerekmeyenler
-                        .requestMatchers( "/api/users/**").permitAll()
+                        .requestMatchers( "/api/users/**","/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

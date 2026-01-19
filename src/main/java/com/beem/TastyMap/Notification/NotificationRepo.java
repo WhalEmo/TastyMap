@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Security.Notification;
+package com.beem.TastyMap.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

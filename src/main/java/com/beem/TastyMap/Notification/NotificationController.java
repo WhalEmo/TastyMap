@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Security.Notification;
+package com.beem.TastyMap.Notification;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;

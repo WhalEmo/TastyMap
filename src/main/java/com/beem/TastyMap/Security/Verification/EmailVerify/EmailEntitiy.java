@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Verification;
+package com.beem.TastyMap.Security.Verification.EmailVerify;
 
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-public class VerificationTokensEntity {
+public class EmailEntitiy {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,7 +15,6 @@ public class VerificationTokensEntity {
 
     @OneToOne
     private UserEntity user;
-
     private LocalDateTime expiryDate;
 
     public Long getId() {

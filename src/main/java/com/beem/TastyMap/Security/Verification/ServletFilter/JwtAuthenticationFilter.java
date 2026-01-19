@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Security;
+package com.beem.TastyMap.Security.Verification.ServletFilter;
 
 import com.beem.TastyMap.RegisterLogin.UserService;
 import jakarta.servlet.FilterChain;
@@ -8,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -16,11 +15,9 @@ import java.util.List;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JWTUtill jwtUtill;
-    private final UserService userService;
 
     public JwtAuthenticationFilter(JWTUtill jwtUtill, UserService userService) {
         this.jwtUtill = jwtUtill;
-        this.userService = userService;
     }
 
     @Override

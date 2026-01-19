@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Verification;
+package com.beem.TastyMap.Security.Verification.ForgotPassword;
 
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
@@ -6,17 +6,24 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-public class PasswordResetTokensEntity {
+public class PasswordEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String token;
+    private LocalDateTime expiryDate;
 
     @OneToOne
     private UserEntity user;
 
-    private LocalDateTime expiryDate;
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
 
     public Long getId() {
         return id;
@@ -32,14 +39,6 @@ public class PasswordResetTokensEntity {
 
     public void setToken(String token) {
         this.token = token;
-    }
-
-    public UserEntity getUser() {
-        return user;
-    }
-
-    public void setUser(UserEntity user) {
-        this.user = user;
     }
 
     public LocalDateTime getExpiryDate() {

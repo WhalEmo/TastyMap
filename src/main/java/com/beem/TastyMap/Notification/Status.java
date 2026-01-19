@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Security.Notification;
+package com.beem.TastyMap.Notification;
 
 public enum Status {
     PENDING,

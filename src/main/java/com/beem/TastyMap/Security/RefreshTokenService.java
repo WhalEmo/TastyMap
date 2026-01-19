@@ -1,16 +1,18 @@
 package com.beem.TastyMap.Security;
 
+import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
-import com.beem.TastyMap.RegisterLogin.UserService;
-import com.beem.TastyMap.Security.Notification.NotificationEntity;
-import com.beem.TastyMap.Security.Notification.NotificationRepo;
-import com.beem.TastyMap.Security.Notification.Status;
-import org.springframework.security.core.userdetails.UserDetails;
+import com.beem.TastyMap.Security.DeviceCount.ActiveDeviceDTO;
+import com.beem.TastyMap.Notification.NotificationEntity;
+import com.beem.TastyMap.Notification.NotificationRepo;
+import com.beem.TastyMap.Notification.Status;
+import com.beem.TastyMap.Security.Verification.ServletFilter.JWTUtill;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -77,7 +79,6 @@ public class RefreshTokenService {
     @Transactional
     public RefreshTokenResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
         Optional<NotificationEntity> notificationOpt = notificationRepo.findByUserIdAndDeviceId(dto.getUserId(), dto.getDeviceId());
-
         if (notificationOpt.isEmpty()) {
             throw new RuntimeException("Cihaz için onay isteği bulunamadı");
         }
@@ -127,18 +128,37 @@ public class RefreshTokenService {
     }
 
 
-    @Transactional
-    public void logout(RefreshTokenRequestDTO dto) {
+    public void logout(RefreshTokenRequestDTO dto,Long userId) {
         RefreshTokenEntity rf = refreshTokenRepo
                 .findByTokenAndRevokedFalse(dto.getRefreshToken())
                 .orElseThrow(() ->
                         new RuntimeException("Refresh token bulunamadı")
                 );
-
+        if(rf.getUserId().equals(userId)){
+            throw new RuntimeException("Yetkisiz erişim.");
+        }
         if (!rf.getDeviceId().equals(dto.getDeviceId())) {
             throw new RuntimeException("Cihaz uyuşmuyor");
         }
         rf.setRevoked(true);
         refreshTokenRepo.save(rf);
+    }
+
+    public List<ActiveDeviceDTO> getActiveDevices(Long userId){
+        List<RefreshTokenEntity>tokens=refreshTokenRepo
+                .findAllByUserIdAndRevokedFalse(userId);
+
+        if (tokens.isEmpty()) {
+            throw new CustomExceptions.NotFoundException("Aktif oturum bulunamadı.");
+        }
+        return tokens.stream().map(rt->new ActiveDeviceDTO(
+                rt.getDeviceId(),
+                rt.getUserAgent(),
+                rt.getLastUsedAt()
+        )).toList();
+    }
+
+    public long getActiveDeviceCount(Long userId) {
+        return refreshTokenRepo.countByUserIdAndRevokedFalse(userId);
     }
 }

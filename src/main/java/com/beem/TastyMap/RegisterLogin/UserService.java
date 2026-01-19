@@ -2,34 +2,44 @@ package com.beem.TastyMap.RegisterLogin;
 
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.Security.CustomUserDetails;
-import com.beem.TastyMap.Security.JWTUtill;
-import com.beem.TastyMap.Security.Notification.NotificationEntity;
-import com.beem.TastyMap.Security.Notification.NotificationRepo;
-import com.beem.TastyMap.Security.Notification.Status;
+import com.beem.TastyMap.Security.Verification.ServletFilter.JWTUtill;
+import com.beem.TastyMap.Notification.NotificationEntity;
+import com.beem.TastyMap.Notification.NotificationRepo;
+import com.beem.TastyMap.Notification.Status;
 import com.beem.TastyMap.Security.RefreshTokenEntity;
 import com.beem.TastyMap.Security.RefreshTokenRepo;
+import com.beem.TastyMap.Security.Verification.EmailVerify.EmailEntitiy;
+import com.beem.TastyMap.Security.Verification.EmailVerify.EmailRepo;
+import com.beem.TastyMap.Security.Verification.EmailVerify.EmailService;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class UserService implements UserDetailsService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final NotificationRepo notificationRepo;
+    private final EmailRepo emailRepo;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, EmailRepo emailRepo, EmailService emailService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
+        this.emailRepo = emailRepo;
+        this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
     }
@@ -52,8 +62,28 @@ public class UserService implements UserDetailsService {
          userEntity.setPassword(passwordEncoder.encode(user.getPassword()));
          userEntity.setProfile(user.getProfile());
          userEntity.setRole(user.getRole());
-         userEntity.setEmailVerified(true);
-         userRepo.saveAndFlush(userEntity);
+         userEntity.setEmailVerified(false);
+         userRepo.save(userEntity);
+
+        String token= UUID.randomUUID().toString();
+        EmailEntitiy verification=new EmailEntitiy();
+        verification.setUser(userEntity);
+        verification.setToken(token);
+        verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        emailRepo.save(verification);
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            emailService.sendVerificationMail(token, user.getEmail());
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+        );
 
         return new UserResponseDTO(userEntity);
     }
