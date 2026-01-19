@@ -2,13 +2,10 @@ package com.beem.TastyMap.Maps.Service;
 
 import com.beem.TastyMap.Maps.Data.PlacesResponse;
 import com.beem.TastyMap.Maps.Data.ScanRequest;
-import com.beem.TastyMap.Maps.Entity.PlaceEntity;
-import com.beem.TastyMap.Maps.Repository.PlaceRepo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List;
 
 @Service
 public class GooglePlacesService {
@@ -31,7 +28,7 @@ public class GooglePlacesService {
                         .host("maps.googleapis.com")
                         .path("/maps/api/place/nearbysearch/json")
                         .queryParam("location", requestDto.getLat() + "," + requestDto.getLng())
-                        .queryParam("radius", 500)
+                        .queryParam("radius", 354)
                         .queryParam("keyword", requestDto.joiningFormat())
                         .queryParam("key", apiKey)
                         .build())

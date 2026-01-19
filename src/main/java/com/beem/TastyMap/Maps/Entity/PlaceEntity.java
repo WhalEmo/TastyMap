@@ -5,20 +5,21 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 
 @Entity
 @Table(name = "places")
 public class PlaceEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(name = "place_id", nullable = false, unique = true)
     private String placeId;
 
     @Column(nullable = false)
@@ -35,36 +36,47 @@ public class PlaceEntity {
     private String businessStatus;
 
     private Double latitude;
-
     private Double longitude;
 
-    @Column(name = "grid_lat", nullable = false, precision = 8, scale = 4)
-    private BigDecimal gridLat;
-
-    @Column(name = "grid_lng", nullable = false, precision = 8, scale = 4)
-    private BigDecimal gridLng;
-
-    private LocalDateTime createdAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grid_id", nullable = false)
+    private GridEntity grid;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "place_types", joinColumns = @JoinColumn(name = "place_id"))
+    @CollectionTable(
+            name = "place_types",
+            joinColumns = @JoinColumn(name = "place_id")
+    )
     @Column(name = "type")
-    private Set<String> types;
+    private Set<String> types = new HashSet<>();
 
-    @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PhotoEntity> photos;
+    @OneToMany(
+            mappedBy = "place",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<PhotoEntity> photos = new ArrayList<>();
 
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    public PlaceEntity() {
-    }
 
     @PrePersist
-    protected void onCreate(){
-        this.createdAt = LocalDateTime.now();
+    public void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
     }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
 
     public static PlaceEntity fromDto(PlaceResult dto) {
         PlaceEntity entity = new PlaceEntity();
+
+        if(dto.getId() != null) entity.setId(dto.getId());
 
         entity.setPlaceId(dto.getPlace_id());
         entity.setName(dto.getName());
@@ -91,28 +103,22 @@ public class PlaceEntity {
                         photo.setHeight(p.getHeight());
                         photo.setPlace(entity);
                         return photo;
-                    }).toList();
+                    })
+                    .collect(Collectors.toList());
             entity.setPhotos(photos);
         }
+
 
         return entity;
     }
 
-    public BigDecimal getGridLat() {
-        return gridLat;
+    public static List<PlaceEntity> fromDtoList(List<PlaceResult> dtoList){
+        return dtoList
+                .stream()
+                .map(PlaceEntity::fromDto)
+                .toList();
     }
 
-    public void setGridLat(BigDecimal gridLat) {
-        this.gridLat = gridLat;
-    }
-
-    public BigDecimal getGridLng() {
-        return gridLng;
-    }
-
-    public void setGridLng(BigDecimal gridLng) {
-        this.gridLng = gridLng;
-    }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
@@ -127,7 +133,10 @@ public class PlaceEntity {
     }
 
     public void setTypes(Set<String> types) {
-        this.types = types;
+        this.types.clear();
+        if (types != null) {
+            this.types.addAll(types);
+        }
     }
 
     public List<PhotoEntity> getPhotos() {
@@ -135,7 +144,10 @@ public class PlaceEntity {
     }
 
     public void setPhotos(List<PhotoEntity> photos) {
-        this.photos = photos;
+        this.photos.clear();
+        if (photos != null) {
+            this.photos.addAll(photos);
+        }
     }
 
     public Long getId() {
@@ -216,5 +228,21 @@ public class PlaceEntity {
 
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
+    }
+
+    public GridEntity getGrid() {
+        return grid;
+    }
+
+    public void setGrid(GridEntity grid) {
+        this.grid = grid;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }
