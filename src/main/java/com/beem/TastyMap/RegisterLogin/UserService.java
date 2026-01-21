@@ -95,7 +95,12 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(("Kullanıcı bulunamadı")));
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new CustomExceptions.NotFoundException(("Kullanıcı adı veya Şifre yanlış!"));
+            throw new CustomExceptions.InvalidCredentialsException(("Kullanıcı adı veya Şifre yanlış!"));
+        }
+        if (!user.isEmailVerified()) {
+            throw new CustomExceptions.AuthenticationException(
+                    "Email adresiniz doğrulanmamış"
+            );
         }
 
         Optional<RefreshTokenEntity> existingDevice = refreshTokenRepo.findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());

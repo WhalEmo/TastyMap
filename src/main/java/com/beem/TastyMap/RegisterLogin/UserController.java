@@ -4,6 +4,7 @@ import com.beem.TastyMap.Security.ApprovedRefreshRequestDTO;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import com.beem.TastyMap.Security.RefreshTokenResponseDTO;
 import com.beem.TastyMap.Security.RefreshTokenService;
+import jakarta.validation.Valid;
 import org.springframework.security.authentication.AuthenticationManager;
 
 import org.springframework.web.bind.annotation.*;
@@ -19,12 +20,12 @@ public class UserController {
         this.refreshTokenService = refreshTokenService;
     }
     @PostMapping("/register")
-    public UserResponseDTO register(@RequestBody UserRequestDTO dto){
+    public UserResponseDTO register( @Valid @RequestBody UserRequestDTO dto){
         return userService.register(dto);
     }
     @PostMapping("/login")
     public LoginResponseDTO login(
-            @RequestBody LoginRequestDTO dto,
+            @Valid @RequestBody LoginRequestDTO dto,
             @RequestHeader("User-Agent") String userAgent
     ) {
         return userService.login(dto, userAgent);

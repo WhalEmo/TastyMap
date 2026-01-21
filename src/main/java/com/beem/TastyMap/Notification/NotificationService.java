@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Notification;
 
+import com.beem.TastyMap.Exceptions.CustomExceptions;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +17,10 @@ public class NotificationService {
     @Transactional
     public void approve(Long notificationId,Long userId) {
         NotificationEntity notification = notificationRepo.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Notification bulunamadı"));
 
         if (!notification.getUserId().equals(userId)) {
-            throw new RuntimeException("Yetkisiz erişim.Bu bildirim sana ait değil");
+            throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.Bu bildirim sana ait değil");
         }
         if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
             notification.setStatus(Status.EXPIRED);
@@ -27,7 +28,7 @@ public class NotificationService {
             return;
         }
         if (notification.getStatus() != Status.PENDING) {
-            throw new RuntimeException("Bu onay isteği artık geçerli değil");
+            throw new CustomExceptions.InvalidException("Bu onay isteği artık geçerli değil");
         }
 
         notification.setStatus(Status.APPROVED);
@@ -37,10 +38,10 @@ public class NotificationService {
     public void reject(Long notificationId,Long userId) {
 
         NotificationEntity notification = notificationRepo.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Notification bulunamadı"));
 
         if (!notification.getUserId().equals(userId)) {
-            throw new RuntimeException("Yetkisiz erişim.Bu bildirim sana ait değil");
+            throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.Bu bildirim sana ait değil");
         }
         if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
             notification.setStatus(Status.EXPIRED);
@@ -49,7 +50,7 @@ public class NotificationService {
         }
 
         if (notification.getStatus() != Status.PENDING) {
-            throw new RuntimeException("Bu onay isteği artık geçerli değil");
+            throw new CustomExceptions.InvalidException("Bu onay isteği artık geçerli değil");
         }
 
         notification.setStatus(Status.REJECTED);

@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Security.Verification.EmailVerify;
 
+import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,9 +44,9 @@ public class EmailService {
     @Transactional
     public String verifyEmail(String token){
         EmailEntitiy emailtoken=emailRepo.findByToken(token)
-                .orElseThrow(() -> new SecurityException("Token geçersiz"));
+                .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
         if(emailtoken.getExpiryDate().isBefore(LocalDateTime.now())){
-            throw  new SecurityException("Token süresi dolmuş");
+            throw new CustomExceptions.InvalidException("Token süresi dolmuş");
         }
         UserEntity user= emailtoken.getUser();
         user.setEmailVerified(true);

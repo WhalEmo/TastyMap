@@ -20,7 +20,7 @@ public interface RefreshTokenRepo extends JpaRepository<RefreshTokenEntity,Long>
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE RefreshTokenEntity r
-        SET r.revoked = true,
+        SET r.revoked = true
         WHERE r.userId = :userId
           AND r.revoked = false
     """)

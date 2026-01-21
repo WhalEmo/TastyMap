@@ -1,7 +1,12 @@
 package com.beem.TastyMap.RegisterLogin;
 
+import jakarta.validation.constraints.NotBlank;
+
 public class LoginRequestDTO {
+    @NotBlank(message = "Kullanıcı adı boş olamaz!")
     private String username;
+
+    @NotBlank(message = "Parola boş olamaz!")
     private String password;
     private String deviceId;
     private String fcmToken;

@@ -15,9 +15,14 @@ public class PasswordController {
         this.passwordService = passwordService;
     }
 
-    @GetMapping("/forgotPassword")
+    @PostMapping("/forgotPassword")
     public void requestResetPassword(@RequestParam String email){
         passwordService.forgotPassword(email);
+    }
+
+    @GetMapping("/resetPassword/validate")
+    public void validateToken(@RequestParam String token){
+        passwordService.validateToken(token);
     }
 
     @PostMapping("/resetPassword")

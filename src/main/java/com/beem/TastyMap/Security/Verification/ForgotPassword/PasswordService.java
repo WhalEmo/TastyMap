@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Security.Verification.ForgotPassword;
 
+import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
 import com.beem.TastyMap.Security.RefreshTokenRepo;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -14,6 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Service
 public class PasswordService {
     private final UserRepo userRepo;
     private final PasswordRepo passwordRepo;
@@ -55,7 +58,7 @@ public class PasswordService {
     }
     public void sendMail(String token,String email){
         String subject="Şifre Sıfırlama Talebi";
-        String resetLink=baseURL+"/auth/resetPassword?resetpasswordtoken="+token;
+        String resetLink= baseURL + "/auth/resetPassword/validate?token=" + token;
         String body =
                 "Merhaba,\n\n" +
                         "Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:\n\n" +
@@ -74,10 +77,8 @@ public class PasswordService {
     @Transactional
     public String newPassword(String token,ResetPasswordDTO resetDTO){
         PasswordEntity passwordEntity=passwordRepo.findByToken(token)
-                .orElseThrow(() -> new SecurityException("Token geçersiz"));
-        if (passwordEntity.getExpiryDate().isBefore(LocalDateTime.now())){
-            throw  new SecurityException("Token süresi dolmuş");
-        }
+                .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
+
         UserEntity user=passwordEntity.getUser();
         user.setPassword(passwordEncoder.encode(resetDTO.getNewPassword()));
 
@@ -88,4 +89,11 @@ public class PasswordService {
         return ("Şifre değiştirildi.");
     }
 
+    public void validateToken(String token){
+        PasswordEntity passwordEntity=passwordRepo.findByToken(token)
+                .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
+        if (passwordEntity.getExpiryDate().isBefore(LocalDateTime.now())){
+            throw  new CustomExceptions.InvalidException("Token süresi dolmuş");
+        }
+    }
 }

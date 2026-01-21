@@ -1,4 +1,4 @@
-package com.beem.TastyMap.Security.DeviceCount;
+package com.beem.TastyMap.UserProfile;
 
 import java.time.LocalDateTime;
 
