@@ -29,7 +29,6 @@ public class RefreshTokenService {
     }
     @Transactional
     public RefreshTokenResponseDTO refresh(RefreshTokenRequestDTO dto) {
-
         RefreshTokenEntity rf = refreshTokenRepo
                 .findByTokenAndRevokedFalse(dto.getRefreshToken())
                 .orElseThrow(() ->

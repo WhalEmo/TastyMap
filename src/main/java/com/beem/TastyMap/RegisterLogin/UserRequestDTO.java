@@ -32,9 +32,18 @@ public class UserRequestDTO {
     private String profile;
     private String biography;
     private String role;
+    private boolean privateProfile;
 
     public Long getId() {
         return id;
+    }
+
+    public boolean isPrivateProfile() {
+        return privateProfile;
+    }
+
+    public void setPrivateProfile(boolean privateProfile) {
+        this.privateProfile = privateProfile;
     }
 
     public void setId(Long id) {

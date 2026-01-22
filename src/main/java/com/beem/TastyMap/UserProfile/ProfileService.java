@@ -6,6 +6,9 @@ import com.beem.TastyMap.RegisterLogin.UserRepo;
 import com.beem.TastyMap.Security.RefreshTokenEntity;
 import com.beem.TastyMap.Security.RefreshTokenRepo;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
+import com.beem.TastyMap.UserProfile.Block.BlockRepo;
+import com.beem.TastyMap.UserProfile.Subscribe.ProfileDTOresponse;
+import com.beem.TastyMap.UserProfile.Subscribe.SubscribeRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,22 +20,29 @@ public class ProfileService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
-    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder) {
+    private final SubscribeRepo subscribeRepo;
+    private final BlockRepo blockRepo;
+
+    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, SubscribeRepo subscribeRepo, BlockRepo blockRepo) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
+        this.subscribeRepo = subscribeRepo;
+        this.blockRepo = blockRepo;
     }
 
     public void updateProfile(UpdateProfileDTO request, Long userId){
         UserEntity user=userRepo.findById(userId)
                 .orElseThrow(()->new CustomExceptions.NotFoundException("Kullanıcı bulunamadı/Yetkisiz erişim"));
 
+        if (userRepo.existsByUsernameAndIdNot(request.getUsername(), userId)) {
+            throw new CustomExceptions.UserAlreadyExistsException("Bu kullanıcı adı zaten alınmış");
+        }
         user.setProfile(request.getProfilephoto());
         user.setName(request.getName());
         user.setUsername(request.getUsername());
         user.setSurname(request.getSurname());
         user.setBiography(request.getBiyografi());
-        user.setLastInteractionAt(LocalDateTime.now());
         userRepo.save(user);
     }
 
@@ -42,7 +52,7 @@ public class ProfileService {
                 .orElseThrow(() ->
                         new CustomExceptions.NotFoundException("Refresh token bulunamadı")
                 );
-        if(rf.getUserId().equals(userId)){
+        if (!rf.getUserId().equals(userId)) {
             throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.");
         }
         if (!rf.getDeviceId().equals(dto.getDeviceId())) {
@@ -56,9 +66,6 @@ public class ProfileService {
         List<RefreshTokenEntity>tokens=refreshTokenRepo
                 .findAllByUserIdAndRevokedFalse(userId);
 
-        if (tokens.isEmpty()) {
-            throw new CustomExceptions.NotFoundException("Aktif oturum bulunamadı.");
-        }
         return tokens.stream().map(rt->new ActiveDeviceDTO(
                 rt.getDeviceId(),
                 rt.getUserAgent(),
@@ -88,4 +95,40 @@ public class ProfileService {
         userRepo.save(user);
     }
 
+    public ProfileDTOresponse getProfile(Long userId,Long myId){
+        UserEntity user=userRepo.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
+
+        boolean blocked = blockRepo.existsByBlockerIdAndBlockedId(userId, myId) ||
+                blockRepo.existsByBlockerIdAndBlockedId(myId, userId);
+
+        if(blocked){
+            return new ProfileDTOresponse(
+                    user.getUsername(),
+                    user.getName(),
+                    null,
+                    user.getRole(),
+                    user.getBiography(),
+                    2,
+                   0,
+                    0
+            );
+        }
+        DAHAYAPILMADIPOST
+
+        long subscribedCount = subscribeRepo.countBySubscribedId(userId);
+        long subscriberCount = subscribeRepo.countBySubscriberId(userId);
+        long postCount = postRepo.countByUserId(userId);
+
+        return new ProfileDTOresponse(
+                user.getUsername(),
+                user.getName(),
+                user.getProfile(),
+                user.getRole(),
+                user.getBiography(),
+                2,
+                subscriberCount,
+                subscribedCount
+        );
+    }
 }

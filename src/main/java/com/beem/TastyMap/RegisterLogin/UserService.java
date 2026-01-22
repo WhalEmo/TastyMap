@@ -63,6 +63,7 @@ public class UserService implements UserDetailsService {
          userEntity.setProfile(user.getProfile());
          userEntity.setRole(user.getRole());
          userEntity.setEmailVerified(false);
+         userEntity.setPrivateProfile(user.isPrivateProfile());
          userRepo.save(userEntity);
 
         String token= UUID.randomUUID().toString();

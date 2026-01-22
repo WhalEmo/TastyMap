@@ -41,6 +41,9 @@ public class UserEntity {
     @Column(nullable = true)
     private String biography;
 
+    @Column(nullable = false)
+    private boolean privateProfile = false;
+
     private LocalDateTime lastInteractionAt;
 
     private boolean emailVerified = true;
@@ -52,6 +55,7 @@ public class UserEntity {
     public void setLastInteractionAt(LocalDateTime lastInteractionAt) {
         this.lastInteractionAt = lastInteractionAt;
     }
+
 
     public Long getId() {
         return id;
@@ -139,5 +143,13 @@ public class UserEntity {
 
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
+    }
+
+    public boolean isPrivateProfile() {
+        return privateProfile;
+    }
+
+    public void setPrivateProfile(boolean privateProfile) {
+        this.privateProfile = privateProfile;
     }
 }

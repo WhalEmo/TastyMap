@@ -1,7 +1,7 @@
 package com.beem.TastyMap.UserProfile;
 
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
-import com.beem.TastyMap.Security.RefreshTokenService;
+import com.beem.TastyMap.UserProfile.Subscribe.ProfileDTOresponse;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/profile")
-public class ProfileController {
+@RequestMapping("/api/myProfile")
+public class MyProfileController {
     private final ProfileService profileService;
 
-    public ProfileController(ProfileService profileService) {
+    public MyProfileController(ProfileService profileService) {
         this.profileService = profileService;
     }
 
@@ -54,6 +54,14 @@ public class ProfileController {
         Long userId=(Long)authentication.getPrincipal();
         profileService.changePassword(dto,userId);
         return Map.of("message","Şifre başarıyla değiştirildi!");
+    }
+
+    @GetMapping("/me")
+    private ProfileDTOresponse getProfile(
+            Authentication authentication
+    ){
+        Long myId=(Long)authentication.getPrincipal();
+        return profileService.getProfile(myId,myId);
     }
 
 }
