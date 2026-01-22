@@ -114,7 +114,7 @@ public class ProfileService {
                     0
             );
         }
-        DAHAYAPILMADIPOST
+        DAHAYAPILMADIPO
 
         long subscribedCount = subscribeRepo.countBySubscribedId(userId);
         long subscriberCount = subscribeRepo.countBySubscriberId(userId);
