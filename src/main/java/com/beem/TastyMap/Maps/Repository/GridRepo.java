@@ -29,4 +29,17 @@ public interface GridRepo extends JpaRepository<GridEntity, Long> {
             @Param("gridLng") BigDecimal gridLng,
             @Param("types") List<String> types
     );
+
+
+    @Query(value = """
+            select g.* from grids g
+                where g.center_lat = :gridLat
+                And g.center_lng = :gridLng
+            """,
+            nativeQuery = true
+    )
+    Optional<GridEntity> findByGridLatAndLng(
+            @Param("gridLat") BigDecimal gridLat,
+            @Param("gridLng") BigDecimal gridLng
+    );
 }

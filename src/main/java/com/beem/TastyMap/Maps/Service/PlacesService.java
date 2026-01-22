@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -41,7 +42,7 @@ public class PlacesService {
         this.gridRepo = gridRepo;
     }
 
-    private PlacesResponse getPlaces(ScanRequest request){
+    public PlacesResponse getPlaces(ScanRequest request){
         List<GridCell> gridCells = GeoUtils.gridCells(
                 request.getLat(),
                 request.getLng(),
@@ -62,11 +63,23 @@ public class PlacesService {
 
             returnData = searchDataBase(cell);
 
+            if(returnData != null){
+                results.addAll(returnData);
+                continue;
+            }
+
+            returnData = searchGoogleAPI(cell);
+
+            results.addAll(returnData);
 
 
         }
 
-        return null;
+        PlacesResponse response = new PlacesResponse();
+        response.setResults(results);
+        response.setStatus("Ok");
+
+        return response;
     }
 
     private List<PlaceResult> searchCache(GridCell cell){
@@ -114,191 +127,134 @@ public class PlacesService {
         return placeResults;
     }
 
-    /*
-    private List<PlaceResult> getNearbyFoodPlaces(ScanRequest requestDto, GridCell cell) throws JsonProcessingException {
+    @Transactional
+    private List<PlaceResult> searchGoogleAPI(GridCell cell){
 
-        BigDecimal gridLat = cell.getLat();
-        BigDecimal gridLng = cell.getLng();
+        List<PlaceResult> placeResults = fetchAndFilterPlaces(cell);
 
+        markAPICounter(cell);
 
-        String key = RedisKeyGenerator.createNearbyKey(
-                gridLat,
-                gridLng,
-                requestDto.getRadius(),
-                requestDto.getKeywords());
+        GridEntity grid = getOrCreatedGrid(cell);
 
-        String cached = redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            List<PlaceResult> cacheData = mapper.readValue(cached, new TypeReference<List<PlaceResult>>() {});
-            cell.setGridNearby(
-                    PlaceEntity.fromDtoList(cacheData)
-            );
-            return cacheData;
+        if(placeResults.isEmpty()){
+            markGridAsEmpty(grid);
+            cacheResults(cell, placeResults);
+            return Collections.emptyList();
         }
 
-        cell.printCell();
-        List<PlaceEntity> places = placeRepo.findByGridAndTypes(gridLat, gridLng, requestDto.getKeywords());
-        cell.printCell();
+        markGridAsHasData(grid);
 
-        if(!places.isEmpty()){
-            PlacesResponse response = new PlacesResponse();
-            List<PlaceResult> placeResults = places.stream()
-                    .map(PlaceResult::fromEntity)
-                    .toList();
-            response.setResults(placeResults);
-            cell.setGridNearby(
-                    PlaceEntity.fromDtoList(placeResults)
-            );
-            response.setStatus(cell.getLat().doubleValue() + ", " + cell.getLng().doubleValue());
-            redisTemplate.opsForValue().set(key, mapper.writeValueAsString(response.getResults()), Duration.ofHours(1));
-            return response.getResults();
-        }
+        persistPlaces(grid, placeResults);
 
-        return safelyRequestAndSave(requestDto,key, gridLat, gridLng);
+        cacheResults(cell, placeResults);
+
+        return placeResults;
     }
 
-    public PlacesResponse getPlaces(ScanRequest dto){
-        List<GridCell> gridCells = GeoUtils.gridCells(
-                dto.getLat(),
-                dto.getLng(),
-                dto.getRadius()
-        );
+    private List<PlaceResult> fetchAndFilterPlaces(GridCell cell){
+        PlacesResponse googleResponse = googlePlacesService.getNearbyFoodPlaces(cell);
 
-        GeoUtils.printCells(gridCells);
-
-        if (gridCells.isEmpty()) {
-            return emptyResponse("NO_GRID");
-        }
-
-        List<PlaceResult> placeResults = new ArrayList<>();
-        for(GridCell cell: gridCells){
-            placeResults.addAll(fetchPlacesSafely(dto,cell));
-        }
-
-        PlacesResponse response = new PlacesResponse();
-        response.setResults(placeResults);
-        response.setStatus("okk");
-
-        return response;
-    }
-
-    private List<PlaceResult> safelyRequestAndSave(
-            ScanRequest requestDto,
-            String key,
-            BigDecimal centerLat,
-            BigDecimal centerLng
-    ) {
-        System.out.println("SEND API REQUEST");
-        PlacesResponse response =
-                googlePlacesService.getNearbyFoodPlaces(requestDto);
-
-        List<PlaceResult> filteredResults = response.getResults()
+        return googleResponse.getResults()
                 .stream()
-                .filter(placeResult -> {
-                    BigDecimal gridLat =
-                            GeoUtils.roundToGridCenter(
-                                    placeResult.getGeometry().getLocation().getLat()
-                            );
-                    BigDecimal gridLng =
-                            GeoUtils.roundToGridCenter(
-                                    placeResult.getGeometry().getLocation().getLng()
-                            );
-
-                    return gridLat.compareTo(centerLat) == 0 &&
-                            gridLng.compareTo(centerLng) == 0;
-                })
+                .filter(place -> isPlaceInGrid(cell, place))
                 .collect(Collectors.toCollection(ArrayList::new));
+    }
 
-        if(filteredResults.isEmpty()){
-            PlaceEntity entity = new PlaceEntity();
-            entity.setPlaceId("EMPTY" + centerLat + "_" + centerLng);
-            entity.setStatus(GridStatus.EMPTY);
-            entity.setName("EMPTY_GRID");
-            filteredResults.add(PlaceResult.fromEntity(entity));
-        }
+    private boolean isPlaceInGrid(GridCell cell,PlaceResult placeResult){
+        BigDecimal gridLat = GeoUtils
+                .roundToGridCenter(placeResult.getGeometry().getLocation().getLat());
+        BigDecimal gridLng = GeoUtils
+                .roundToGridCenter(placeResult.getGeometry().getLocation().getLng());
+        return cell.getLat().compareTo(gridLat) == 0
+                && cell.getLng().compareTo(gridLng) == 0;
+    }
 
-        Set<String> placeIds = filteredResults
-                .stream()
+    private GridEntity getOrCreatedGrid(GridCell cell){
+        return gridRepo
+                .findByGridLatAndLng(
+                        cell.getLat(),
+                        cell.getLng()
+                )
+                .orElseGet(()->{
+                    GridEntity entity = new GridEntity();
+                    entity.setStatus(GridStatus.EMPTY);
+                    entity.setCenterLat(cell.getLat());
+                    entity.setCenterLng(cell.getLng());
+                    return gridRepo.save(entity);
+                });
+    }
+
+    private void persistPlaces(GridEntity grid, List<PlaceResult> results) {
+
+        Set<String> placeIds = results.stream()
                 .map(PlaceResult::getPlace_id)
                 .collect(Collectors.toSet());
 
-        Map<String, Long> placeIdsMapId = placeRepo.findIdsByPlaceIds(placeIds)
+        Map<String, Long> existingIds = placeRepo
+                .findIdsByPlaceIds(placeIds)
                 .stream()
                 .collect(Collectors.toMap(
                         row -> (String) row[0],
                         row -> (Long) row[1]
                 ));
 
-        List<PlaceEntity> places = filteredResults
-                .stream()
-                .map(placeResult -> {
-                    PlaceEntity entity = PlaceEntity.fromDto(placeResult);
+        List<PlaceEntity> entities = results.stream()
+                .map(dto -> mapToEntity(dto, grid, existingIds))
+                .collect(Collectors.toCollection(ArrayList::new));
 
-                    BigDecimal gridLat = GeoUtils.roundToGridCenter(
-                            placeResult.getGeometry().getLocation().getLat() == null ? centerLat.doubleValue()
-                                    : placeResult.getGeometry().getLocation().getLat()
-                    );
-                    gridLat = GeoUtils.normalizeGrid(gridLat);
-
-                    BigDecimal gridLng = GeoUtils.roundToGridCenter(
-                            placeResult.getGeometry().getLocation().getLng() == null ? centerLng.doubleValue()
-                                    : placeResult.getGeometry().getLocation().getLng()
-                    );
-                    gridLng = GeoUtils.normalizeGrid(gridLng);
-
-                    entity.setStatus(
-                            entity.getStatus() == null ? GridStatus.HAS_DATA : entity.getStatus()
-                    );
-
-                    System.out.println("Database Save: " + gridLat + " : " + gridLng);
-
-                    Long existingId = placeIdsMapId.get(entity.getPlaceId());
-                    if(existingId != null) entity.setId(existingId);
-
-                    entity.setGridLat(gridLat);
-                    entity.setGridLng(gridLng);
-                    return entity;
-                })
-                .toList();
-
-        placeRepo.saveAll(places);
-
-        if (!filteredResults.isEmpty()) {
-            try {
-                redisTemplate.opsForValue()
-                        .set(key,
-                                mapper.writeValueAsString(filteredResults),
-                                Duration.ofHours(1));
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return filteredResults;
+        placeRepo.saveAll(entities);
     }
 
-    private List<PlaceResult> fetchPlacesSafely(ScanRequest dto, GridCell cell) {
+
+    private void markGridAsEmpty(GridEntity grid) {
+        grid.setStatus(GridStatus.EMPTY);
+        gridRepo.save(grid);
+    }
+
+    private void markGridAsHasData(GridEntity grid) {
+        grid.setStatus(GridStatus.HAS_DATA);
+        gridRepo.save(grid);
+    }
+
+
+    private void cacheResults(GridCell cell, List<PlaceResult> results) {
         try {
-            return getNearbyFoodPlaces(dto, cell);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException(
-                    "Places API parse error for cell: " + cell, e
+            redisTemplate.opsForValue().set(
+                    cell.getGridKey(),
+                    mapper.writeValueAsString(results),
+                    Duration.ofHours(1)
             );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Redis cache failed for grid {}");
         }
     }
-    */
-    private PlacesResponse emptyResponse(String status) {
-        PlacesResponse response = new PlacesResponse();
-        response.setStatus(status);
-        response.setResults(List.of());
-        return response;
+
+    private void markAPICounter(GridCell cell){
+        try {
+            redisTemplate.opsForValue().set(
+                    cell.getGridKey() + ":API",
+                    mapper.writeValueAsString(null),
+                    Duration.ofHours(1)
+            );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Redis cache failed for grid {}");
+        }
     }
 
-    private String resolveStatus(List<PlacesResponse> responses) {
-        return responses.stream()
-                .map(PlacesResponse::getStatus)
-                .distinct()
-                .collect(Collectors.joining("/"));
+    private PlaceEntity mapToEntity(
+            PlaceResult dto,
+            GridEntity grid,
+            Map<String, Long> existingIds) {
+
+        PlaceEntity entity = PlaceEntity.fromDto(dto);
+        entity.setGrid(grid);
+
+        Long existingId = existingIds.get(entity.getPlaceId());
+        if (existingId != null) {
+            entity.setId(existingId);
+        }
+
+        return entity;
     }
-
-
+    
 }

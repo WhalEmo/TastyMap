@@ -1,7 +1,7 @@
 package com.beem.TastyMap.Maps.Service;
 
 import com.beem.TastyMap.Maps.Data.PlacesResponse;
-import com.beem.TastyMap.Maps.Data.ScanRequest;
+import com.beem.TastyMap.Maps.Geo.GridCell;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -19,7 +19,7 @@ public class GooglePlacesService {
         this.webClient = webClient;
     }
 
-    public PlacesResponse getNearbyFoodPlaces(ScanRequest requestDto) {
+    public PlacesResponse getNearbyFoodPlaces(GridCell gridCell) {
 
 
         PlacesResponse response = webClient.get()
@@ -27,9 +27,9 @@ public class GooglePlacesService {
                         .scheme("https")
                         .host("maps.googleapis.com")
                         .path("/maps/api/place/nearbysearch/json")
-                        .queryParam("location", requestDto.getLat() + "," + requestDto.getLng())
+                        .queryParam("location", gridCell.getLat() + "," + gridCell.getLng())
                         .queryParam("radius", 354)
-                        .queryParam("keyword", requestDto.joiningFormat())
+                        .queryParam("keyword", gridCell.joiningFormat())
                         .queryParam("key", apiKey)
                         .build())
                 .retrieve()

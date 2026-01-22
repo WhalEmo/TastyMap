@@ -38,6 +38,10 @@ public class GridCell {
         );
     }
 
+    public String joiningFormat() {
+        return String.join("|", types);
+    }
+
     public BigDecimal getLat() {
         return lat;
     }
@@ -63,13 +67,12 @@ public class GridCell {
     }
 
     public String getGridKey() {
-        if(gridKey.isEmpty()){
-            this.gridKey = RedisKeyGenerator.createNearbyKey(
-                    this.lat,
-                    this.lng,
-                    this.types
-            );
-        }
-        return gridKey;
+        return gridKey != null
+                ? gridKey
+                : (gridKey = RedisKeyGenerator.createNearbyKey(
+                        this.lat,
+                        this.lng,
+                        this.types
+        ));
     }
 }

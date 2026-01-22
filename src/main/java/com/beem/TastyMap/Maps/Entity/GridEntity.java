@@ -58,6 +58,7 @@ public class GridEntity {
     public GridEntity() {
     }
 
+
     public Long getId() {
         return id;
     }
