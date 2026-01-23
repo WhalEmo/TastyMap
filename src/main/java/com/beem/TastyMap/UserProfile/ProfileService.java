@@ -7,7 +7,6 @@ import com.beem.TastyMap.Security.RefreshTokenEntity;
 import com.beem.TastyMap.Security.RefreshTokenRepo;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import com.beem.TastyMap.UserProfile.Block.BlockRepo;
-import com.beem.TastyMap.UserProfile.Subscribe.ProfileDTOresponse;
 import com.beem.TastyMap.UserProfile.Subscribe.SubscribeRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

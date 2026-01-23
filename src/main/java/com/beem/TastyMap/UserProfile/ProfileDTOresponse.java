@@ -1,4 +1,4 @@
-package com.beem.TastyMap.UserProfile.Subscribe;
+package com.beem.TastyMap.UserProfile;
 
 public class ProfileDTOresponse {
     private String username;

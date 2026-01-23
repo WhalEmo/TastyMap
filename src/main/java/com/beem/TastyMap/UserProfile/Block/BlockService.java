@@ -54,20 +54,9 @@ public class BlockService {
         blockRepo.delete(block);
     }
 
-    public Page<BlockDTOResponse> getBlock(Long myId,int page, int size){
-        Pageable pageable= PageRequest.of(page,size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<BlockEntity> blocks = blockRepo.findByBlockerId(myId,pageable);
-
-        return blocks.map(block->{
-            UserEntity user=userRepo.findById(block.getBlockedId())
-                    .orElseThrow();
-            BlockDTOResponse dto=new BlockDTOResponse(
-                    user.getId(),
-                    user.getUsername(),
-                    user.getProfile(),
-                    block.getCreatedAt()
-            );
-            return dto;
-        });
+    public Page<BlockDTOResponse> getBlock(Long myId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return blockRepo.findMyBlocks(myId, pageable);
     }
+
 }

@@ -1,6 +1,5 @@
 package com.beem.TastyMap.UserProfile;
 
-import com.beem.TastyMap.UserProfile.Subscribe.ProfileDTOresponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;

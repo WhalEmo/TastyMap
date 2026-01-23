@@ -36,6 +36,7 @@ public class PostService {
         postRepo.save(post);
     }
 
+    //postları getirme post sayısı
     public void getPosts(){
 
     }
