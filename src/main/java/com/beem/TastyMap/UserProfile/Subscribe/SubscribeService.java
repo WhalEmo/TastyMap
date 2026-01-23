@@ -10,17 +10,13 @@ import java.time.LocalDateTime;
 @Service
 public class SubscribeService {
     private final SubscribeRepo subscribeRepo;
-    private final UserRepo userRepo;
 
-    public SubscribeService(SubscribeRepo subscribeRepo, UserRepo userRepo) {
+    public SubscribeService(SubscribeRepo subscribeRepo) {
         this.subscribeRepo = subscribeRepo;
-        this.userRepo = userRepo;
     }
 
     //abone olma
     public void subscribe(Long subscribes,Long myId){
-        userRepo.findById(subscribes)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
         if (subscribeRepo.existsBySubscriberIdAndSubscribedId(myId, subscribes)) {
             throw new CustomExceptions.UserAlreadyExistsException("Zaten abonesin");
@@ -49,4 +45,6 @@ public class SubscribeService {
                 );
         subscribeRepo.delete(sub);
     }
+
+
 }

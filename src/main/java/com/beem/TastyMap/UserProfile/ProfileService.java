@@ -114,7 +114,7 @@ public class ProfileService {
                     0
             );
         }
-        DAHAYAPILMADIPO
+        /daha post yapılmadı
 
         long subscribedCount = subscribeRepo.countBySubscribedId(userId);
         long subscriberCount = subscribeRepo.countBySubscriberId(userId);
