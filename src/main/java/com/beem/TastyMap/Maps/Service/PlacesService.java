@@ -30,13 +30,15 @@ import java.util.stream.Collectors;
 public class PlacesService {
 
     private final RedisTemplate<String, String> redisTemplate;
+    private final RedisCacheService redisService;
     private final ObjectMapper mapper = new ObjectMapper();
     private final GooglePlacesService googlePlacesService;
     private final PlaceRepo placeRepo;
     private final GridRepo gridRepo;
 
-    public PlacesService(RedisTemplate<String, String> redisTemplate, GooglePlacesService googlePlacesService, PlaceRepo placeRepo, GridRepo gridRepo) {
+    public PlacesService(RedisTemplate<String, String> redisTemplate, RedisCacheService service, GooglePlacesService googlePlacesService, PlaceRepo placeRepo, GridRepo gridRepo) {
         this.redisTemplate = redisTemplate;
+        this.redisService = service;
         this.googlePlacesService = googlePlacesService;
         this.placeRepo = placeRepo;
         this.gridRepo = gridRepo;
