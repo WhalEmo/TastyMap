@@ -9,19 +9,13 @@ import com.beem.TastyMap.Maps.Entity.GridStatus;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.Maps.Geo.GeoUtils;
 import com.beem.TastyMap.Maps.Geo.GridCell;
-import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Repository.GridRepo;
 import com.beem.TastyMap.Maps.Repository.PlaceRepo;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,15 +23,12 @@ import java.util.stream.Collectors;
 @Service
 public class PlacesService {
 
-    private final RedisTemplate<String, String> redisTemplate;
     private final RedisCacheService redisService;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final GooglePlacesService googlePlacesService;
     private final PlaceRepo placeRepo;
     private final GridRepo gridRepo;
 
-    public PlacesService(RedisTemplate<String, String> redisTemplate, RedisCacheService service, GooglePlacesService googlePlacesService, PlaceRepo placeRepo, GridRepo gridRepo) {
-        this.redisTemplate = redisTemplate;
+    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, PlaceRepo placeRepo, GridRepo gridRepo) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
         this.placeRepo = placeRepo;
@@ -85,19 +76,11 @@ public class PlacesService {
     }
 
     private List<PlaceResult> searchCache(GridCell cell){
-        String key = cell.getGridKey();
-
-        List<PlaceResult> cacheData = null;
-
-        String cached = redisTemplate.opsForValue().get(key);
-        if (cached != null) {
-            try {
-                cacheData = mapper.readValue(cached, new TypeReference<List<PlaceResult>>() {});
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return cacheData;
+        return redisService.getWithSlidingTTL(
+                cell.getGridKey(),
+                new TypeReference<List<PlaceResult>>() {},
+                3600
+        );
     }
 
     private List<PlaceResult> searchDataBase(GridCell cell){
@@ -119,12 +102,7 @@ public class PlacesService {
                 .map(PlaceResult::fromEntity)
                 .toList();
 
-        try {
-            redisTemplate.opsForValue()
-                    .set(cell.getGridKey(), mapper.writeValueAsString(placeResults), Duration.ofHours(1));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        cacheResults(cell, placeResults);
 
         return placeResults;
     }
@@ -220,27 +198,19 @@ public class PlacesService {
 
 
     private void cacheResults(GridCell cell, List<PlaceResult> results) {
-        try {
-            redisTemplate.opsForValue().set(
-                    cell.getGridKey(),
-                    mapper.writeValueAsString(results),
-                    Duration.ofHours(1)
-            );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Redis cache failed for grid {}");
-        }
+        redisService.set(
+                cell.getGridKey(),
+                results,
+                3600
+        );
     }
 
     private void markAPICounter(GridCell cell){
-        try {
-            redisTemplate.opsForValue().set(
-                    cell.getGridKey() + ":API",
-                    mapper.writeValueAsString(null),
-                    Duration.ofHours(1)
-            );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Redis cache failed for grid {}");
-        }
+        redisService.set(
+                cell.getGridKey() + ":API",
+                null,
+                3600
+        );
     }
 
     private PlaceEntity mapToEntity(
