@@ -9,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface PostRepo extends JpaRepository<PostEntity,Long> {
+
+    long countByUserId(Long userId);
+
     @Query("""
         select new com.beem.TastyMap.UserProfile.Post.PostResponseDTO(
             p.id,
@@ -33,8 +36,11 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
         )
         from PostEntity p
         join UserEntity u on u.id = p.userId
-        where p.userId in :visibleUserIds
+        where p.userId = :userId
         order by p.createdAt desc
     """)
-    Page<PostResponseDTO> getFeed(@Param("visibleUserIds") List<Long> visibleUserIds, Pageable pageable);
+    Page<PostResponseDTO> getUserPosts(
+            @Param("userId") Long userId,
+            Pageable pageable
+    );
 }

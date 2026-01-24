@@ -7,6 +7,7 @@ import com.beem.TastyMap.Security.RefreshTokenEntity;
 import com.beem.TastyMap.Security.RefreshTokenRepo;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import com.beem.TastyMap.UserProfile.Block.BlockRepo;
+import com.beem.TastyMap.UserProfile.Post.PostRepo;
 import com.beem.TastyMap.UserProfile.Subscribe.SubscribeRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,13 +22,15 @@ public class ProfileService {
     private final PasswordEncoder passwordEncoder;
     private final SubscribeRepo subscribeRepo;
     private final BlockRepo blockRepo;
+    private final PostRepo postRepo;
 
-    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, SubscribeRepo subscribeRepo, BlockRepo blockRepo) {
+    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, SubscribeRepo subscribeRepo, BlockRepo blockRepo, PostRepo postRepo) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
         this.subscribeRepo = subscribeRepo;
         this.blockRepo = blockRepo;
+        this.postRepo = postRepo;
     }
 
     public void updateProfile(UpdateProfileDTO request, Long userId){
@@ -49,8 +52,8 @@ public class ProfileService {
         RefreshTokenEntity rf = refreshTokenRepo
                 .findByTokenAndRevokedFalse(dto.getRefreshToken())
                 .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Refresh token bulunamadı")
-                );
+                        new CustomExceptions.NotFoundException("Refresh token bulunamadı"));
+
         if (!rf.getUserId().equals(userId)) {
             throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.");
         }
@@ -108,12 +111,11 @@ public class ProfileService {
                     null,
                     user.getRole(),
                     user.getBiography(),
-                    2,
+                    0,
                    0,
                     0
             );
         }
-        /daha post yapılmadı
 
         long subscribedCount = subscribeRepo.countBySubscribedId(userId);
         long subscriberCount = subscribeRepo.countBySubscriberId(userId);
@@ -125,7 +127,7 @@ public class ProfileService {
                 user.getProfile(),
                 user.getRole(),
                 user.getBiography(),
-                2,
+                postCount,
                 subscriberCount,
                 subscribedCount
         );

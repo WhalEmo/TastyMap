@@ -55,18 +55,20 @@ public class SubscribeService {
                 );
         subscribeRepo.delete(sub);
     }
-
+//BAKILACAK DUSUNULECEK
     private void checkProfileAccess(Long profileUserId, Long myId) {
+        UserEntity profileUser = userRepo.findById(profileUserId)
+                .orElseThrow(() ->
+                        new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
+
         if (profileUserId.equals(myId)) return;
 
         boolean blocked = blockRepo.existsByBlockerIdAndBlockedId(profileUserId, myId) ||
                         blockRepo.existsByBlockerIdAndBlockedId(myId, profileUserId);
+
         if (blocked) {
             throw new CustomExceptions.ForbiddenException("Bu kullanıcıyla etkileşim yok");
         }
-        UserEntity profileUser = userRepo.findById(profileUserId)
-                .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
         if (!profileUser.isPrivateProfile()) return;
 
@@ -74,7 +76,7 @@ public class SubscribeService {
 
         if (!isFollowing) {
             throw new CustomExceptions.ForbiddenException(
-                    "Bu kullanıcının abonelik bilgisini görüntülemek için takip etmelisiniz"
+                    "Bu kullanıcının bilgilerini görüntülemek için takip etmelisiniz"
             );
         }
     }
