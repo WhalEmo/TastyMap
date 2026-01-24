@@ -7,7 +7,6 @@ public class PostRequestDTO {
     private Integer puan;
     private String photoUrl;
 
-
     private String placeId;
     private String placeName;
     private String categories;

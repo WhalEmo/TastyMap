@@ -22,7 +22,7 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
 
             u.id,
             u.username,
-            u.profilePhotoUrl,
+            u.profile,
 
             p.placeEmbedded.placeId,
             p.placeEmbedded.placeName,
@@ -34,10 +34,11 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
             p.placeEmbedded.longitude,
             p.placeEmbedded.averagePuan
         )
-        from PostEntity p
-        join UserEntity u on u.id = p.userId
-        where p.userId = :userId
-        order by p.createdAt desc
+        from PostEntity p, UserEntity u
+                where u.id = p.userId
+                and p.userId = :userId
+                order by p.createdAt desc
+        
     """)
     Page<PostResponseDTO> getUserPosts(
             @Param("userId") Long userId,

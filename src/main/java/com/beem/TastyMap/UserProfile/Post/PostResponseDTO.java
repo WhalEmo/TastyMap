@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 public class PostResponseDTO {
     private Long postId;
-    private String aciklama;
+    private String explanation;
     private Integer puan;
     private String photoUrl;
     private LocalDateTime createdAt;
@@ -26,9 +26,9 @@ public class PostResponseDTO {
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(Long postId, String aciklama, Integer puan, String photoUrl, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
+    public PostResponseDTO(Long postId, String explanation, Integer puan, String photoUrl, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
         this.postId = postId;
-        this.aciklama = aciklama;
+        this.explanation = explanation;
         this.puan = puan;
         this.photoUrl = photoUrl;
         this.createdAt = createdAt;
@@ -54,12 +54,12 @@ public class PostResponseDTO {
         this.postId = postId;
     }
 
-    public String getAciklama() {
-        return aciklama;
+    public String getExplanation() {
+        return explanation;
     }
 
-    public void setAciklama(String aciklama) {
-        this.aciklama = aciklama;
+    public void setExplanation(String explanation) {
+        this.explanation = explanation;
     }
 
     public Integer getPuan() {

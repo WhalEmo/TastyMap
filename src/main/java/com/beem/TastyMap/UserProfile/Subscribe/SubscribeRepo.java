@@ -21,10 +21,10 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
         u.profile,
         u.username
     )
-        FROM SubscribeEntity s
-        JOIN UserEntity u ON u.id = s.subscribedId
-        WHERE s.subscriberId = :userId
-        """)
+    FROM SubscribeEntity s, UserEntity u
+    WHERE u.id = s.subscribedId
+      AND s.subscriberId = :userId
+""")
     Page<SubscribeDTO> findUserSubscribes(
             @Param("userId") Long userId,
             Pageable pageable

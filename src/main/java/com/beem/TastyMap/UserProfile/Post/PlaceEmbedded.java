@@ -18,13 +18,13 @@ public class PlaceEmbedded {
 
     private String neighbourhood;
 
-    @Column(precision = 9, scale = 6)
+    @Column(nullable = false)
     private Double latitude;
 
-    @Column(precision = 9, scale = 6)
+    @Column(nullable = false)
     private Double longitude;
 
-    private Double AveragePuan;
+    private Double averagePuan;
 
     public String getPlaceId() {
         return placeId;
@@ -91,10 +91,10 @@ public class PlaceEmbedded {
     }
 
     public Double getAveragePuan() {
-        return AveragePuan;
+        return averagePuan;
     }
 
     public void setAveragePuan(Double averagePuan) {
-        AveragePuan = averagePuan;
+        this.averagePuan = averagePuan;
     }
 }
