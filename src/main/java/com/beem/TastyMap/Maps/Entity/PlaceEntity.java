@@ -1,9 +1,10 @@
 package com.beem.TastyMap.Maps.Entity;
 
+import com.beem.TastyMap.Maps.Data.PlaceDetailsResult;
 import com.beem.TastyMap.Maps.Data.PlaceResult;
+import com.beem.TastyMap.MapsReview.ReviewEntity;
 import jakarta.persistence.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,6 +36,20 @@ public class PlaceEntity {
 
     private String businessStatus;
 
+    private String formattedPhoneNumber;
+    private String internationalPhoneNumber;
+    private String website;
+
+    @Embedded
+    private OpeningHoursEmbeddable openingHours;
+
+    @OneToMany(
+            mappedBy = "place",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<ReviewEntity> reviews = new ArrayList<>();
+
     private Double latitude;
     private Double longitude;
 
@@ -59,6 +74,8 @@ public class PlaceEntity {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String formattedAddress;
 
 
     @PrePersist
@@ -112,12 +129,123 @@ public class PlaceEntity {
         return entity;
     }
 
-    public static List<PlaceEntity> fromDtoList(List<PlaceResult> dtoList){
-        return dtoList
+    public static PlaceEntity fromDetailsDto(PlaceDetailsResult dto){
+        PlaceEntity entity = new PlaceEntity();
+
+        entity.setPlaceId(dto.getPlace_id());
+        entity.setName(dto.getName());
+
+        entity.setRating(dto.getRating());
+        entity.setPriceLevel(dto.getPrice_level());
+        entity.setUserRatingsTotal(dto.getUser_ratings_total());
+
+
+
+        if (dto.getGeometry() != null) {
+            entity.setLatitude(dto.getGeometry().getLocation().getLat());
+            entity.setLongitude(dto.getGeometry().getLocation().getLng());
+        }
+
+        entity.setTypes(new HashSet<>(dto.getTypes()));
+
+        entity.setFormattedPhoneNumber(dto.getFormatted_phone_number());
+        entity.setInternationalPhoneNumber(dto.getInternational_phone_number());
+        entity.setWebsite(dto.getWebsite());
+
+        if (dto.getPhotos() != null) {
+            List<PhotoEntity> photos = dto.getPhotos().stream()
+                    .map(p -> {
+                        PhotoEntity photo = new PhotoEntity();
+                        photo.setPhotoReference(p.getPhoto_reference());
+                        photo.setWidth(p.getWidth());
+                        photo.setHeight(p.getHeight());
+                        photo.setPlace(entity);
+                        return photo;
+                    })
+                    .collect(Collectors.toList());
+            entity.setPhotos(photos);
+        }
+
+        entity.openingHours = new OpeningHoursEmbeddable(
+                dto.getOpening_hours().getOpen_now(),
+                dto.getOpening_hours().getWeekday_text()
+        );
+
+        entity.reviews = dto.getReviews()
                 .stream()
-                .map(PlaceEntity::fromDto)
-                .toList();
+                .map(review -> {
+                    return new ReviewEntity(
+                            review.getAuthor_name(),
+                            review.getRating(),
+                            review.getText(),
+                            review.getTime(),
+                            entity
+                    );
+                })
+                .collect(Collectors.toList());
+
+        entity.setFormattedAddress(dto.getFormatted_address());
+
+        return entity;
     }
+
+    public void updateFromDetailsDto(PlaceDetailsResult dto) {
+
+        this.setName(dto.getName());
+        this.setRating(dto.getRating());
+        this.setPriceLevel(dto.getPrice_level());
+        this.setUserRatingsTotal(dto.getUser_ratings_total());
+
+        if (dto.getGeometry() != null) {
+            this.setLatitude(dto.getGeometry().getLocation().getLat());
+            this.setLongitude(dto.getGeometry().getLocation().getLng());
+        }
+
+        if (dto.getTypes() != null) {
+            this.setTypes(new HashSet<>(dto.getTypes()));
+        }
+
+        this.setFormattedPhoneNumber(dto.getFormatted_phone_number());
+        this.setInternationalPhoneNumber(dto.getInternational_phone_number());
+        this.setWebsite(dto.getWebsite());
+        this.setFormattedAddress(dto.getFormatted_address());
+
+        if (dto.getOpening_hours() != null) {
+            this.setOpeningHours(
+                    new OpeningHoursEmbeddable(
+                            dto.getOpening_hours().getOpen_now(),
+                            dto.getOpening_hours().getWeekday_text()
+                    )
+            );
+        }
+
+        if (dto.getPhotos() != null) {
+            this.getPhotos().clear();
+            dto.getPhotos().forEach(p -> {
+                PhotoEntity photo = new PhotoEntity();
+                photo.setPhotoReference(p.getPhoto_reference());
+                photo.setWidth(p.getWidth());
+                photo.setHeight(p.getHeight());
+                photo.setPlace(this);
+                this.getPhotos().add(photo);
+            });
+        }
+
+        if (dto.getReviews() != null) {
+            this.getReviews().clear();
+            dto.getReviews().forEach(r -> {
+                ReviewEntity review = new ReviewEntity(
+                        r.getAuthor_name(),
+                        r.getRating(),
+                        r.getText(),
+                        r.getTime(),
+                        this
+                );
+                this.getReviews().add(review);
+            });
+        }
+    }
+
 
 
     public LocalDateTime getCreatedAt() {
@@ -244,5 +372,53 @@ public class PlaceEntity {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getFormattedPhoneNumber() {
+        return formattedPhoneNumber;
+    }
+
+    public void setFormattedPhoneNumber(String formattedPhoneNumber) {
+        this.formattedPhoneNumber = formattedPhoneNumber;
+    }
+
+    public String getInternationalPhoneNumber() {
+        return internationalPhoneNumber;
+    }
+
+    public void setInternationalPhoneNumber(String internationalPhoneNumber) {
+        this.internationalPhoneNumber = internationalPhoneNumber;
+    }
+
+    public String getWebsite() {
+        return website;
+    }
+
+    public void setWebsite(String website) {
+        this.website = website;
+    }
+
+    public OpeningHoursEmbeddable getOpeningHours() {
+        return openingHours;
+    }
+
+    public void setOpeningHours(OpeningHoursEmbeddable openingHours) {
+        this.openingHours = openingHours;
+    }
+
+    public List<ReviewEntity> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<ReviewEntity> reviews) {
+        this.reviews = reviews;
+    }
+
+    public String getFormattedAddress() {
+        return formattedAddress;
+    }
+
+    public void setFormattedAddress(String formattedAddress) {
+        this.formattedAddress = formattedAddress;
     }
 }

@@ -1,19 +1,21 @@
 package com.beem.TastyMap.Maps.Service;
 
 
-import com.beem.TastyMap.Maps.Data.PlaceResult;
-import com.beem.TastyMap.Maps.Data.PlacesResponse;
-import com.beem.TastyMap.Maps.Data.ScanRequest;
+import com.beem.TastyMap.Maps.Data.*;
 import com.beem.TastyMap.Maps.Entity.GridEntity;
 import com.beem.TastyMap.Maps.Entity.GridStatus;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.Maps.Geo.GeoUtils;
 import com.beem.TastyMap.Maps.Geo.GridCell;
+import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Repository.GridRepo;
 import com.beem.TastyMap.Maps.Repository.PlaceRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.persistence.EntityManager;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -25,12 +27,14 @@ public class PlacesService {
 
     private final RedisCacheService redisService;
     private final GooglePlacesService googlePlacesService;
+    private final EntityManager entityManager;
     private final PlaceRepo placeRepo;
     private final GridRepo gridRepo;
 
-    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, PlaceRepo placeRepo, GridRepo gridRepo) {
+    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, EntityManager entityManager, PlaceRepo placeRepo, GridRepo gridRepo) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
+        this.entityManager = entityManager;
         this.placeRepo = placeRepo;
         this.gridRepo = gridRepo;
     }
@@ -47,21 +51,21 @@ public class PlacesService {
         ArrayList<PlaceResult> results = new ArrayList<>();
         for(GridCell cell: gridCells){
 
-            returnData = searchCache(cell);
+            returnData = searchCacheToPlace(cell);
 
             if(returnData != null){
                 results.addAll(returnData);
                 continue;
             }
 
-            returnData = searchDataBase(cell);
+            returnData = searchPlaceDataBase(cell);
 
             if(returnData != null){
                 results.addAll(returnData);
                 continue;
             }
 
-            returnData = searchGoogleAPI(cell);
+            returnData = searchPlaceGoogleAPI(cell);
 
             results.addAll(returnData);
 
@@ -75,7 +79,28 @@ public class PlacesService {
         return response;
     }
 
-    private List<PlaceResult> searchCache(GridCell cell){
+    public PlaceDetailsResponse getPlaceDetails(String placeID){
+        String key = RedisKeyGenerator.createPlaceDetailsKey(placeID);
+
+        PlaceDetailsResult detailsList = searchCacheToPlaceDetails(key);
+
+        if(detailsList != null){
+            return mapToDetailsResult(detailsList);
+        }
+
+        detailsList = searchPlaceDetailsDataBase(placeID, key);
+
+        if(detailsList != null){
+            return mapToDetailsResult(detailsList);
+        }
+
+        detailsList = searchPlaceDetailsGoogleAPI(placeID, key);
+
+
+        return mapToDetailsResult(detailsList);
+    }
+
+    private List<PlaceResult> searchCacheToPlace(GridCell cell){
         return redisService.getWithSlidingTTL(
                 cell.getGridKey(),
                 new TypeReference<List<PlaceResult>>() {},
@@ -83,7 +108,15 @@ public class PlacesService {
         );
     }
 
-    private List<PlaceResult> searchDataBase(GridCell cell){
+    private PlaceDetailsResult searchCacheToPlaceDetails(String key){
+        return redisService.getWithSlidingTTL(
+                key,
+                new TypeReference<PlaceDetailsResult>(){},
+                3600 * 24
+        );
+    }
+
+    private List<PlaceResult> searchPlaceDataBase(GridCell cell){
         Optional<GridEntity> gridEntity = gridRepo.findByGridAndTypes(
                 cell.getLat(),
                 cell.getLng(),
@@ -102,13 +135,32 @@ public class PlacesService {
                 .map(PlaceResult::fromEntity)
                 .toList();
 
-        cacheResults(cell, placeResults);
+        cachePlaceResults(cell, placeResults);
 
         return placeResults;
     }
 
+    private PlaceDetailsResult searchPlaceDetailsDataBase(String placeId, String key){
+        Optional<PlaceEntity> placeEntity = placeRepo.findByPlaceId(placeId);
+
+        PlaceEntity entity = placeEntity.orElse(null);
+
+        if(entity == null){
+            return null;
+        }
+        else if(entity.getFormattedAddress() == null){
+            return null;
+        }
+
+        PlaceDetailsResult detailsResult = PlaceDetailsResult.fromEntity(entity);
+
+        cachePlaceDetailsResults(key, detailsResult);
+
+        return detailsResult;
+    }
+
     @Transactional
-    private List<PlaceResult> searchGoogleAPI(GridCell cell){
+    private List<PlaceResult> searchPlaceGoogleAPI(GridCell cell){
 
         List<PlaceResult> placeResults = fetchAndFilterPlaces(cell);
 
@@ -118,7 +170,7 @@ public class PlacesService {
 
         if(placeResults.isEmpty()){
             markGridAsEmpty(grid);
-            cacheResults(cell, placeResults);
+            cachePlaceResults(cell, placeResults);
             return Collections.emptyList();
         }
 
@@ -126,9 +178,27 @@ public class PlacesService {
 
         persistPlaces(grid, placeResults);
 
-        cacheResults(cell, placeResults);
+        cachePlaceResults(cell, placeResults);
 
         return placeResults;
+    }
+
+    private PlaceDetailsResult searchPlaceDetailsGoogleAPI(String placeId, String key){
+        PlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId);
+
+        if (!"OK".equals(response.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Google Places error: " + response.getStatus()
+            );
+        }
+        PlaceDetailsResult details = response.getResult();
+
+        PlaceEntity place = getOrCreatedOrUpdatePlace(details);
+
+        cachePlaceDetailsResults(key, details);
+
+        return details;
     }
 
     private List<PlaceResult> fetchAndFilterPlaces(GridCell cell){
@@ -163,6 +233,29 @@ public class PlacesService {
                     return gridRepo.save(entity);
                 });
     }
+    private PlaceEntity getOrCreatedOrUpdatePlace(PlaceDetailsResult details){
+        Long gridId = gridRepo
+                .findIdByGridLatAndLng(
+                        GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLat()),
+                        GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLng())
+                )
+                .orElseThrow(()-> new IllegalStateException("Grid not found"));
+
+        GridEntity gridRef = entityManager.getReference(GridEntity.class, gridId);
+
+        PlaceEntity place = placeRepo
+                .findByPlaceId(details.getPlace_id())
+                .orElseGet(()->{
+                    PlaceEntity entity = PlaceEntity.fromDetailsDto(details);
+                    entity.setGrid(gridRef);
+                    return entity;
+                });
+
+        if(place.getId() !=null){
+            place.updateFromDetailsDto(details);
+        }
+        return placeRepo.save(place);
+    }
 
     private void persistPlaces(GridEntity grid, List<PlaceResult> results) {
 
@@ -186,6 +279,7 @@ public class PlacesService {
     }
 
 
+
     private void markGridAsEmpty(GridEntity grid) {
         grid.setStatus(GridStatus.EMPTY);
         gridRepo.save(grid);
@@ -197,11 +291,18 @@ public class PlacesService {
     }
 
 
-    private void cacheResults(GridCell cell, List<PlaceResult> results) {
+    private void cachePlaceResults(GridCell cell, List<PlaceResult> results) {
         redisService.set(
                 cell.getGridKey(),
                 results,
                 3600
+        );
+    }
+    private void cachePlaceDetailsResults(String key, PlaceDetailsResult detailsResult) {
+        redisService.set(
+                key,
+                detailsResult,
+                3600 * 24
         );
     }
 
@@ -227,6 +328,13 @@ public class PlacesService {
         }
 
         return entity;
+    }
+
+    private PlaceDetailsResponse mapToDetailsResult(PlaceDetailsResult detailsResult){
+        PlaceDetailsResponse response = new PlaceDetailsResponse();
+        response.setResult(detailsResult);
+        response.setStatus("Ok");
+        return response;
     }
     
 }

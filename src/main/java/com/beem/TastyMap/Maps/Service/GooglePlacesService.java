@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Maps.Service;
 
+import com.beem.TastyMap.Maps.Data.PlaceDetailsResponse;
 import com.beem.TastyMap.Maps.Data.PlacesResponse;
 import com.beem.TastyMap.Maps.Geo.GridCell;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,5 +38,39 @@ public class GooglePlacesService {
                 .block();
 
         return response;
+    }
+
+    public PlaceDetailsResponse getDetailPlaceInfo(String placeId){
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("https")
+                        .host("maps.googleapis.com")
+                        .path("/maps/api/place/details/json")
+                        .queryParam("place_id", placeId)
+                        .queryParam(
+                                "fields",
+                                String.join(",",
+                                        "place_id",
+                                        "name",
+                                        "rating",
+                                        "user_ratings_total",
+                                        "price_level",
+                                        "types",
+                                        "formatted_phone_number",
+                                        "international_phone_number",
+                                        "website",
+                                        "opening_hours",
+                                        "geometry",
+                                        "photos",
+                                        "reviews",
+                                        "formatted_address"
+                                )
+                        )
+                        .queryParam("language", "tr")
+                        .queryParam("key", apiKey)
+                        .build())
+                .retrieve()
+                .bodyToMono(PlaceDetailsResponse.class)
+                .block();
     }
 }
