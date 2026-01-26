@@ -52,6 +52,7 @@ public class ReviewEntity {
     @PrePersist
     public void onCreate(){
         if(createdAt == null) createdAt = System.currentTimeMillis();
+        if(source == null) source = ReviewSource.GOOGLE;
     }
 
     @PreUpdate
@@ -68,6 +69,18 @@ public class ReviewEntity {
         this.text = text;
         this.createdAt = createdAt;
         this.place = place;
+    }
+
+    public ReviewEntity(String authorName, Double rating, String text, ReviewSource source,
+                        PlaceEntity place, User user, ReviewEntity parent, ReviewStatus status) {
+        this.authorName = authorName;
+        this.rating = rating;
+        this.text = text;
+        this.source = source;
+        this.place = place;
+        this.user = user;
+        this.parent = parent;
+        this.status = status;
     }
 
     public Long getId() {

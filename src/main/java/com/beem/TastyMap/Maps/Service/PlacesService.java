@@ -12,6 +12,7 @@ import com.beem.TastyMap.Maps.Repository.GridRepo;
 import com.beem.TastyMap.Maps.Repository.PlaceRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.persistence.EntityManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,24 @@ public class PlacesService {
         this.entityManager = entityManager;
         this.placeRepo = placeRepo;
         this.gridRepo = gridRepo;
+    }
+
+    @Cacheable(
+            value = "places",
+            key = "#placeId"
+    )
+    public PlaceEntity getPlaceByPlaceId(Long placeId){
+        return placeRepo
+                .findById(placeId)
+                .orElseThrow(()-> new RuntimeException("Place not found"));
+    }
+
+    @Transactional
+    public PlaceEntity getReferenceIfExists(Long id) {
+        if (!placeRepo.existsById(id)) {
+            throw new RuntimeException("Place not found");
+        }
+        return entityManager.getReference(PlaceEntity.class, id);
     }
 
     public PlacesResponse getPlaces(ScanRequest request){
