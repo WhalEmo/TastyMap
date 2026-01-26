@@ -3,6 +3,7 @@ package com.beem.TastyMap.UserProfile.Subscribe;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -47,5 +48,13 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
     );
 
 
-
+    @Modifying
+    @Query("""
+            DELETE from SubscribeEntity s
+            WHERE 
+            (s.subscriberId = :myId AND s.subscribedId = :userId)
+             OR
+            (s.subscriberId = :userId AND s.subscribedId = :myId)
+            """)
+    void deleteMutualSubscribe(Long myId, Long userId);
 }

@@ -3,6 +3,8 @@ package com.beem.TastyMap.UserProfile.Block;
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
+import com.beem.TastyMap.UserProfile.Subscribe.SubscribeEntity;
+import com.beem.TastyMap.UserProfile.Subscribe.SubscribeRepo;
 import com.beem.TastyMap.UserProfile.Subscribe.SubscribeService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,18 +14,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class BlockService {
     private final BlockRepo blockRepo;
     private final UserRepo userRepo;
-    private final SubscribeService subscribeService;
+    private final SubscribeRepo subscribeRepo;
 
-    public BlockService(BlockRepo blockRepo, UserRepo userRepo, SubscribeService subscribeService) {
+    public BlockService(BlockRepo blockRepo, UserRepo userRepo, SubscribeRepo subscribeRepo) {
         this.blockRepo = blockRepo;
         this.userRepo = userRepo;
-        this.subscribeService = subscribeService;
+        this.subscribeRepo = subscribeRepo;
     }
+
+
     @Transactional
     public void block(Long userId,Long myId) {
         userRepo.findById(userId)
@@ -40,9 +45,7 @@ public class BlockService {
         block.setBlockerId(myId);
 
         blockRepo.save(block);
-
-        subscribeService.unSubscribe(userId, myId);
-        subscribeService.unSubscriber(userId, myId);
+        subscribeRepo.deleteMutualSubscribe(myId, userId);
     }
 
     public void unBlock(Long userId,Long myId){

@@ -55,7 +55,7 @@ public class SubscribeService {
                 );
         subscribeRepo.delete(sub);
     }
-//BAKILACAK DUSUNULECEK
+
     private void checkProfileAccess(Long profileUserId, Long myId) {
         UserEntity profileUser = userRepo.findById(profileUserId)
                 .orElseThrow(() ->

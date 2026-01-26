@@ -5,6 +5,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
@@ -46,5 +49,24 @@ public class PostController {
         return postService.getPosts(myId, myId, page, size);
     }
 
+    @DeleteMapping("/deletePost/{postId}")
+    public Map<String,String> deletePost(
+            @PathVariable Long postId,
+            Authentication authentication
+    ){
+        Long myId = (Long) authentication.getPrincipal();
+        postService.deletePost(postId,myId);
+        return Map.of("meesage","Post silindi");
+    }
 
+    @PutMapping("/updatePost/{postId}")
+    public Map<String,String> updatePost(
+            @PathVariable Long postId,
+            @RequestBody PostUpdateDTO dto,
+            Authentication authentication
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        postService.updatePost(postId, myId, dto);
+        return Map.of("message","Post güncellendi");
+    }
 }

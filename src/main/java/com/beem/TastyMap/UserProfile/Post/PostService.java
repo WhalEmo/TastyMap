@@ -73,6 +73,34 @@ public class PostService {
         return postRepo.getUserPosts(userId, pageable);
     }
 
+    public void deletePost(Long postId,Long myId){
+        PostEntity post=postRepo.findById(postId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+        if (!post.getUserId().equals(myId)) {
+            throw new CustomExceptions.AuthorizationException("Bu postu silme yetkin yok");
+        }
+        postRepo.delete(post);
+    }
+
+    @Transactional
+    public void updatePost(Long postId, Long myId, PostUpdateDTO dto) {
+
+        PostEntity post = postRepo.findById(postId)
+                .orElseThrow(() ->
+                        new CustomExceptions.NotFoundException("Post bulunamadı")
+                );
+
+        if (!post.getUserId().equals(myId)) {
+            throw new CustomExceptions.AuthorizationException("Bu postu güncelleme yetkin yok");
+        }
+        post.setExplanation(dto.getExplanation());
+        post.setPuan(dto.getPuan());
+        post.setPhotoUrl(dto.getPhotoUrl());
+
+        postRepo.save(post);
+    }
+
+
 }
 
 
