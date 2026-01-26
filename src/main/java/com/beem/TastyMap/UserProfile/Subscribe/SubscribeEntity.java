@@ -1,5 +1,6 @@
 package com.beem.TastyMap.UserProfile.Subscribe;
 
+import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -19,11 +20,13 @@ public class SubscribeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "subscriber_id", nullable = false)
-    private Long subscriberId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subscriber_id", nullable = false)
+    private UserEntity subscriber;
 
-    @Column(name = "subscribed_id", nullable = false)
-    private Long subscribedId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subscribed_id", nullable = false)
+    private UserEntity subscribed;
 
     @Column(name = "date", nullable = false)
     private LocalDateTime date;
@@ -36,20 +39,20 @@ public class SubscribeEntity {
         this.id = id;
     }
 
-    public Long getSubscriberId() {
-        return subscriberId;
+    public UserEntity getSubscriber() {
+        return subscriber;
     }
 
-    public void setSubscriberId(Long subscriberId) {
-        this.subscriberId = subscriberId;
+    public void setSubscriber(UserEntity subscriber) {
+        this.subscriber = subscriber;
     }
 
-    public Long getSubscribedId() {
-        return subscribedId;
+    public UserEntity getSubscribed() {
+        return subscribed;
     }
 
-    public void setSubscribedId(Long subscribedId) {
-        this.subscribedId = subscribedId;
+    public void setSubscribed(UserEntity subscribed) {
+        this.subscribed = subscribed;
     }
 
     public LocalDateTime getDate() {

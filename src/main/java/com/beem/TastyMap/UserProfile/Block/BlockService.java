@@ -6,6 +6,7 @@ import com.beem.TastyMap.RegisterLogin.UserRepo;
 import com.beem.TastyMap.UserProfile.Subscribe.SubscribeEntity;
 import com.beem.TastyMap.UserProfile.Subscribe.SubscribeRepo;
 import com.beem.TastyMap.UserProfile.Subscribe.SubscribeService;
+import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,18 +32,22 @@ public class BlockService {
 
     @Transactional
     public void block(Long userId,Long myId) {
-        userRepo.findById(userId)
+        UserEntity blocker = userRepo.findById(myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
+
+        UserEntity blocked = userRepo.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
+
 
         if (userId.equals(myId)) {
             throw new CustomExceptions.InvalidException("Kendini engelleyemezsin");
         }
-        if(blockRepo.existsByBlockerIdAndBlockedId(myId,userId)){
+        if(blockRepo.existsByBlocker_IdAndBlocked_Id(myId,userId)){
             throw new CustomExceptions.UserAlreadyExistsException("Zaten engellenmiş");
         }
         BlockEntity block=new BlockEntity();
-        block.setBlockedId(userId);
-        block.setBlockerId(myId);
+        block.setBlocked(blocked);
+        block.setBlocker(blocker);
 
         blockRepo.save(block);
         subscribeRepo.deleteMutualSubscribe(myId, userId);
@@ -50,7 +55,7 @@ public class BlockService {
 
     public void unBlock(Long userId,Long myId){
         BlockEntity block=blockRepo
-                .findByBlockerIdAndBlockedId(myId,userId)
+                .findByBlocker_IdAndBlocked_Id(myId,userId)
                 .orElseThrow(() ->
                         new CustomExceptions.NotFoundException("Engel bulunamadı")
                 );

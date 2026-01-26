@@ -53,14 +53,14 @@ public class UserService implements UserDetailsService {
              throw new CustomExceptions.UserAlreadyExistsException("Bu email zaten kayıtlı.");
          }
          UserEntity userEntity=new UserEntity();
-         userEntity.setBiography(user.getBiography());
+         userEntity.setBiography(user.getBiography().trim());
          userEntity.setDate(LocalDateTime.now());
-         userEntity.setUsername(user.getUsername());
-         userEntity.setEmail(user.getEmail());
-         userEntity.setName(user.getName());
-         userEntity.setSurname(user.getSurname());
+         userEntity.setUsername(user.getUsername().trim());
+         userEntity.setEmail(user.getEmail().trim());
+         userEntity.setName(user.getName().trim());
+         userEntity.setSurname(user.getSurname().trim());
          userEntity.setPassword(passwordEncoder.encode(user.getPassword()));
-         userEntity.setProfile(user.getProfile());
+         userEntity.setProfile(user.getProfile().trim());
          userEntity.setRole(user.getRole());
          userEntity.setEmailVerified(false);
          userEntity.setPrivateProfile(user.isPrivateProfile());
@@ -92,7 +92,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
 
-        UserEntity user = userRepo.findByUsername(dto.getUsername())
+        UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(("Kullanıcı bulunamadı")));
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {

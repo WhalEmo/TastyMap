@@ -11,25 +11,15 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
-    boolean existsBySubscriberIdAndSubscribedId(Long sbscrbrId,Long sbscrbdId);
-    Optional<SubscribeEntity>findBySubscriberIdAndSubscribedId(Long sbscrbrId,Long sbscrbdId);
-    long countBySubscriberId(Long subscriberId);
-    long countBySubscribedId(Long subscribedId);
+    boolean existsBySubscriber_IdAndSubscribed_Id(Long subscriberId, Long subscribedId);
 
-    @Query("""
-    SELECT new com.beem.TastyMap.UserProfile.Subscribe.SubscribeDTO(
-        u.id,
-        u.profile,
-        u.username
-    )
-    FROM SubscribeEntity s, UserEntity u
-    WHERE u.id = s.subscribedId
-      AND s.subscriberId = :userId
-""")
-    Page<SubscribeDTO> findUserSubscribes(
-            @Param("userId") Long userId,
-            Pageable pageable
+    Optional<SubscribeEntity> findBySubscriber_IdAndSubscribed_Id(
+            Long subscriberId,
+            Long subscribedId
     );
+
+    long countBySubscriber_Id(Long subscriberId);
+    long countBySubscribed_Id(Long subscribedId);
 
 
     @Query("""
@@ -39,10 +29,25 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
         u.username
     )
     FROM SubscribeEntity s
-    JOIN UserEntity u ON u.id = s.subscriberId
-    WHERE s.subscribedId = :userId
+    JOIN s.subscribed u
+    WHERE s.subscriber.id = :userId
 """)
-    Page<SubscribeDTO>findUserSubscribers(
+    Page<SubscribeDTO> findUserSubscribes(
+            @Param("userId") Long userId,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT new com.beem.TastyMap.UserProfile.Subscribe.SubscribeDTO(
+        u.id,
+        u.profile,
+        u.username
+    )
+    FROM SubscribeEntity s
+    JOIN s.subscriber u
+    WHERE s.subscribed.id = :userId
+""")
+    Page<SubscribeDTO> findUserSubscribers(
             @Param("userId") Long userId,
             Pageable pageable
     );
@@ -50,11 +55,16 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
 
     @Modifying
     @Query("""
-            DELETE from SubscribeEntity s
-            WHERE 
-            (s.subscriberId = :myId AND s.subscribedId = :userId)
-             OR
-            (s.subscriberId = :userId AND s.subscribedId = :myId)
-            """)
-    void deleteMutualSubscribe(Long myId, Long userId);
+DELETE FROM SubscribeEntity s
+WHERE 
+(s.subscriber.id = :myId AND s.subscribed.id = :userId)
+OR
+(s.subscriber.id = :userId AND s.subscribed.id = :myId)
+""")
+    void deleteMutualSubscribe(
+            @Param("myId") Long myId,
+            @Param("userId") Long userId
+    );
+
+
 }

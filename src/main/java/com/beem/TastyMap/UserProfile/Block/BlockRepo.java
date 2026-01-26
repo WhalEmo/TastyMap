@@ -10,8 +10,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BlockRepo extends JpaRepository<BlockEntity,Long> {
-    boolean existsByBlockerIdAndBlockedId(Long blockerId,Long blockedId);
-    Optional<BlockEntity>findByBlockerIdAndBlockedId(Long blockerId,Long blockedId);
+    boolean existsByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
+    Optional<BlockEntity> findByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
+
     @Query("""
     SELECT new com.beem.TastyMap.UserProfile.Block.BlockDTOResponse(
         u.id,
@@ -20,9 +21,9 @@ public interface BlockRepo extends JpaRepository<BlockEntity,Long> {
         b.createdAt
     )
     FROM BlockEntity b
-    JOIN UserEntity u ON u.id = b.blockedId
-    WHERE b.blockerId = :myId
-    """)
+    JOIN b.blocked u
+    WHERE b.blocker.id = :myId
+""")
     Page<BlockDTOResponse> findMyBlocks(
             @Param("myId") Long myId,
             Pageable pageable

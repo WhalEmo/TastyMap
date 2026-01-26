@@ -41,10 +41,10 @@ public class ProfileService {
             throw new CustomExceptions.UserAlreadyExistsException("Bu kullanıcı adı zaten alınmış");
         }
         user.setProfile(request.getProfilephoto());
-        user.setName(request.getName());
-        user.setUsername(request.getUsername());
-        user.setSurname(request.getSurname());
-        user.setBiography(request.getBiyografi());
+        user.setName(request.getName().trim());
+        user.setUsername(request.getUsername().trim());
+        user.setSurname(request.getSurname().trim());
+        user.setBiography(request.getBiyografi().trim());
         userRepo.save(user);
     }
 
@@ -101,8 +101,8 @@ public class ProfileService {
         UserEntity user=userRepo.findById(userId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
-        boolean blocked = blockRepo.existsByBlockerIdAndBlockedId(userId, myId) ||
-                blockRepo.existsByBlockerIdAndBlockedId(myId, userId);
+        boolean blocked = blockRepo.existsByBlocker_IdAndBlocked_Id(userId, myId) ||
+                blockRepo.existsByBlocker_IdAndBlocked_Id(myId, userId);
 
         if(blocked){
             return new ProfileDTOresponse(
@@ -117,9 +117,9 @@ public class ProfileService {
             );
         }
 
-        long subscribedCount = subscribeRepo.countBySubscribedId(userId);
-        long subscriberCount = subscribeRepo.countBySubscriberId(userId);
-        long postCount = postRepo.countByUserId(userId);
+        long subscribedCount = subscribeRepo.countBySubscribed_Id(userId);
+        long subscriberCount = subscribeRepo.countBySubscriber_Id(userId);
+        long postCount = postRepo.countByUser_Id(userId);
 
         return new ProfileDTOresponse(
                 user.getUsername(),

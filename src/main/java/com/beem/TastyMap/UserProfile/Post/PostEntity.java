@@ -1,5 +1,6 @@
 package com.beem.TastyMap.UserProfile.Post;
 
+import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -10,8 +11,10 @@ public class PostEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private Long userId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity user;
 
     @Column(length = 500)
     private String explanation;
@@ -47,12 +50,12 @@ public class PostEntity {
         this.id = id;
     }
 
-    public Long getUserId() {
-        return userId;
+    public UserEntity getUser() {
+        return user;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUser(UserEntity user) {
+        this.user = user;
     }
 
     public String getExplanation() {

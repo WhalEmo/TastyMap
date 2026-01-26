@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface PostRepo extends JpaRepository<PostEntity,Long> {
 
-    long countByUserId(Long userId);
+    long countByUser_Id(Long userId);
 
     @Query("""
         select new com.beem.TastyMap.UserProfile.Post.PostResponseDTO(
@@ -34,9 +34,9 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
             p.placeEmbedded.longitude,
             p.placeEmbedded.averagePuan
         )
-        from PostEntity p, UserEntity u
-                where u.id = p.userId
-                and p.userId = :userId
+            from PostEntity p
+                join p.user u
+                where u.id = :userId
                 order by p.createdAt desc
         
     """)

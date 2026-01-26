@@ -1,5 +1,6 @@
 package com.beem.TastyMap.UserProfile.Block;
 
+import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
@@ -15,17 +16,22 @@ import java.time.LocalDateTime;
         }
 )
 public class BlockEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "blocker_id", nullable = false)
-    private Long blockerId;
+    // engelleyen kişi
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blocker_id", nullable = false)
+    private UserEntity blocker;
 
-    @Column(name = "blocked_id", nullable = false)
-    private Long blockedId;
+    // engellenen kişi
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "blocked_id", nullable = false)
+    private UserEntity blocked;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -41,20 +47,20 @@ public class BlockEntity {
         this.id = id;
     }
 
-    public Long getBlockerId() {
-        return blockerId;
+    public UserEntity getBlocker() {
+        return blocker;
     }
 
-    public void setBlockerId(Long blockerId) {
-        this.blockerId = blockerId;
+    public void setBlocker(UserEntity blocker) {
+        this.blocker = blocker;
     }
 
-    public Long getBlockedId() {
-        return blockedId;
+    public UserEntity getBlocked() {
+        return blocked;
     }
 
-    public void setBlockedId(Long blockedId) {
-        this.blockedId = blockedId;
+    public void setBlocked(UserEntity blocked) {
+        this.blocked = blocked;
     }
 
     public LocalDateTime getCreatedAt() {
