@@ -78,6 +78,14 @@ public class CommentService {
         return commentRepo.getPostComments(postId,pageable);
     }
 
+    public Page<CommentsResponseDTO> getReplys(Long postId,Long myId,Long parentCommentId, int page, int size){
+        PostEntity post=postRepo.findById(postId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+        accessChecker.checkAccess(post.getUser().getId(), myId);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
+
+    }
 
 
 

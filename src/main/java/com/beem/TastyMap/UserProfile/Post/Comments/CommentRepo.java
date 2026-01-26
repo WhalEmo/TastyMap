@@ -29,4 +29,26 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
             Pageable pageable
     );
 
+    @Query("""
+        select new com.beem.TastyMap.UserProfile.Post.Comments.CommentsResponseDTO(
+            c.id,
+            c.parentYorumId,
+            c.contents,
+            c.date,
+            u.id,
+            u.username,
+            u.profile
+        )
+        from CommentEntity c
+        join c.user u
+        where c.postId = :postId
+        and c.parentYorumId = :parentCommentId
+        order by c.date desc
+    """)
+    Page<CommentsResponseDTO> getCommentReplys(
+            @Param("postId") Long postId,
+            @Param("parentCommentId") Long parentCommentId,
+            Pageable pageable
+    );
+
 }

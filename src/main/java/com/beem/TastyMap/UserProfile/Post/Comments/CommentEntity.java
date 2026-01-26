@@ -6,6 +6,11 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(
+        indexes = {
+                @Index(name = "idx_post_parent_date", columnList = "postId, parentYorumId, date")
+        }
+)
 public class CommentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
