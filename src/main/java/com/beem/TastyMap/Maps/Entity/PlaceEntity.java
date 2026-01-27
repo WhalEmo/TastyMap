@@ -2,7 +2,7 @@ package com.beem.TastyMap.Maps.Entity;
 
 import com.beem.TastyMap.Maps.Data.PlaceDetailsResult;
 import com.beem.TastyMap.Maps.Data.PlaceResult;
-import com.beem.TastyMap.MapsReview.ReviewEntity;
+import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;

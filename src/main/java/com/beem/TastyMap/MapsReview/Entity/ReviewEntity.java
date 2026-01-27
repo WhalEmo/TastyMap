@@ -1,4 +1,4 @@
-package com.beem.TastyMap.MapsReview;
+package com.beem.TastyMap.MapsReview.Entity;
 
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
@@ -53,6 +53,8 @@ public class ReviewEntity {
     public void onCreate(){
         if(createdAt == null) createdAt = System.currentTimeMillis();
         if(source == null) source = ReviewSource.GOOGLE;
+        if(source == ReviewSource.GOOGLE) createdAt *= 1000;
+        if(status == null) status = ReviewStatus.APPROVED;
     }
 
     @PreUpdate

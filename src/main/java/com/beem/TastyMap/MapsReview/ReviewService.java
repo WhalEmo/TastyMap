@@ -5,6 +5,7 @@ import com.beem.TastyMap.Maps.Service.PlacesService;
 import com.beem.TastyMap.MapsReview.Data.PlaceReviewRequest;
 import com.beem.TastyMap.MapsReview.Data.ReviewResponse;
 import com.beem.TastyMap.MapsReview.Data.ReviewResult;
+import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
 import com.beem.TastyMap.MapsReview.Enum.ReviewStatus;
 import com.beem.TastyMap.User.User;
@@ -13,8 +14,10 @@ import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -51,6 +54,7 @@ public class ReviewService {
         );
     }
 
+
     private ReviewEntity getParentReference(Long parentId) {
         if(parentId == null) {
             return null;
@@ -63,6 +67,20 @@ public class ReviewService {
 
     @Transactional
     public void sendPlaceReview(PlaceReviewRequest request){
+        if (request.getParentId() != null &&
+                !reviewRepo.existsByIdAndPlaceIdAndSourceAndStatus(
+                        request.getParentId(),
+                        request.getPlaceId(),
+                        ReviewSource.INTERNAL,
+                        ReviewStatus.APPROVED
+                )
+        ) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Parent review must be an approved internal review of this place"
+            );
+        }
+
         PlaceEntity place = placesService.getReferenceIfExists(request.getPlaceId());
 
         User user = userService.getUserById(request.getUserId());

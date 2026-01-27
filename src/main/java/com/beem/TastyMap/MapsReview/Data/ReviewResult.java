@@ -1,7 +1,7 @@
 package com.beem.TastyMap.MapsReview.Data;
 
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
-import com.beem.TastyMap.MapsReview.ReviewEntity;
+import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -30,7 +30,8 @@ public class ReviewResult {
         else{
             review.name = entity.getUser().getUsername();
             review.userProfile = entity.getUser().getProfilePhotoUrl();
-            review.parentId = entity.getParent().getId();
+            review.parentId = entity.getParent() != null ? entity.getParent().getId()
+                    : null;
         }
 
         review.rating = entity.getRating();
