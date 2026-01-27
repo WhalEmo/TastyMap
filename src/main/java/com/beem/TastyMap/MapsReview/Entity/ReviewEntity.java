@@ -6,6 +6,9 @@ import com.beem.TastyMap.MapsReview.Enum.ReviewStatus;
 import com.beem.TastyMap.User.User;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 @Entity
 @Table(name = "place_reviews")
@@ -49,18 +52,37 @@ public class ReviewEntity {
 
     private Integer likeCount = 0;
 
+    @OneToMany(
+            mappedBy = "review",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<ScoreEntity> scores = new ArrayList<>();
+
     @PrePersist
     public void onCreate(){
         if(createdAt == null) createdAt = System.currentTimeMillis();
         if(source == null) source = ReviewSource.GOOGLE;
         if(source == ReviewSource.GOOGLE) createdAt *= 1000;
         if(status == null) status = ReviewStatus.APPROVED;
+        this.rating = calculateTotalRating();
     }
 
     @PreUpdate
     public void onUpdate(){
         updateAt = System.currentTimeMillis();
+        this.rating = calculateTotalRating();
     }
+
+    private double calculateTotalRating(){
+        if(scores == null || scores.isEmpty()) return 0;
+        return scores
+                .stream()
+                .mapToDouble(ScoreEntity::getScore)
+                .average()
+                .orElse(0);
+    }
+
 
     public ReviewEntity() {
     }
@@ -73,10 +95,10 @@ public class ReviewEntity {
         this.place = place;
     }
 
-    public ReviewEntity(String authorName, Double rating, String text, ReviewSource source,
-                        PlaceEntity place, User user, ReviewEntity parent, ReviewStatus status) {
+    public ReviewEntity(String authorName, String text, ReviewSource source,
+                        PlaceEntity place, User user, ReviewEntity parent, ReviewStatus status
+    ) {
         this.authorName = authorName;
-        this.rating = rating;
         this.text = text;
         this.source = source;
         this.place = place;
@@ -188,5 +210,13 @@ public class ReviewEntity {
 
     public void setLikeCount(Integer likeCount) {
         this.likeCount = likeCount;
+    }
+
+    public List<ScoreEntity> getScores() {
+        return scores;
+    }
+
+    public void setScores(List<ScoreEntity> scores) {
+        this.scores = scores;
     }
 }

@@ -6,6 +6,7 @@ import com.beem.TastyMap.MapsReview.Data.PlaceReviewRequest;
 import com.beem.TastyMap.MapsReview.Data.ReviewResponse;
 import com.beem.TastyMap.MapsReview.Data.ReviewResult;
 import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
+import com.beem.TastyMap.MapsReview.Entity.ScoreEntity;
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
 import com.beem.TastyMap.MapsReview.Enum.ReviewStatus;
 import com.beem.TastyMap.User.User;
@@ -84,9 +85,10 @@ public class ReviewService {
         PlaceEntity place = placesService.getReferenceIfExists(request.getPlaceId());
 
         User user = userService.getUserById(request.getUserId());
+
+
         ReviewEntity entity = new ReviewEntity(
                 user.getUsername(),
-                request.getRating(),
                 request.getContent(),
                 ReviewSource.INTERNAL,
                 place,
@@ -96,6 +98,19 @@ public class ReviewService {
                 ),
                 ReviewStatus.APPROVED
         );
+
+        List<ScoreEntity> scores = request
+                .getScores()
+                .stream()
+                .map(scoreReq->{
+                    return new ScoreEntity(
+                            scoreReq.getType(),
+                            scoreReq.getScore(),
+                            entity
+                    );
+                })
+                .toList();
+        entity.setScores(scores);
 
         reviewRepo.save(entity);
         reviewRepo.flush();

@@ -1,11 +1,14 @@
 package com.beem.TastyMap.MapsReview.Data;
 
+import java.util.List;
+
 public class PlaceReviewRequest {
     private Long userId;
     private Long parentId;
     private String content;
-    private double rating;
     private Long placeId;
+
+    private List<ScoreRequest> scores;
 
 
     public PlaceReviewRequest() {
@@ -35,13 +38,6 @@ public class PlaceReviewRequest {
         this.content = content;
     }
 
-    public double getRating() {
-        return rating;
-    }
-
-    public void setRating(double rating) {
-        this.rating = rating;
-    }
 
     public Long getPlaceId() {
         return placeId;
@@ -49,5 +45,13 @@ public class PlaceReviewRequest {
 
     public void setPlaceId(Long placeId) {
         this.placeId = placeId;
+    }
+
+    public List<ScoreRequest> getScores() {
+        return scores;
+    }
+
+    public void setScores(List<ScoreRequest> scores) {
+        this.scores = scores;
     }
 }
