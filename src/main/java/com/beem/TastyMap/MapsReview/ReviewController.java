@@ -1,7 +1,9 @@
 package com.beem.TastyMap.MapsReview;
 
-import com.beem.TastyMap.MapsReview.Data.PlaceReviewRequest;
-import com.beem.TastyMap.MapsReview.Data.ReviewResponse;
+import com.beem.TastyMap.MapsReview.Data.Request.SentReviewReq;
+import com.beem.TastyMap.MapsReview.Data.Response.CreatedReviewRes;
+import com.beem.TastyMap.MapsReview.Data.Response.ReviewResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,8 +34,14 @@ public class ReviewController {
     }
 
     @PostMapping("/send-review")
-    public ResponseEntity<?> sendPlaceReview(@RequestBody PlaceReviewRequest request){
-        service.sendPlaceReview(request);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<CreatedReviewRes> sendPlaceReview(@RequestBody SentReviewReq request){
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(service.sendPlaceReview(request));
+    }
+
+    @PatchMapping("/update-review")
+    public ResponseEntity<?> updatePlaceReview(@RequestBody SentReviewReq request){
+        return null;
     }
 }

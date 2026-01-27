@@ -1,6 +1,5 @@
 package com.beem.TastyMap.MapsReview.Entity;
 
-import com.beem.TastyMap.MapsReview.Data.ScoreRequest;
 import com.beem.TastyMap.MapsReview.Enum.ScoreType;
 import jakarta.persistence.*;
 

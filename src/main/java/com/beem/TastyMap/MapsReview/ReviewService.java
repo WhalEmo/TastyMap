@@ -2,8 +2,10 @@ package com.beem.TastyMap.MapsReview;
 
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.Maps.Service.PlacesService;
-import com.beem.TastyMap.MapsReview.Data.PlaceReviewRequest;
-import com.beem.TastyMap.MapsReview.Data.ReviewResponse;
+import com.beem.TastyMap.MapsReview.Data.Request.SentReviewReq;
+import com.beem.TastyMap.MapsReview.Data.Request.UpdateReviewReq;
+import com.beem.TastyMap.MapsReview.Data.Response.CreatedReviewRes;
+import com.beem.TastyMap.MapsReview.Data.Response.ReviewResponse;
 import com.beem.TastyMap.MapsReview.Data.ReviewResult;
 import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import com.beem.TastyMap.MapsReview.Entity.ScoreEntity;
@@ -56,7 +58,7 @@ public class ReviewService {
     }
 
 
-    private ReviewEntity getParentReference(Long parentId) {
+    private ReviewEntity getParentReviewReference(Long parentId) {
         if(parentId == null) {
             return null;
         }
@@ -65,9 +67,14 @@ public class ReviewService {
         }
         return entityManager.getReference(ReviewEntity.class, parentId);
     }
+    private ReviewEntity getReviewEntity(Long id){
+        return reviewRepo
+                .findById(id)
+                .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+    }
 
     @Transactional
-    public void sendPlaceReview(PlaceReviewRequest request){
+    public CreatedReviewRes sendPlaceReview(SentReviewReq request){
         if (request.getParentId() != null &&
                 !reviewRepo.existsByIdAndPlaceIdAndSourceAndStatus(
                         request.getParentId(),
@@ -93,7 +100,7 @@ public class ReviewService {
                 ReviewSource.INTERNAL,
                 place,
                 user,
-                this.getParentReference(
+                this.getParentReviewReference(
                         request.getParentId()
                 ),
                 ReviewStatus.APPROVED
@@ -112,7 +119,36 @@ public class ReviewService {
                 .toList();
         entity.setScores(scores);
 
-        reviewRepo.save(entity);
-        reviewRepo.flush();
+        reviewRepo.saveAndFlush(entity);
+
+        return new CreatedReviewRes(
+                entity.getId(),
+                place.getId(),
+                entity.getAuthorName(),
+                entity.getStatus(),
+                entity.getCreatedAt()
+        );
+    }
+
+    @Transactional
+    public CreatedReviewRes updatePlaceReview(UpdateReviewReq request){
+        ReviewEntity review = getReviewEntity(request.getReviewId());
+
+        review.setScores(
+                request.getScores()
+                        .stream()
+                        .map(scoreRequest -> {
+                            return new ScoreEntity(
+                                    scoreRequest.getType(),
+                                    scoreRequest.getScore(),
+                                    review
+                            );
+                        })
+                        .toList()
+        );
+
+        if(request.getContent() != null || !request.getContent().isEmpty()) review.setText(request.getContent());
+
+        return null;
     }
 }

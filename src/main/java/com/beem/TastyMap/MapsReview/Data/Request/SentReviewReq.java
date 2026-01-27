@@ -1,8 +1,8 @@
-package com.beem.TastyMap.MapsReview.Data;
+package com.beem.TastyMap.MapsReview.Data.Request;
 
 import java.util.List;
 
-public class PlaceReviewRequest {
+public class SentReviewReq {
     private Long userId;
     private Long parentId;
     private String content;
@@ -11,7 +11,7 @@ public class PlaceReviewRequest {
     private List<ScoreRequest> scores;
 
 
-    public PlaceReviewRequest() {
+    public SentReviewReq() {
     }
 
     public Long getUserId() {

@@ -1,4 +1,4 @@
-package com.beem.TastyMap.MapsReview.Data;
+package com.beem.TastyMap.MapsReview.Data.Request;
 
 import com.beem.TastyMap.MapsReview.Enum.ScoreType;
 

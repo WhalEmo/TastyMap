@@ -1,4 +1,6 @@
-package com.beem.TastyMap.MapsReview.Data;
+package com.beem.TastyMap.MapsReview.Data.Response;
+
+import com.beem.TastyMap.MapsReview.Data.ReviewResult;
 
 import java.util.List;
 
