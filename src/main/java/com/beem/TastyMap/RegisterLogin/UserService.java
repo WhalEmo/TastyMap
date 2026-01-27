@@ -53,14 +53,14 @@ public class UserService implements UserDetailsService {
              throw new CustomExceptions.UserAlreadyExistsException("Bu email zaten kayıtlı.");
          }
          UserEntity userEntity=new UserEntity();
-         userEntity.setBiography(user.getBiography().trim());
+         userEntity.setBiography(user.getBiography());
          userEntity.setDate(LocalDateTime.now());
          userEntity.setUsername(user.getUsername().trim());
          userEntity.setEmail(user.getEmail().trim());
          userEntity.setName(user.getName().trim());
          userEntity.setSurname(user.getSurname().trim());
          userEntity.setPassword(passwordEncoder.encode(user.getPassword()));
-         userEntity.setProfile(user.getProfile().trim());
+         userEntity.setProfile(user.getProfile());
          userEntity.setRole(user.getRole());
          userEntity.setEmailVerified(false);
          userEntity.setPrivateProfile(user.isPrivateProfile());

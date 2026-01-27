@@ -1,5 +1,7 @@
 package com.beem.TastyMap.UserProfile;
 
+import com.beem.TastyMap.RegisterLogin.UserEntity;
+
 public class ProfileDTOresponse {
     private String username;
     private String name;
@@ -34,7 +36,6 @@ public class ProfileDTOresponse {
         this.followingCount = followingCount;
     }
 
-    // getters & setters
 
     public String getUsername() {
         return username;

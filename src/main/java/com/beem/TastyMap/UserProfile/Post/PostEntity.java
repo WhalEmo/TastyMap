@@ -1,16 +1,18 @@
 package com.beem.TastyMap.UserProfile.Post;
 
 import com.beem.TastyMap.RegisterLogin.UserEntity;
+import com.beem.TastyMap.UserProfile.Post.Comments.CommentEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class PostEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -26,6 +28,9 @@ public class PostEntity {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "number_of_likes")
+    private int numberofLikes = 0;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
@@ -33,6 +38,10 @@ public class PostEntity {
 
     @Embedded
     private PlaceEmbedded placeEmbedded;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentEntity> comments = new ArrayList<>();
+
 
     public String getPhotoUrl() {
         return photoUrl;
@@ -88,5 +97,21 @@ public class PostEntity {
 
     public void setPlaceEmbedded(PlaceEmbedded placeEmbedded) {
         this.placeEmbedded = placeEmbedded;
+    }
+
+    public List<CommentEntity> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<CommentEntity> comments) {
+        this.comments = comments;
+    }
+
+    public int getNumberofLikes() {
+        return numberofLikes;
+    }
+
+    public void setNumberofLikes(int numberofLikes) {
+        this.numberofLikes = numberofLikes;
     }
 }

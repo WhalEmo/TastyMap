@@ -1,9 +1,13 @@
 package com.beem.TastyMap.UserProfile.Post.Comments;
 
 import com.beem.TastyMap.RegisterLogin.UserEntity;
+import com.beem.TastyMap.UserProfile.Post.Comments.Like.LikeEntity;
+import com.beem.TastyMap.UserProfile.Post.PostEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -15,7 +19,10 @@ public class CommentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long postId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    private PostEntity post;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -26,7 +33,18 @@ public class CommentEntity {
 
     private LocalDateTime date;
 
-    private Long parentYorumId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    private CommentEntity parentComment;
+
+    @Column(name = "number_of_likes")
+    private int numberofLikes = 0;
+
+    @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CommentEntity> replies = new ArrayList<>();
+
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<LikeEntity> likes=new ArrayList<>();
 
     @PrePersist
     public void prePersist() {
@@ -41,12 +59,12 @@ public class CommentEntity {
         this.id = id;
     }
 
-    public Long getPostId() {
-        return postId;
+    public PostEntity getPost() {
+        return post;
     }
 
-    public void setPostId(Long postId) {
-        this.postId = postId;
+    public void setPost(PostEntity post) {
+        this.post = post;
     }
 
     public UserEntity getUser() {
@@ -73,11 +91,36 @@ public class CommentEntity {
         this.date = date;
     }
 
-    public Long getParentYorumId() {
-        return parentYorumId;
+    public CommentEntity getParentComment() {
+        return parentComment;
     }
 
-    public void setParentYorumId(Long parentYorumId) {
-        this.parentYorumId = parentYorumId;
+    public void setParentComment(CommentEntity parentComment) {
+        this.parentComment = parentComment;
+    }
+
+    public List<CommentEntity> getReplies() {
+        return replies;
+    }
+
+    public void setReplies(List<CommentEntity> replies) {
+        this.replies = replies;
+    }
+
+    public int getNumberofLikes() {
+        return numberofLikes;
+    }
+
+    public void setNumberofLikes(int numberofLikes) {
+
+        this.numberofLikes = numberofLikes;
+    }
+
+    public List<LikeEntity> getLikes() {
+        return likes;
+    }
+
+    public void setLikes(List<LikeEntity> likes) {
+        this.likes = likes;
     }
 }

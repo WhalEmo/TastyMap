@@ -7,6 +7,7 @@ public class PostResponseDTO {
     private String explanation;
     private Integer puan;
     private String photoUrl;
+    private int numberof_likes;
     private LocalDateTime createdAt;
 
     private Long userId;
@@ -26,11 +27,12 @@ public class PostResponseDTO {
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(Long postId, String explanation, Integer puan, String photoUrl, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
+    public PostResponseDTO(Long postId, String explanation, Integer puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
         this.postId = postId;
         this.explanation = explanation;
         this.puan = puan;
         this.photoUrl = photoUrl;
+        this.numberof_likes = numberof_likes;
         this.createdAt = createdAt;
         this.userId = userId;
         this.username = username;
@@ -180,5 +182,13 @@ public class PostResponseDTO {
 
     public void setAveragePuan(Double averagePuan) {
         this.averagePuan = averagePuan;
+    }
+
+    public int getNumberof_likes() {
+        return numberof_likes;
+    }
+
+    public void setNumberof_likes(int numberof_likes) {
+        this.numberof_likes = numberof_likes;
     }
 }

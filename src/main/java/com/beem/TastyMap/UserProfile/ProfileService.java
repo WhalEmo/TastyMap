@@ -44,7 +44,7 @@ public class ProfileService {
         user.setName(request.getName().trim());
         user.setUsername(request.getUsername().trim());
         user.setSurname(request.getSurname().trim());
-        user.setBiography(request.getBiyografi().trim());
+        user.setBiography(request.getBiyografi());
         userRepo.save(user);
     }
 

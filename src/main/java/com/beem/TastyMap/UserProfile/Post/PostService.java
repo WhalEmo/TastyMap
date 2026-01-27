@@ -43,7 +43,9 @@ public class PostService {
         place.setLongitude(dto.getLongitude());
 
         PostEntity post=new PostEntity();
-        post.setExplanation(dto.getExplanation().trim());
+        if (dto.getExplanation() != null) {
+            post.setExplanation(dto.getExplanation().trim());
+        }
         post.setPuan(dto.getPuan());
         post.setUser(userRef);
         post.setPhotoUrl(dto.getPhotoUrl());
@@ -77,7 +79,9 @@ public class PostService {
         if (!post.getUser().getId().equals(myId)) {
             throw new CustomExceptions.AuthorizationException("Bu postu güncelleme yetkin yok");
         }
-        post.setExplanation(dto.getExplanation().trim());
+        if (dto.getExplanation() != null) {
+            post.setExplanation(dto.getExplanation().trim());
+        }
         post.setPuan(dto.getPuan());
         post.setPhotoUrl(dto.getPhotoUrl());
 

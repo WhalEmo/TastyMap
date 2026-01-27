@@ -11,6 +11,7 @@ import java.util.List;
 public interface PostRepo extends JpaRepository<PostEntity,Long> {
 
     long countByUser_Id(Long userId);
+    boolean existsByIdAndUser_Id(Long postId, Long myId);
 
     @Query("""
         select new com.beem.TastyMap.UserProfile.Post.PostResponseDTO(
@@ -18,6 +19,7 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
             p.explanation,
             p.puan,
             p.photoUrl,
+            p.numberofLikes,
             p.createdAt,
 
             u.id,
@@ -37,7 +39,6 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
             from PostEntity p
                 join p.user u
                 where u.id = :userId
-                order by p.createdAt desc
         
     """)
     Page<PostResponseDTO> getUserPosts(

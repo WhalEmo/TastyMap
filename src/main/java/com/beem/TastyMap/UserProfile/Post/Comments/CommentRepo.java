@@ -11,17 +11,19 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
     @Query("""
         select new com.beem.TastyMap.UserProfile.Post.Comments.CommentsResponseDTO(
             c.id,
-            c.parentYorumId,
+            c.parentComment.id,
+            c.post.id,
             c.contents,
             c.date,
+            c.numberofLikes,
             u.id,
             u.username,
             u.profile
         )
         from CommentEntity c
         join c.user u
-        where c.postId = :postId
-        and c.parentYorumId is null
+        where c.post.id = :postId
+        and c.parentComment is null
         order by c.date desc
     """)
     Page<CommentsResponseDTO> getPostComments(
@@ -32,17 +34,19 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
     @Query("""
         select new com.beem.TastyMap.UserProfile.Post.Comments.CommentsResponseDTO(
             c.id,
-            c.parentYorumId,
+            c.parentComment.id,
+            c.post.id,
             c.contents,
             c.date,
+            c.numberofLikes,
             u.id,
             u.username,
             u.profile
         )
         from CommentEntity c
         join c.user u
-        where c.postId = :postId
-        and c.parentYorumId = :parentCommentId
+        where c.post.id = :postId
+        and c.parentComment.id = :parentCommentId
         order by c.date desc
     """)
     Page<CommentsResponseDTO> getCommentReplys(

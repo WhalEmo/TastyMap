@@ -30,6 +30,17 @@ public class CommentsController {
         Long myId = (Long) authentication.getPrincipal();
         return commentService.getComments(postId,myId, page, size);
     }
+    @GetMapping("/getReplys/{postId}/{parentCommentId}")
+    public Page<CommentsResponseDTO> getReplys(
+            @PathVariable Long postId,
+            @PathVariable Long parentCommentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            Authentication authentication
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        return commentService.getReplys(postId,myId,parentCommentId, page, size);
+    }
 
     @PostMapping("/addComments/{postId}")
     public Map<String,String>addComment(
@@ -43,7 +54,7 @@ public class CommentsController {
         return Map.of("message","Yorum eklendi.");
     }
 
-    @PostMapping("/addReply/{postId}")
+    @PostMapping("/addReply/{postId}/{parentCommentId}")
     public Map<String,String>addReply(
             @Valid @RequestBody CommentRequestDTO dto,
             @PathVariable Long postId,
@@ -55,4 +66,40 @@ public class CommentsController {
 
         return Map.of("message","Yanıt eklendi.");
     }
+
+    @DeleteMapping("/deleteComment")
+    public Map<String,String>deleteComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            Authentication authentication
+    ){
+        Long myId=(Long) authentication.getPrincipal();
+        commentService.deleteComment(postId,myId,commentId);
+
+        return Map.of("message","Yorum silindi.");
+    }
+
+    @PutMapping("/updateComments/{postId}/{commentId}")
+    public Map<String,String> updateComments(
+            @Valid @RequestBody CommentRequestDTO dto,
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            Authentication authentication
+    ){
+        Long myId=(Long) authentication.getPrincipal();
+        commentService.updateComment(commentId,myId,postId,dto);
+        return Map.of("message","Yorum güncellendi.");
+    }
+    @PostMapping("/toggleLike/{commentId}")
+    public Map<String,String>toggleLike(
+            @PathVariable Long commentId,
+            Authentication authentication
+    ){
+        Long myId=(Long) authentication.getPrincipal();
+        commentService.toggleLike(commentId,myId);
+
+        return Map.of("message","Başarılı.");
+    }
+
+
 }
