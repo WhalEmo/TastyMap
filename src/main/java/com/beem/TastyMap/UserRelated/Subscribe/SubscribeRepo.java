@@ -22,7 +22,7 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
 
 
     @Query("""
-    SELECT new com.beem.TastyMap.UserProfile.Subscribe.SubscribeDTO(
+    SELECT new com.beem.TastyMap.UserRelated.Subscribe.SubscribeDTO(
         u.id,
         u.profile,
         u.username
@@ -37,7 +37,7 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long> {
     );
 
     @Query("""
-    SELECT new com.beem.TastyMap.UserProfile.Subscribe.SubscribeDTO(
+    SELECT new com.beem.TastyMap.UserRelated.Subscribe.SubscribeDTO(
         u.id,
         u.profile,
         u.username

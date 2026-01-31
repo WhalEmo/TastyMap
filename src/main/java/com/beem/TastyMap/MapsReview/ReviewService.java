@@ -11,8 +11,8 @@ import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import com.beem.TastyMap.MapsReview.Entity.ScoreEntity;
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
 import com.beem.TastyMap.MapsReview.Enum.ReviewStatus;
-import com.beem.TastyMap.User.User;
-import com.beem.TastyMap.User.UserService;
+import com.beem.TastyMap.RegisterLogin.UserEntity;
+import com.beem.TastyMap.RegisterLogin.UserService;
 import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,14 +30,14 @@ public class ReviewService {
 
     private final ReviewRepo reviewRepo;
     private final PlacesService placesService;
-    private final UserService userService;
     private final EntityManager entityManager;
+    private final UserService userService;
 
-    public ReviewService(ReviewRepo reviewRepo,PlacesService placesService, UserService userService, EntityManager entityManager) {
+    public ReviewService(ReviewRepo reviewRepo, PlacesService placesService, EntityManager entityManager, UserService userService) {
         this.reviewRepo = reviewRepo;
         this.placesService = placesService;
-        this.userService = userService;
         this.entityManager = entityManager;
+        this.userService = userService;
     }
 
     public ReviewResponse getPlaceReviews(String placeId, int page, int size) {
@@ -91,7 +91,7 @@ public class ReviewService {
 
         PlaceEntity place = placesService.getReferenceIfExists(request.getPlaceId());
 
-        User user = userService.getUserById(request.getUserId());
+        UserEntity user = new UserEntity();
 
 
         ReviewEntity entity = new ReviewEntity(

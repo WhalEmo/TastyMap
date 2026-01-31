@@ -13,7 +13,7 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
     boolean existsByIdAndUser_Id(Long postId, Long myId);
 
     @Query("""
-        select new com.beem.TastyMap.UserProfile.Post.PostResponseDTO(
+        select new com.beem.TastyMap.UserRelated.Post.PostResponseDTO(
             p.id,
             p.explanation,
             p.puan,

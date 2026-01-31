@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
     @Query("""
-        select new com.beem.TastyMap.UserProfile.Post.Comments.CommentsResponseDTO(
+        select new com.beem.TastyMap.UserRelated.Post.Comments.CommentsResponseDTO(
             c.id,
             c.parentComment.id,
             c.post.id,
@@ -32,7 +32,7 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
     );
 
     @Query("""
-        select new com.beem.TastyMap.UserProfile.Post.Comments.CommentsResponseDTO(
+        select new com.beem.TastyMap.UserRelated.Post.Comments.CommentsResponseDTO(
             c.id,
             c.parentComment.id,
             c.post.id,

@@ -29,7 +29,7 @@ public class ReviewResult {
         }
         else{
             review.name = entity.getUser().getUsername();
-            review.userProfile = entity.getUser().getProfilePhotoUrl();
+            review.userProfile = entity.getUser().getProfile();
             review.parentId = entity.getParent() != null ? entity.getParent().getId()
                     : null;
         }

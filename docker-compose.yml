@@ -21,11 +21,15 @@ services:
   redis:
     image: redis/redis-stack:latest
     container_name: redis-stack
+    env_file:
+      - .env
     ports:
       - "6379:6379"
       - "8001:8001"
     volumes:
       - redis_data:/data
+    networks:
+      - app-network
 
   app:
     build: .
@@ -33,12 +37,16 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8080:8080"
     restart: unless-stopped
     networks:
       - app-network
+
 volumes:
   mysql-data:
   redis_data:

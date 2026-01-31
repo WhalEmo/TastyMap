@@ -13,7 +13,7 @@ public interface BlockRepo extends JpaRepository<BlockEntity,Long> {
     Optional<BlockEntity> findByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
 
     @Query("""
-    SELECT new com.beem.TastyMap.UserProfile.Block.BlockDTOResponse(
+    SELECT new com.beem.TastyMap.UserRelated.Block.BlockDTOResponse(
         u.id,
         u.username,
         u.profile,

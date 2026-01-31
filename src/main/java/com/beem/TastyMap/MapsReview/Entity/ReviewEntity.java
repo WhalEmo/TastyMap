@@ -3,7 +3,7 @@ package com.beem.TastyMap.MapsReview.Entity;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
 import com.beem.TastyMap.MapsReview.Enum.ReviewStatus;
-import com.beem.TastyMap.User.User;
+import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ public class ReviewEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user;
+    private UserEntity user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
@@ -96,7 +96,7 @@ public class ReviewEntity {
     }
 
     public ReviewEntity(String authorName, String text, ReviewSource source,
-                        PlaceEntity place, User user, ReviewEntity parent, ReviewStatus status
+                        PlaceEntity place, UserEntity user, ReviewEntity parent, ReviewStatus status
     ) {
         this.authorName = authorName;
         this.text = text;
@@ -172,11 +172,11 @@ public class ReviewEntity {
         this.source = source;
     }
 
-    public User getUser() {
+    public UserEntity getUser() {
         return user;
     }
 
-    public void setUser(User user) {
+    public void setUser(UserEntity user) {
         this.user = user;
     }
 
