@@ -38,6 +38,9 @@ public class PostEntity {
     @Column(name = "number_of_likes")
     private int numberofLikes = 0;
 
+    @Column(nullable = false)
+    private boolean commentEnabled = true;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
@@ -123,5 +126,21 @@ public class PostEntity {
 
     public void setNumberofLikes(int numberofLikes) {
         this.numberofLikes = numberofLikes;
+    }
+
+    public boolean isCommentEnabled() {
+        return commentEnabled;
+    }
+
+    public void setCommentEnabled(boolean commentEnabled) {
+        this.commentEnabled = commentEnabled;
+    }
+
+    public List<PostLikeEntity> getLikes() {
+        return likes;
+    }
+
+    public void setLikes(List<PostLikeEntity> likes) {
+        this.likes = likes;
     }
 }

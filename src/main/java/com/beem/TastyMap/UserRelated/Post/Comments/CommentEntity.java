@@ -37,7 +37,7 @@ public class CommentEntity {
     @JoinColumn(name = "parent_comment_id")
     private CommentEntity parentComment;
 
-    @Column(name = "number_of_likes")
+    @Column(name = "number_of_likes",nullable = false)
     private int numberofLikes = 0;
 
     @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)

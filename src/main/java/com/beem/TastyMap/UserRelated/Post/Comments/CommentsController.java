@@ -64,7 +64,7 @@ public class CommentsController {
         return Map.of("message","Yanıt eklendi.");
     }
 
-    @DeleteMapping("/deleteComment")
+    @DeleteMapping("/deleteComment/{postId}/{commentId}")
     public Map<String,String>deleteComment(
             @PathVariable Long postId,
             @PathVariable Long commentId,

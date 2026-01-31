@@ -39,6 +39,10 @@ public class CommentService {
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
         accessChecker.checkAccess(post.getUser().getId(), myId);
+
+        if(!post.isCommentEnabled()){
+            throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
+        }
         UserEntity commentRef = entityManager.getReference(UserEntity.class, myId);
 
         CommentEntity comment = new CommentEntity();
@@ -46,7 +50,6 @@ public class CommentService {
         comment.setUser(commentRef);
         comment.setParentComment(null);
         comment.setContents(dto.getContents().trim());
-        comment.setNumberofLikes(0);
         commentRepo.save(comment);
         return new CommentsResponseDTO(comment);
     }
@@ -57,6 +60,11 @@ public class CommentService {
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
         accessChecker.checkAccess(post.getUser().getId(), myId);
+
+        if(!post.isCommentEnabled()){
+            throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
+        }
+
         UserEntity commentRef = entityManager.getReference(UserEntity.class, myId);
 
         CommentEntity parentComment = commentRepo.findById(parentCommentId)
@@ -76,11 +84,15 @@ public class CommentService {
         return new CommentsResponseDTO(comment);
     }
 
-    public Page<CommentsResponseDTO> getComments(Long postId,Long myId, int page, int size){
+    public Page<CommentsResponseDTO>getComments(Long postId,Long myId, int page, int size){
         PostEntity post=postRepo.findById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+
         accessChecker.checkAccess(post.getUser().getId(), myId);
 
+        if(!post.isCommentEnabled()){
+            throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         return commentRepo.getPostComments(postId,pageable);
     }
@@ -90,6 +102,9 @@ public class CommentService {
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
         accessChecker.checkAccess(post.getUser().getId(), myId);
 
+        if(!post.isCommentEnabled()){
+            throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         return commentRepo.getCommentReplys(postId,parentCommentId,pageable);
     }

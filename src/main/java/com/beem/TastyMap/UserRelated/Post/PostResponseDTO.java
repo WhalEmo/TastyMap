@@ -3,6 +3,7 @@ package com.beem.TastyMap.UserRelated.Post;
 import java.time.LocalDateTime;
 
 public class PostResponseDTO {
+    private boolean commentEnabled;
     private Long postId;
     private String explanation;
     private Integer puan;
@@ -27,7 +28,8 @@ public class PostResponseDTO {
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(Long postId, String explanation, Integer puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
+    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, Integer puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
+        this.commentEnabled=commentEnabled;
         this.postId = postId;
         this.explanation = explanation;
         this.puan = puan;
@@ -46,6 +48,14 @@ public class PostResponseDTO {
         this.latitude = latitude;
         this.longitude = longitude;
         this.averagePuan = averagePuan;
+    }
+
+    public boolean isCommentEnabled() {
+        return commentEnabled;
+    }
+
+    public void setCommentEnabled(boolean commentEnabled) {
+        this.commentEnabled = commentEnabled;
     }
 
     public Long getPostId() {

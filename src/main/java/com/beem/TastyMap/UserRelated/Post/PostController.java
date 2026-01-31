@@ -1,6 +1,7 @@
 package com.beem.TastyMap.UserRelated.Post;
 
 
+import com.beem.TastyMap.UserRelated.Post.Like.PostLikeUserDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -78,4 +79,16 @@ public class PostController {
         String message =postService.toggleLike(postId,myId);
         return Map.of("message",message);
     }
+
+    @GetMapping("/whosLike/{postId}")
+    public Page<PostLikeUserDTO> whosLike(
+            @PathVariable Long postId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        return postService.whosLike(postId, myId, page, size);
+    }
+
 }

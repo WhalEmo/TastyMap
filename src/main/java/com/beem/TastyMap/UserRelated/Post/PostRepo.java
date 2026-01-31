@@ -14,6 +14,7 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
 
     @Query("""
         select new com.beem.TastyMap.UserRelated.Post.PostResponseDTO(
+            p.commentEnabled,
             p.id,
             p.explanation,
             p.puan,
@@ -62,5 +63,4 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
      AND p.numberofLikes > 0
 """)
     void decrementLike(@Param("postId") Long postId);
-
 }

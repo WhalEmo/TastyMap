@@ -4,6 +4,8 @@ public class PostRequestDTO {
     private String explanation;
     private Integer puan;
     private String photoUrl;
+    private boolean commentEnabled;
+
 
     private String placeId;
     private String placeName;
@@ -16,21 +18,6 @@ public class PostRequestDTO {
     private Double averagePuan;
 
     public PostRequestDTO() {
-    }
-
-    public PostRequestDTO(String explanation, Integer puan, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan,String photoUrl) {
-        this.explanation = explanation;
-        this.puan = puan;
-        this.placeId = placeId;
-        this.placeName = placeName;
-        this.categories = categories;
-        this.city = city;
-        this.district = district;
-        this.neighbourhood = neighbourhood;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.averagePuan = averagePuan;
-        this.photoUrl=photoUrl;
     }
 
     public String getPhotoUrl() {
@@ -129,4 +116,11 @@ public class PostRequestDTO {
         this.longitude = longitude;
     }
 
+    public boolean isCommentEnabled() {
+        return commentEnabled;
+    }
+
+    public void setCommentEnabled(boolean commentEnabled) {
+        this.commentEnabled = commentEnabled;
+    }
 }

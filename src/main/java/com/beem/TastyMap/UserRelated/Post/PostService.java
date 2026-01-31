@@ -5,6 +5,7 @@ import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.UserRelated.Post.Like.PostLikeEntity;
 import com.beem.TastyMap.UserRelated.Post.Like.PostLikeRepo;
 
+import com.beem.TastyMap.UserRelated.Post.Like.PostLikeUserDTO;
 import jakarta.persistence.EntityManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -53,6 +54,7 @@ public class PostService {
         post.setUser(userRef);
         post.setPhotoUrl(dto.getPhotoUrl());
         post.setPlaceEmbedded(place);
+        post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
     }
 
@@ -112,6 +114,18 @@ public class PostService {
             return "Beğenildi.";
         }
     }
+
+    @Transactional(readOnly = true)
+    public Page<PostLikeUserDTO> whosLike(
+            Long postId,
+            Long myId,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        return likeRepo.findPostLikesFullOrdered(postId, myId, pageable);
+    }
+
 
 }
 
