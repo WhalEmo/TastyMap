@@ -14,13 +14,13 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false,unique = true)
+    @Column(nullable = false,unique = true,length = 20)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = false,length = 20)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false,length = 20)
     private String surname;
 
     @Column(nullable = false,unique = true)
@@ -38,7 +38,7 @@ public class UserEntity {
     @Column(nullable = false)
     private LocalDateTime date;
 
-    @Column(nullable = true)
+    @Column(nullable = true, length = 200)
     private String biography;
 
     @Column(nullable = false)

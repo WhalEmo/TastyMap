@@ -12,9 +12,10 @@ import java.util.List;
 @Entity
 @Table(
         indexes = {
-                @Index(name = "idx_post_parent_date", columnList = "postId, parentYorumId, date")
+                @Index(name = "idx_comment_post_parent_date", columnList = "post_id, parent_comment_id, date")
         }
 )
+
 public class CommentEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

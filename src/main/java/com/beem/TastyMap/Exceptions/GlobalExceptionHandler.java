@@ -38,5 +38,6 @@ public class GlobalExceptionHandler {
                 .toList();
         return ResponseEntity.badRequest().body(errors);
     }
+
 }
 

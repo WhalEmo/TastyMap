@@ -2,6 +2,7 @@ package com.beem.TastyMap.UserRelated.Post;
 
 
 import com.beem.TastyMap.UserRelated.Post.Like.PostLikeUserDTO;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class PostController {
 
     @PostMapping("/addPost")
     public void addPost(
-            @RequestBody PostRequestDTO dto,
+            @Valid @RequestBody PostRequestDTO dto,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
@@ -62,7 +63,7 @@ public class PostController {
     @PutMapping("/updatePost/{postId}")
     public Map<String,String> updatePost(
             @PathVariable Long postId,
-            @RequestBody PostUpdateDTO dto,
+            @Valid @RequestBody PostUpdateDTO dto,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();

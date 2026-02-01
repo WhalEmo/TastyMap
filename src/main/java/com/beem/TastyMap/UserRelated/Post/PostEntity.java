@@ -12,8 +12,7 @@ import java.util.List;
 @Entity
 @Table(
         indexes = {
-                @Index(name = "idx_post_user", columnList = "user_id"),
-                @Index(name = "idx_post_created", columnList = "createdAt")
+                @Index(name = "idx_post_user_created", columnList = "user_id, createdAt")
         }
 )
 public class PostEntity {

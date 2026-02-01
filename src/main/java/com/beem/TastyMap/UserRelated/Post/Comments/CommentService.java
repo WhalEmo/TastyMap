@@ -139,7 +139,7 @@ public class CommentService {
         if(!comment.getUser().getId().equals(userId)){
             throw new CustomExceptions.NotFoundException("Bu yorumu güncelleme yetkiniz yok.");
         }
-        comment.setContents(dto.getContents());
+        comment.setContents(dto.getContents().trim());
         commentRepo.save(comment);
     }
 

@@ -4,15 +4,16 @@ import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
-@Entity
 @Table(
         name = "user_blocks",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"blocker_id", "blocked_id"})
         },
         indexes = {
-                @Index(name = "idx_blocker", columnList = "blocker_id"),
-                @Index(name = "idx_blocked", columnList = "blocked_id")
+                @Index(
+                        name = "idx_blocker_created",
+                        columnList = "blocker_id, created_at"
+                )
         }
 )
 public class BlockEntity {

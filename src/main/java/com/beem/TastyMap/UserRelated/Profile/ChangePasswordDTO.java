@@ -1,15 +1,18 @@
 package com.beem.TastyMap.UserRelated.Profile;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class ChangePasswordDTO {
     @NotBlank(message = "Eski Şifre boş olamaz!")
     private String oldPassword;
 
     @NotBlank(message = "Yeni Şifre boş olamaz!")
+    @Size(min = 6, message = "Parola en az 6 karakter olmalı")
     private String newPassword;
 
     @NotBlank(message = "Yeni Şifre boş olamaz!")
+    @Size(min = 6, message = "Parola en az 6 karakter olmalı")
     private String againNew;
 
     public String getOldPassword() {

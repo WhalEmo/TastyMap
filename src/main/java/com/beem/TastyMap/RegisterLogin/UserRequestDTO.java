@@ -5,6 +5,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
@@ -12,14 +13,28 @@ import java.time.LocalDateTime;
 public class UserRequestDTO {
     private Long id;
     @NotBlank(message = "Kullanıcı adı boş olamaz")
+    @Size(min = 3, max = 20, message = "Kullanıcı adı 3–20 karakter arasında olmalıdır")
+    @Pattern(
+            regexp = "^[a-zA-Z0-9._]+$",
+            message = "Kullanıcı adı sadece harf, rakam, nokta ve alt çizgi içerebilir"
+    )
     private String username;
 
     @NotBlank(message = "Ad boş olamaz")
+    @Size(min = 2, max = 20, message = "Ad 2–50 karakter arasında olmalıdır")
+    @Pattern(
+            regexp = "^[a-zA-ZçÇğĞıİöÖşŞüÜ ]+$",
+            message = "Ad sadece harf ve boşluk içerebilir"
+    )
     private String name;
 
     @NotBlank(message = "Soyad boş olamaz")
+    @Size(min = 2, max = 20, message = "Soyad 2–50 karakter arasında olmalıdır")
+    @Pattern(
+            regexp = "^[a-zA-ZçÇğĞıİöÖşŞüÜ ]+$",
+            message = "Soyad sadece harf ve boşluk içerebilir"
+    )
     private String surname;
-
 
     @Email(message = "Geçerli bir email girin")
     @NotBlank(message = "Email boş olamaz")
@@ -30,7 +45,10 @@ public class UserRequestDTO {
     private String password;
 
     private String profile;
+
+    @Size(max = 200, message = "Biyografi en fazla 200 karakter olabilir")
     private String biography;
+
     private String role;
     private boolean privateProfile;
 

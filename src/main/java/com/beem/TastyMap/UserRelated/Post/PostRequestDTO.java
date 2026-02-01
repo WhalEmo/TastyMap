@@ -1,7 +1,11 @@
 package com.beem.TastyMap.UserRelated.Post;
 
+import jakarta.validation.constraints.Size;
+
 public class PostRequestDTO {
+    @Size(max = 500, message = "Açıklama max 500 karakter olmalıdır")
     private String explanation;
+
     private Integer puan;
     private String photoUrl;
     private boolean commentEnabled;
