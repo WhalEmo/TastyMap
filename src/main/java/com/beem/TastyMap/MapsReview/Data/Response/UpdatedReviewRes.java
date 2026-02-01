@@ -5,23 +5,25 @@ import com.beem.TastyMap.MapsReview.Enum.ReviewStatus;
 
 import java.util.List;
 
-public class CreatedReviewRes {
+public class UpdatedReviewRes {
     private Long reviewId;
     private Long placeId;
     private String author;
     private ReviewStatus status;
     private Long createdAt;
+    private Long updateAt;
     private List<ScoreDto> scores;
 
-    public CreatedReviewRes() {
+    public UpdatedReviewRes() {
     }
 
-    public CreatedReviewRes(Long reviewId, Long placeId, String author, ReviewStatus status, Long createdAt, List<ScoreDto> scores) {
+    public UpdatedReviewRes(Long reviewId, Long placeId, String author, ReviewStatus status, Long createdAt, Long updateAt, List<ScoreDto> scores) {
         this.reviewId = reviewId;
         this.placeId = placeId;
         this.author = author;
         this.status = status;
         this.createdAt = createdAt;
+        this.updateAt = updateAt;
         this.scores = scores;
     }
 
@@ -71,5 +73,13 @@ public class CreatedReviewRes {
 
     public void setScores(List<ScoreDto> scores) {
         this.scores = scores;
+    }
+
+    public Long getUpdateAt() {
+        return updateAt;
+    }
+
+    public void setUpdateAt(Long updateAt) {
+        this.updateAt = updateAt;
     }
 }

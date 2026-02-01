@@ -1,14 +1,18 @@
-package com.beem.TastyMap.MapsReview.Data.Request;
+package com.beem.TastyMap.MapsReview.Data;
 
 import com.beem.TastyMap.MapsReview.Enum.ScoreType;
 
-public class ScoreRequest {
+public class ScoreDto {
 
     private ScoreType type;
     private double score;
 
+    public ScoreDto(ScoreType type, double score) {
+        this.type = type;
+        this.score = score;
+    }
 
-    public ScoreRequest() {
+    public ScoreDto() {
     }
 
     public ScoreType getType() {
