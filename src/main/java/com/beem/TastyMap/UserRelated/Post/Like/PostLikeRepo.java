@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface PostLikeRepo extends JpaRepository<PostLikeEntity,Long> {
     Optional<PostLikeEntity> findByPost_IdAndUser_Id(Long postId, Long userId);
-
+/*
     @Query("""
      select new com.beem.TastyMap.UserRelated.Post.PostLikeUserDTO(
        u.id,
@@ -61,5 +61,7 @@ public interface PostLikeRepo extends JpaRepository<PostLikeEntity,Long> {
                               @Param("myId") Long myId,
                               Pageable pageable
                       );
+
+ */
 
 }

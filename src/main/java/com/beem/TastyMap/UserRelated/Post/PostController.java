@@ -81,6 +81,7 @@ public class PostController {
         return Map.of("message",message);
     }
 
+    /*
     @GetMapping("/whosLike/{postId}")
     public Page<PostLikeUserDTO> whosLike(
             @PathVariable Long postId,
@@ -91,5 +92,7 @@ public class PostController {
         Long myId = (Long) authentication.getPrincipal();
         return postService.whosLike(postId, myId, page, size);
     }
+
+     */
 
 }

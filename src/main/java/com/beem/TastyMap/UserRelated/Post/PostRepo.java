@@ -7,11 +7,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface PostRepo extends JpaRepository<PostEntity,Long> {
+public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom {
 
     long countByUser_Id(Long userId);
     boolean existsByIdAndUser_Id(Long postId, Long myId);
 
+    /*
     @Query("""
         select new com.beem.TastyMap.UserRelated.Post.PostResponseDTO(
             p.commentEnabled,
@@ -46,6 +47,8 @@ public interface PostRepo extends JpaRepository<PostEntity,Long> {
             Pageable pageable
     );
 
+
+     */
     @Modifying
     @Query("""
    UPDATE PostEntity p

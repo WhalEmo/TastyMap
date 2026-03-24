@@ -4,6 +4,7 @@ import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+@Entity
 @Table(
         name = "user_blocks",
         uniqueConstraints = {
@@ -22,12 +23,10 @@ public class BlockEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // engelleyen kişi
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blocker_id", nullable = false)
     private UserEntity blocker;
 
-    // engellenen kişi
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blocked_id", nullable = false)
     private UserEntity blocked;

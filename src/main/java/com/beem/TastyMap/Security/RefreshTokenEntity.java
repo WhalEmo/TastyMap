@@ -24,6 +24,12 @@ public class RefreshTokenEntity {
     private String fcmToken;
     private LocalDateTime lastUsedAt;
     private boolean revoked = false;
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
 
     public RefreshTokenEntity(){}
     public RefreshTokenEntity(Long userId, String token, String deviceId, String userAgent, LocalDateTime expiryDate, boolean revoked,String fcmToken,LocalDateTime lastUsedAt) {
@@ -107,5 +113,13 @@ public class RefreshTokenEntity {
 
     public void setRevoked(boolean revoked) {
         this.revoked = revoked;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

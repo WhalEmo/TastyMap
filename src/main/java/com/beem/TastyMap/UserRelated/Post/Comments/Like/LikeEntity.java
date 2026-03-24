@@ -6,7 +6,7 @@ import com.beem.TastyMap.UserRelated.Post.Comments.CommentEntity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "commentLike",uniqueConstraints = {@UniqueConstraint(columnNames = {"post_id", "user_id"})})
+@Table(name = "comment_like", uniqueConstraints = {@UniqueConstraint(columnNames = {"comment_id", "user_id"})})
 public class LikeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

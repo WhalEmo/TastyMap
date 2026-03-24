@@ -10,6 +10,7 @@ import com.beem.TastyMap.Security.Verification.ServletFilter.JWTUtill;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,10 +30,11 @@ public class RefreshTokenService {
     }
     @Transactional
     public RefreshTokenResponseDTO refresh(RefreshTokenRequestDTO dto) {
+
         RefreshTokenEntity rf = refreshTokenRepo
                 .findByTokenAndRevokedFalse(dto.getRefreshToken())
                 .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Refresh token bulunamadı veya iptal edilmiş")
+                        new CustomExceptions.AuthorizationException("Refresh token geçersiz")
                 );
 
         if (!jwtUtill.validateRefreshToken(dto.getRefreshToken())) {
@@ -40,20 +42,39 @@ public class RefreshTokenService {
         }
 
         if (rf.getExpiryDate().isBefore(LocalDateTime.now())) {
-            refreshTokenRepo.delete(rf);
             throw new CustomExceptions.InvalidException("Refresh token süresi dolmuş");
         }
 
         if (!rf.getDeviceId().equals(dto.getDeviceId())) {
-            throw new CustomExceptions.AuthorizationException("Refresh token bu cihaza ait değil");
+            throw new CustomExceptions.AuthorizationException("Bu token farklı cihaza ait");
         }
 
-        refreshTokenRepo.delete(rf);
+        UserEntity user = userRepo.findById(rf.getUserId())
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
-        String newRefreshToken = jwtUtill.generateRefreshToken(rf.getUserId(), rf.getDeviceId());
+        String newAccessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
+
+        Duration total = Duration.between(rf.getCreatedAt(), rf.getExpiryDate());
+        Duration remaining = Duration.between(LocalDateTime.now(), rf.getExpiryDate());
+
+        boolean shouldRotate = remaining.toMillis() < (total.toMillis() / 2);
+
+        if (!shouldRotate) {
+            return new RefreshTokenResponseDTO(
+                    newAccessToken,
+                    dto.getRefreshToken(),
+                    "basarili"
+            );
+        }
+
+
+        rf.setRevoked(true);
+        refreshTokenRepo.save(rf);
+
+        String newRefreshToken = jwtUtill.generateRefreshToken(user.getId(), rf.getDeviceId());
 
         RefreshTokenEntity newRf = new RefreshTokenEntity(
-                rf.getUserId(),
+                user.getId(),
                 newRefreshToken,
                 rf.getDeviceId(),
                 rf.getUserAgent(),
@@ -65,12 +86,11 @@ public class RefreshTokenService {
 
         refreshTokenRepo.save(newRf);
 
-        UserEntity user = userRepo.findById(rf.getUserId())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
-
-        String newAccessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
-
-        return new RefreshTokenResponseDTO(newAccessToken, newRefreshToken, "basarili");
+        return new RefreshTokenResponseDTO(
+                newAccessToken,
+                newRefreshToken,
+                "basarili"
+        );
     }
 
 

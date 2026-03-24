@@ -61,7 +61,7 @@ public class PostService {
     public Page<PostResponseDTO> getPosts(Long userId, Long myId, int page, int size) {
         accessChecker.checkAccess(userId,myId);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return postRepo.getUserPosts(userId, pageable);
+        return postRepo.getUserPosts(userId, myId, pageable);
     }
 
     public void deletePost(Long postId,Long myId){
@@ -114,7 +114,7 @@ public class PostService {
             return "Beğenildi.";
         }
     }
-
+/*
     @Transactional(readOnly = true)
     public Page<PostLikeUserDTO> whosLike(
             Long postId,
@@ -125,6 +125,8 @@ public class PostService {
         Pageable pageable = PageRequest.of(page, size);
         return likeRepo.findPostLikesFullOrdered(postId, myId, pageable);
     }
+
+ */
 
 
 }

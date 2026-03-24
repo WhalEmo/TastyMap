@@ -24,11 +24,12 @@ public class PostResponseDTO {
     private Double latitude;
     private Double longitude;
     private Double averagePuan;
+    private boolean isLiked;
 
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, Integer puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan) {
+    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, Integer puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan,boolean isLiked) {
         this.commentEnabled=commentEnabled;
         this.postId = postId;
         this.explanation = explanation;
@@ -48,6 +49,7 @@ public class PostResponseDTO {
         this.latitude = latitude;
         this.longitude = longitude;
         this.averagePuan = averagePuan;
+        this.isLiked=isLiked;
     }
 
     public boolean isCommentEnabled() {
