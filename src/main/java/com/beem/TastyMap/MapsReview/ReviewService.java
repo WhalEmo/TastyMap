@@ -149,6 +149,7 @@ public class ReviewService {
         if(review.getStatus() != ReviewStatus.APPROVED)
             throw new CustomExceptions.ServiceException("This review not APPROVED.");
         updateScoreRatingControl(request);
+        updateChildParentScoreControl(review, request);
 
         //Apply
         applyScoreUpdates(review, request);
@@ -208,10 +209,28 @@ public class ReviewService {
 
         review.setText(request.getContent());
     }
+
     private void updateScoreRatingControl(UpdateReviewReq req){
         if(req.getScores() == null) return;
         for(ScoreDto score: req.getScores()){
             if(score.getScore()<=0 || score.getScore()>5) throw new CustomExceptions.ServiceException("Score not between 0 and 5");
+        }
+    }
+
+    private void updateChildParentScoreControl(ReviewEntity entity, UpdateReviewReq request){
+        boolean isChildReview = entity.getParent() != null;
+        boolean hasScores = request.getScores() != null && request.getScores().isEmpty();
+
+        if(isChildReview && hasScores){
+            throw new CustomExceptions.ServiceException(
+                    "Child reviews cannot have scores."
+            );
+        }
+
+        if(!isChildReview && !hasScores){
+            throw new CustomExceptions.ServiceException(
+                    "Parent reviews must have scores."
+            );
         }
     }
 
@@ -236,15 +255,25 @@ public class ReviewService {
     }
 
     private void applyScoreListCreate(SentReviewReq request, ReviewEntity entity){
-        if(request.getParentId() != null && request.getScores() != null && !request.getScores().isEmpty()){
-            throw new CustomExceptions.ServiceException("Child review have a scores.");
+
+        boolean isChildReview = request.getParentId() != null;
+        boolean hasScores = request.getScores() != null && request.getScores().isEmpty();
+
+        if(isChildReview && hasScores){
+            throw new CustomExceptions.ServiceException(
+                    "Child reviews cannot have scores."
+            );
         }
-        if(request.getParentId() == null && (request.getScores() == null || request.getScores().isEmpty())){
-            throw new CustomExceptions.ServiceException("Review haven't scores.");
+
+        if(!isChildReview && !hasScores){
+            throw new CustomExceptions.ServiceException(
+                    "Parent reviews must have scores."
+            );
         }
-        if(request.getScores() == null) return;
-        if(request.getScores() != null && request.getScores().isEmpty()) return;
-        if(request.getParentId() != null) return;
+
+        if(!hasScores){
+            return;
+        }
 
         List<ScoreEntity> scores = request
                 .getScores()
