@@ -3,9 +3,11 @@ package com.beem.TastyMap.MapsReview.Entity;
 import com.beem.TastyMap.MapsReview.Enum.ScoreType;
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 @Entity
 @Table(name = "review_score",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"review_id", "scoreType"}))
+    uniqueConstraints = @UniqueConstraint(columnNames = {"review_id", "type"}))
 public class ScoreEntity {
 
     @Id
@@ -63,4 +65,20 @@ public class ScoreEntity {
     public void setReview(ReviewEntity review) {
         this.review = review;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ScoreEntity)) return false;
+        ScoreEntity that = (ScoreEntity) o;
+        return this.type == that.type &&
+                this.review != null &&
+                this.review.getId().equals(that.review.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, review.getId());
+    }
+
 }

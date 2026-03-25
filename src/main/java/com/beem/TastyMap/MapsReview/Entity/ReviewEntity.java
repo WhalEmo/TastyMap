@@ -52,6 +52,9 @@ public class ReviewEntity {
 
     private Integer likeCount = 0;
 
+    @Version
+    private Long version;
+
     @OneToMany(
             mappedBy = "review",
             cascade = CascadeType.ALL,
@@ -219,4 +222,16 @@ public class ReviewEntity {
     public void setScores(List<ScoreEntity> scores) {
         this.scores = scores;
     }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+    public void recalculateRating() {
+        this.rating = calculateTotalRating();
+    }
+
 }
