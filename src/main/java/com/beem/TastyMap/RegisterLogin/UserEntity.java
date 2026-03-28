@@ -48,6 +48,15 @@ public class UserEntity {
 
     private boolean emailVerified = true;
 
+    @Column(nullable = false)
+    private long postCount = 0;
+
+    @Column(nullable = false)
+    private long subscriberCount = 0;
+
+    @Column(nullable = false)
+    private long subscribedCount = 0;
+
     public LocalDateTime getLastInteractionAt() {
         return lastInteractionAt;
     }
@@ -151,5 +160,29 @@ public class UserEntity {
 
     public void setPrivateProfile(boolean privateProfile) {
         this.privateProfile = privateProfile;
+    }
+
+    public long getPostCount() {
+        return postCount;
+    }
+
+    public void setPostCount(long postCount) {
+        this.postCount = postCount;
+    }
+
+    public long getSubscriberCount() {
+        return subscriberCount;
+    }
+
+    public void setSubscriberCount(long subscriberCount) {
+        this.subscriberCount = subscriberCount;
+    }
+
+    public long getSubscribedCount() {
+        return subscribedCount;
+    }
+
+    public void setSubscribedCount(long subscribedCount) {
+        this.subscribedCount = subscribedCount;
     }
 }

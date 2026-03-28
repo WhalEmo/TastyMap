@@ -35,129 +35,136 @@ public class CommentService {
 
     @Transactional
     public CommentsResponseDTO addComment(Long myId, Long postId, CommentRequestDTO dto) {
-        PostEntity post = postRepo.findById(postId)
+        PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
-        accessChecker.checkAccess(post.getUser().getId(), myId);
+        accessChecker.checkAccess(postStatus.getAuthorId(), myId);
 
-        if(!post.isCommentEnabled()){
+        if(!postStatus.isCommentEnabled()){
             throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
         }
         UserEntity commentRef = entityManager.getReference(UserEntity.class, myId);
+        PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
 
         CommentEntity comment = new CommentEntity();
-        comment.setPost(post);
+        comment.setPost(postRef);
         comment.setUser(commentRef);
         comment.setParentComment(null);
         comment.setContents(dto.getContents().trim());
         commentRepo.save(comment);
-        return new CommentsResponseDTO(comment);
+        postRepo.incrementComment(postId);
+        return new CommentsResponseDTO(comment,false);
     }
 
     @Transactional
     public CommentsResponseDTO addReplyComment(Long myId,Long postId,Long parentCommentId,CommentRequestDTO dto){
-        PostEntity post = postRepo.findById(postId)
+        PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
-        accessChecker.checkAccess(post.getUser().getId(), myId);
+        accessChecker.checkAccess(postStatus.getAuthorId(), myId);
 
-        if(!post.isCommentEnabled()){
+        if(!postStatus.isCommentEnabled()){
             throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
         }
 
         UserEntity commentRef = entityManager.getReference(UserEntity.class, myId);
+        PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
+        CommentEntity parentRef = entityManager.getReference(CommentEntity.class, parentCommentId);
 
-        CommentEntity parentComment = commentRepo.findById(parentCommentId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Yanıt verilecek yorum bulunamadı"));
-
-        if (!parentComment.getPost().getId().equals(postId)) {
-            throw new CustomExceptions.ForbiddenException("Yanıt verilen yorum bu posta ait değil");
+        boolean parentExistsInPost = commentRepo.existsByIdAndPost_Id(parentCommentId, postId);
+        if (!parentExistsInPost) {
+            throw new CustomExceptions.NotFoundException("Yanıt verilecek yorum bu postta bulunamadı");
         }
-
         CommentEntity comment=new CommentEntity();
-        comment.setPost(post);
+        comment.setPost(postRef);
         comment.setUser(commentRef);
-        comment.setParentComment(parentComment);
+        comment.setParentComment(parentRef);
         comment.setContents(dto.getContents().trim());
         comment.setNumberofLikes(0);
         commentRepo.save(comment);
-        return new CommentsResponseDTO(comment);
+        return new CommentsResponseDTO(comment,false);
     }
 
     public Page<CommentsResponseDTO>getComments(Long postId,Long myId, int page, int size){
-        PostEntity post=postRepo.findById(postId)
+        PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
-        accessChecker.checkAccess(post.getUser().getId(), myId);
+        accessChecker.checkAccess(postStatus.getAuthorId(), myId);
 
-        if(!post.isCommentEnabled()){
+        if(!postStatus.isCommentEnabled()){
             throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
         }
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
-        return commentRepo.getPostComments(postId,pageable);
+        Pageable pageable = PageRequest.of(page, size);
+        return commentRepo.getPostComments(postId,myId,pageable);
     }
 
     public Page<CommentsResponseDTO> getReplys(Long postId,Long myId,Long parentCommentId, int page, int size){
-        PostEntity post=postRepo.findById(postId)
+        PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
-        accessChecker.checkAccess(post.getUser().getId(), myId);
+        accessChecker.checkAccess(postStatus.getAuthorId(), myId);
 
-        if(!post.isCommentEnabled()){
+        if(!postStatus.isCommentEnabled()){
             throw new CustomExceptions.ForbiddenException("Yorumlara kapalı");
         }
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
-        return commentRepo.getCommentReplys(postId,parentCommentId,pageable);
+        Pageable pageable = PageRequest.of(page, size);
+        return commentRepo.getCommentReplys(postId,myId,parentCommentId,pageable);
     }
 
 
     @Transactional
-    public void deleteComment(Long postId,Long myId,Long commentId){
-        CommentEntity comment = commentRepo.findById(commentId)
+    public void deleteComment(Long postId, Long myId, Long commentId) {
+        CommentRepo.CommentDeleteView commentView = commentRepo.findDeleteViewByCommentId(commentId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı"));
+
+        if (!commentView.getPostId().equals(postId)) {
+            throw new CustomExceptions.ForbiddenException("Yorum bu posta ait değil");
+        }
+
+        boolean isCommentOwner = commentView.getAuthorId().equals(myId);
+        boolean isPostOwner = postRepo.isOwner(postId, myId);
+
+        if (!isCommentOwner && !isPostOwner) {
+            throw new CustomExceptions.ForbiddenException("Bu yorumu silme yetkiniz yok");
+        }
+        commentRepo.deleteById(commentId);
+        postRepo.decrementComment(postId);
+    }
+
+
+    @Transactional
+    public CommentsResponseDTO updateComment(Long commentId,Long userId,Long postId,CommentRequestDTO dto){
+        CommentEntity comment = commentRepo.findById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı"));
 
         if (!comment.getPost().getId().equals(postId)) {
             throw new CustomExceptions.ForbiddenException("Yorum bu posta ait değil");
         }
-        boolean isPostOwner = postRepo.existsByIdAndUser_Id(postId, myId);
-        boolean isCommentOwner = comment.getUser().getId().equals(myId);
-
-        if (!isPostOwner && !isCommentOwner) {
-            throw new CustomExceptions.ForbiddenException("Bu yorumu silme yetkiniz yok");
-        }
-        commentRepo.delete(comment);
-    }
-
-
-    @Transactional
-    public void updateComment(Long commentId,Long userId,Long postId,CommentRequestDTO dto){
-        CommentEntity comment=commentRepo.findById(commentId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı."));
-
-        if (!comment.getPost().getId().equals(postId)) {
-            throw new CustomExceptions.ForbiddenException("Yorum bu posta ait değil");
-        }
-        if(!comment.getUser().getId().equals(userId)){
-            throw new CustomExceptions.NotFoundException("Bu yorumu güncelleme yetkiniz yok.");
+        if (!comment.getUser().getId().equals(userId)) {
+            throw new CustomExceptions.ForbiddenException("Bu yorumu güncelleme yetkiniz yok.");
         }
         comment.setContents(dto.getContents().trim());
         commentRepo.save(comment);
+
+        boolean isLiked = likeRepo.existsByCommentIdAndUserId(commentId, userId);
+        return new CommentsResponseDTO(comment,isLiked);
     }
 
     @Transactional
     public String toggleLike(Long commentId,Long userId){
-        CommentEntity comment=commentRepo.findById(commentId)
+        Long commentUserId=commentRepo.findOwnerIdByCommentId(commentId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı."));
 
-        accessChecker.checkAccess(comment.getPost().getUser().getId(), userId);
-        Optional<LikeEntity> existingLike = likeRepo.findByComment_IdAndUser_Id(commentId, userId);
+        accessChecker.checkAccess(commentUserId, userId);
+        Optional<Long> existingLike = likeRepo.findIdByCommentIdAndUserId(commentId, userId);
         if(existingLike.isPresent()){
-            likeRepo.delete(existingLike.get());
+            likeRepo.deleteById(existingLike.get());
             commentRepo.decrementLike(commentId);
             return "Beğeni kaldırıldı.";
         }else{
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
+            CommentEntity commentRef = entityManager.getReference(CommentEntity.class, commentId);
             LikeEntity like=new LikeEntity();
-            like.setComment(comment);
+            like.setComment(commentRef);
             like.setUser(userRef);
             likeRepo.saveAndFlush(like);
             commentRepo.incrementLike(commentId);

@@ -23,7 +23,7 @@ public class AccessChecker {
     public void checkAccess(Long targetUserId, Long myId) {
         if (targetUserId.equals(myId)) return;
 
-        UserEntity user = userRepo.findById(targetUserId)
+        Boolean isPrivate = userRepo.isProfilePrivate(targetUserId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
         boolean blocked = blockRepo.existsByBlocker_IdAndBlocked_Id(targetUserId, myId) ||
@@ -33,7 +33,7 @@ public class AccessChecker {
             throw new CustomExceptions.ForbiddenException("Bu kullanıcının postlarına erişim yok");
         }
 
-        if (user.isPrivateProfile()) {
+        if (isPrivate) {
             boolean isFollowing = subscribeRepo.existsBySubscriber_IdAndSubscribed_Id(myId, targetUserId);
             if (!isFollowing) {
                 throw new CustomExceptions.ForbiddenException("Bu kullanıcının postlarını görmek için takip etmelisin");

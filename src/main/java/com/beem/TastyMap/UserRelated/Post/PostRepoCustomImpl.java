@@ -48,7 +48,9 @@ public class PostRepoCustomImpl implements PostRepoCustom{
                         JPAExpressions.selectOne()
                                 .from(like)
                                 .where(like.post.id.eq(post.id).and(like.user.id.eq(myId)))
-                                .exists()
+                                .exists(),
+                        post.commentCount,
+                        post.isPinned
                 ))
                 .from(post)
                 .join(post.user, user)

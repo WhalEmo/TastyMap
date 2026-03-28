@@ -2,6 +2,7 @@ package com.beem.TastyMap.UserRelated.Subscribe;
 
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
+import com.beem.TastyMap.RegisterLogin.UserRepo;
 import com.beem.TastyMap.UserRelated.Block.BlockRepo;
 import com.beem.TastyMap.UserRelated.Post.AccessChecker;
 import jakarta.persistence.EntityManager;
@@ -15,18 +16,19 @@ import java.time.LocalDateTime;
 
 @Service
 public class SubscribeService {
+    private final UserRepo userRepo;
     private final SubscribeRepo subscribeRepo;
     private final AccessChecker accessChecker;
     private final EntityManager entityManager;
     private final BlockRepo blockRepo;
 
-    public SubscribeService(SubscribeRepo subscribeRepo, AccessChecker accessChecker, EntityManager entityManager, BlockRepo blockRepo) {
+    public SubscribeService(UserRepo userRepo, SubscribeRepo subscribeRepo, AccessChecker accessChecker, EntityManager entityManager, BlockRepo blockRepo) {
+        this.userRepo = userRepo;
         this.subscribeRepo = subscribeRepo;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
         this.blockRepo = blockRepo;
     }
-
 
     @Transactional
     public void subscribe(Long subscribes, Long myId) {
@@ -49,25 +51,33 @@ public class SubscribeService {
         entity.setDate(LocalDateTime.now());
 
         subscribeRepo.save(entity);
+        userRepo.updateSubscribedCount(myId,1);
+        userRepo.updateSubscriberCount(subscribes,1);
     }
 
+    @Transactional
     //abonelikten cıkma metodu
     public void unSubscribe(Long subscribes,Long myId){
-        SubscribeEntity sub = subscribeRepo
-                .findBySubscriber_IdAndSubscribed_Id(myId, subscribes)
+        Long sub = subscribeRepo
+                .findIdBySubscriberAndSubscribed(myId, subscribes)
                 .orElseThrow(() ->
                         new CustomExceptions.NotFoundException("Abonelik bulunamadı")
                 );
-        subscribeRepo.delete(sub);
+        subscribeRepo.deleteById(sub);
+        userRepo.updateSubscribedCount(myId,-1);
+        userRepo.updateSubscriberCount(subscribes,-1);
     }
+    @Transactional
     //aboneyi cıkarma metodu
     public void unSubscriber(Long subscribes,Long myId){
-        SubscribeEntity sub=subscribeRepo
-                .findBySubscriber_IdAndSubscribed_Id(subscribes,myId)
+        Long sub=subscribeRepo
+                .findIdBySubscriberAndSubscribed(subscribes,myId)
                 .orElseThrow(() ->
                         new CustomExceptions.NotFoundException("Abonelik bulunamadı")
                 );
-        subscribeRepo.delete(sub);
+        subscribeRepo.deleteById(sub);
+        userRepo.updateSubscribedCount(subscribes,-1);
+        userRepo.updateSubscriberCount(myId,-1);
     }
 
     //benimabone oldukarlım

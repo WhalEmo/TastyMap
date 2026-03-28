@@ -41,5 +41,10 @@ public class CustomExceptions {
             super(message);
         }
     }
+    public static class BadRequestException extends RuntimeException {
+        public  BadRequestException(String message) {
+            super(message);
+        }
+    }
 
 }

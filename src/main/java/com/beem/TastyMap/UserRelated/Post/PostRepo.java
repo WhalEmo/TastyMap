@@ -7,48 +7,34 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom {
 
-    long countByUser_Id(Long userId);
-    boolean existsByIdAndUser_Id(Long postId, Long myId);
+    long countByUserIdAndIsPinnedTrue(Long userId);
 
-    /*
+    @Query("SELECT COUNT(p) > 0 FROM PostEntity p WHERE p.id = :postId AND p.user.id = :userId")
+    boolean isOwner(@Param("postId") Long postId, @Param("userId") Long userId);
+
+    @Query("SELECT p.user.id FROM PostEntity p WHERE p.id = :postId")
+    Optional<Long> findOwnerIdByPostId(@Param("postId") Long postId);
+
+    @Modifying
     @Query("""
-        select new com.beem.TastyMap.UserRelated.Post.PostResponseDTO(
-            p.commentEnabled,
-            p.id,
-            p.explanation,
-            p.puan,
-            p.photoUrl,
-            p.numberofLikes,
-            p.createdAt,
+    UPDATE PostEntity p
+    SET p.commentCount = p.commentCount + 1
+    WHERE p.id = :postId
+            """)
+    void incrementComment(@Param("postId")Long postId);
 
-            u.id,
-            u.username,
-            u.profile,
+    @Modifying
+    @Query("""
+    UPDATE PostEntity p
+    SET p.commentCount = p.commentCount - 1
+    WHERE p.id = :postId
+            """)
+    void decrementComment(@Param("postId")Long postId);
 
-            p.placeEmbedded.placeId,
-            p.placeEmbedded.placeName,
-            p.placeEmbedded.categories,
-            p.placeEmbedded.city,
-            p.placeEmbedded.district,
-            p.placeEmbedded.neighbourhood,
-            p.placeEmbedded.latitude,
-            p.placeEmbedded.longitude,
-            p.placeEmbedded.averagePuan
-        )
-            from PostEntity p
-                join p.user u
-                where u.id = :userId
-        
-    """)
-    Page<PostResponseDTO> getUserPosts(
-            @Param("userId") Long userId,
-            Pageable pageable
-    );
-
-
-     */
     @Modifying
     @Query("""
    UPDATE PostEntity p
@@ -66,4 +52,19 @@ public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom 
      AND p.numberofLikes > 0
 """)
     void decrementLike(@Param("postId") Long postId);
+
+
+    @Query("""
+    SELECT p.user.id as authorId, p.commentEnabled as commentEnabled 
+    FROM PostEntity p 
+    WHERE p.id = :id
+""")
+    Optional<PostStatusView> findPostStatusById(@Param("id") Long id);
+
+    public interface PostStatusView {
+        Long getAuthorId();
+        boolean isCommentEnabled();
+    }
 }
+
+

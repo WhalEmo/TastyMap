@@ -8,8 +8,8 @@ public class ProfileDTOresponse {
     private String biography;
 
     private long postCount;
-    private long followerCount;
-    private long followingCount;
+    private long subscriberCount;
+    private long subscribedCount;
 
     public ProfileDTOresponse() {
     }
@@ -21,8 +21,8 @@ public class ProfileDTOresponse {
             String role,
             String biography,
             long postCount,
-            long followerCount,
-            long followingCount
+            long subscriberCount,
+            long subscribedCount
     ) {
         this.username = username;
         this.name = name;
@@ -30,8 +30,8 @@ public class ProfileDTOresponse {
         this.role = role;
         this.biography = biography;
         this.postCount = postCount;
-        this.followerCount = followerCount;
-        this.followingCount = followingCount;
+        this.subscriberCount = subscriberCount;
+        this.subscribedCount = subscribedCount;
     }
 
 
@@ -83,19 +83,19 @@ public class ProfileDTOresponse {
         this.postCount = postCount;
     }
 
-    public long getFollowerCount() {
-        return followerCount;
+    public long getSubscriberCount() {
+        return subscriberCount;
     }
 
-    public void setFollowerCount(long followerCount) {
-        this.followerCount = followerCount;
+    public void setSubscriberCount(long subscriberCount) {
+        this.subscriberCount = subscriberCount;
     }
 
-    public long getFollowingCount() {
-        return followingCount;
+    public long getSubscribedCount() {
+        return subscribedCount;
     }
 
-    public void setFollowingCount(long followingCount) {
-        this.followingCount = followingCount;
+    public void setSubscribedCount(long subscribedCount) {
+        this.subscribedCount = subscribedCount;
     }
 }

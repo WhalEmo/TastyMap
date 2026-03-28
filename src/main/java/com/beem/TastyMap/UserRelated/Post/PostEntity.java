@@ -40,13 +40,19 @@ public class PostEntity {
     @Column(nullable = false)
     private boolean commentEnabled = true;
 
+    @Column(columnDefinition = "int default 0")
+    private int commentCount;
+
+    @Column(name = "is_pinned", nullable = false)
+    private boolean isPinned = false;
+
+    @Embedded
+    private PlaceEmbedded placeEmbedded;
+
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();
     }
-
-    @Embedded
-    private PlaceEmbedded placeEmbedded;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CommentEntity> comments = new ArrayList<>();
@@ -141,5 +147,21 @@ public class PostEntity {
 
     public void setLikes(List<PostLikeEntity> likes) {
         this.likes = likes;
+    }
+
+    public boolean isPinned() {
+        return isPinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        isPinned = pinned;
+    }
+
+    public int getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(int commentCount) {
+        this.commentCount = commentCount;
     }
 }

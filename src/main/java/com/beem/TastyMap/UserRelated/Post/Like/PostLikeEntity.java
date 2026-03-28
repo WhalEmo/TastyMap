@@ -3,15 +3,14 @@ package com.beem.TastyMap.UserRelated.Post.Like;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.UserRelated.Post.PostEntity;
 import jakarta.persistence.*;
-
 @Entity
 @Table(
         name = "post_likes",
         uniqueConstraints = @UniqueConstraint(
+                name = "uc_post_user_like",
                 columnNames = {"post_id", "user_id"}
         ),
         indexes = {
-                @Index(name = "idx_post_like_post", columnList = "post_id"),
                 @Index(name = "idx_post_like_user", columnList = "user_id")
         }
 )

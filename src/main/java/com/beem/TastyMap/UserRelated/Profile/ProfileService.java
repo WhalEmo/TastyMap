@@ -20,17 +20,13 @@ public class ProfileService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
-    private final SubscribeRepo subscribeRepo;
     private final BlockRepo blockRepo;
-    private final PostRepo postRepo;
 
-    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, SubscribeRepo subscribeRepo, BlockRepo blockRepo, PostRepo postRepo) {
+    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
-        this.subscribeRepo = subscribeRepo;
         this.blockRepo = blockRepo;
-        this.postRepo = postRepo;
     }
 
     public void updateProfile(UpdateProfileDTO request, Long userId){
@@ -116,20 +112,15 @@ public class ProfileService {
                     0
             );
         }
-
-        long subscribedCount = subscribeRepo.countBySubscribed_Id(userId);
-        long subscriberCount = subscribeRepo.countBySubscriber_Id(userId);
-        long postCount = postRepo.countByUser_Id(userId);
-
         return new ProfileDTOresponse(
                 user.getUsername(),
                 user.getName(),
                 user.getProfile(),
                 user.getRole(),
                 user.getBiography(),
-                postCount,
-                subscriberCount,
-                subscribedCount
+                user.getPostCount(),
+                user.getSubscriberCount(),
+                user.getSubscribedCount()
         );
     }
 }

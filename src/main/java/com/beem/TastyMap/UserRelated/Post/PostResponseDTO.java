@@ -6,7 +6,7 @@ public class PostResponseDTO {
     private boolean commentEnabled;
     private Long postId;
     private String explanation;
-    private Integer puan;
+    private int puan;
     private String photoUrl;
     private int numberof_likes;
     private LocalDateTime createdAt;
@@ -21,15 +21,17 @@ public class PostResponseDTO {
     private String city;
     private String district;
     private String neighbourhood;
-    private Double latitude;
-    private Double longitude;
-    private Double averagePuan;
+    private double latitude;
+    private double longitude;
+    private double averagePuan;
     private boolean isLiked;
+    private int commentCount;
+    private boolean isPinned;
 
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, Integer puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, Double latitude, Double longitude, Double averagePuan,boolean isLiked) {
+    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, int puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePuan,boolean isLiked, int commentCount, boolean isPinned) {
         this.commentEnabled=commentEnabled;
         this.postId = postId;
         this.explanation = explanation;
@@ -50,6 +52,8 @@ public class PostResponseDTO {
         this.longitude = longitude;
         this.averagePuan = averagePuan;
         this.isLiked=isLiked;
+        this.commentCount=commentCount;
+        this.isPinned = isPinned;
     }
 
     public boolean isCommentEnabled() {
@@ -202,5 +206,29 @@ public class PostResponseDTO {
 
     public void setNumberof_likes(int numberof_likes) {
         this.numberof_likes = numberof_likes;
+    }
+
+    public boolean isLiked() {
+        return isLiked;
+    }
+
+    public void setLiked(boolean liked) {
+        isLiked = liked;
+    }
+
+    public int getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(int commentCount) {
+        this.commentCount = commentCount;
+    }
+
+    public boolean isPinned() {
+        return isPinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        isPinned = pinned;
     }
 }

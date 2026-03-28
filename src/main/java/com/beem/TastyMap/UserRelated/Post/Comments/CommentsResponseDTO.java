@@ -13,9 +13,10 @@ public class CommentsResponseDTO {
     private Long userId;
     private String username;
     private String profilePhotoUrl;
+    private boolean isLiked;
 
 
-    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date, int numberOfLikes, Long userId, String username, String profilePhotoUrl) {
+    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date, int numberOfLikes, Long userId, String username, String profilePhotoUrl,boolean isLiked) {
         this.id = id;
         this.parentCommentId = parentCommentId;
         this.post_id = post_id;
@@ -25,9 +26,10 @@ public class CommentsResponseDTO {
         this.userId = userId;
         this.username = username;
         this.profilePhotoUrl = profilePhotoUrl;
+        this.isLiked = isLiked;
     }
 
-    public CommentsResponseDTO(CommentEntity comment) {
+    public CommentsResponseDTO(CommentEntity comment,boolean isLiked) {
         this.id = comment.getId();
         this.post_id = comment.getPost().getId();
         this.userId=comment.getUser().getId();
@@ -37,6 +39,7 @@ public class CommentsResponseDTO {
         this.numberOfLikes = comment.getNumberofLikes();
         this.date = comment.getDate();
         this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
+        this.isLiked =isLiked;
     }
     public CommentsResponseDTO() {}
 
@@ -110,5 +113,13 @@ public class CommentsResponseDTO {
 
     public void setProfilePhotoUrl(String profilePhotoUrl) {
         this.profilePhotoUrl = profilePhotoUrl;
+    }
+
+    public boolean isLiked() {
+        return isLiked;
+    }
+
+    public void setLiked(boolean liked) {
+        isLiked = liked;
     }
 }

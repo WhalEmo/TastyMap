@@ -8,24 +8,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
-public interface BlockRepo extends JpaRepository<BlockEntity,Long> {
+public interface BlockRepo extends JpaRepository<BlockEntity,Long> ,BlockRepoCustom {
     boolean existsByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
-    Optional<BlockEntity> findByBlocker_IdAndBlocked_Id(Long blockerId, Long blockedId);
-
-    @Query("""
-    SELECT new com.beem.TastyMap.UserRelated.Block.BlockDTOResponse(
-        u.id,
-        u.username,
-        u.profile,
-        b.createdAt
-    )
-    FROM BlockEntity b
-    JOIN b.blocked u
-    WHERE b.blocker.id = :myId
-""")
-    Page<BlockDTOResponse> findMyBlocks(
-            @Param("myId") Long myId,
-            Pageable pageable
-    );
-
+    @Query("SELECT b.id FROM BlockEntity b WHERE b.blocker.id = :myId AND b.blocked.id = :userId")
+    Optional<Long> findIdByBlockerIdAndBlockedId(@Param("myId") Long myId, @Param("userId") Long userId);
 }

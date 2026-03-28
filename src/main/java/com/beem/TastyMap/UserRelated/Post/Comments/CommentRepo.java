@@ -7,53 +7,14 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
-    @Query("""
-        select new com.beem.TastyMap.UserRelated.Post.Comments.CommentsResponseDTO(
-            c.id,
-            c.parentComment.id,
-            c.post.id,
-            c.contents,
-            c.date,
-            c.numberofLikes,
-            u.id,
-            u.username,
-            u.profile
-        )
-        from CommentEntity c
-        join c.user u
-        where c.post.id = :postId
-        and c.parentComment is null
-        order by c.date desc
-    """)
-    Page<CommentsResponseDTO> getPostComments(
-            @Param("postId") Long postId,
-            Pageable pageable
-    );
+import java.util.Optional;
 
-    @Query("""
-        select new com.beem.TastyMap.UserRelated.Post.Comments.CommentsResponseDTO(
-            c.id,
-            c.parentComment.id,
-            c.post.id,
-            c.contents,
-            c.date,
-            c.numberofLikes,
-            u.id,
-            u.username,
-            u.profile
-        )
-        from CommentEntity c
-        join c.user u
-        where c.post.id = :postId
-        and c.parentComment.id = :parentCommentId
-        order by c.date desc
-    """)
-    Page<CommentsResponseDTO> getCommentReplys(
-            @Param("postId") Long postId,
-            @Param("parentCommentId") Long parentCommentId,
-            Pageable pageable
-    );
+public interface CommentRepo extends JpaRepository<CommentEntity,Long>,CommentRepoCustom {
+
+    boolean existsByIdAndPost_Id(Long id, Long postId);
+
+    @Query("SELECT c.user.id FROM CommentEntity c WHERE c.id = :commentId")
+    Optional<Long> findOwnerIdByCommentId(@Param("commentId") Long postId);
 
     @Modifying
     @Query("""
@@ -72,5 +33,14 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long> {
      AND c.numberofLikes > 0
 """)
     void decrementLike(@Param("commentId") Long commentId);
+
+
+    @Query("SELECT c.user.id as authorId, c.post.id as postId FROM CommentEntity c WHERE c.id = :id")
+    Optional<CommentDeleteView> findDeleteViewByCommentId(@Param("id") Long id);
+
+    public interface CommentDeleteView {
+        Long getAuthorId();
+        Long getPostId();
+    }
 
 }

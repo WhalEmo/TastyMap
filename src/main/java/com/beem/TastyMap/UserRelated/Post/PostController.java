@@ -27,7 +27,6 @@ public class PostController {
         postService.addPost(dto, myId);
     }
 
-    // 🔹 Başkasının profiline ait postlar
     @GetMapping("/getUserPosts/{userId}")
     public Page<PostResponseDTO> getUserPosts(
             @PathVariable Long userId,
@@ -39,7 +38,6 @@ public class PostController {
         return postService.getPosts(userId, myId, page, size);
     }
 
-    // 🔹 Kendi postlarım
     @GetMapping("/getMePosts")
     public Page<PostResponseDTO> getMyPosts(
             @RequestParam(defaultValue = "0") int page,
@@ -81,7 +79,6 @@ public class PostController {
         return Map.of("message",message);
     }
 
-    /*
     @GetMapping("/whosLike/{postId}")
     public Page<PostLikeUserDTO> whosLike(
             @PathVariable Long postId,
@@ -93,6 +90,14 @@ public class PostController {
         return postService.whosLike(postId, myId, page, size);
     }
 
-     */
+    @PutMapping("/togglePin/{postId}")
+    public PostResponseDTO togglePin(
+            @PathVariable Long postId,
+            Authentication authentication
+    ){
+        Long myId=(Long) authentication.getPrincipal();
+        return postService.togglePinPost(postId,myId);
+    }
+
 
 }
