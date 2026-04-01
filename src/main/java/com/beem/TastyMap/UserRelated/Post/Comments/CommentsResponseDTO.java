@@ -14,9 +14,10 @@ public class CommentsResponseDTO {
     private String username;
     private String profilePhotoUrl;
     private boolean isLiked;
+    private boolean isPinned;
 
 
-    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date, int numberOfLikes, Long userId, String username, String profilePhotoUrl,boolean isLiked) {
+    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date, int numberOfLikes, Long userId, String username, String profilePhotoUrl,boolean isLiked,boolean isPinned) {
         this.id = id;
         this.parentCommentId = parentCommentId;
         this.post_id = post_id;
@@ -27,6 +28,7 @@ public class CommentsResponseDTO {
         this.username = username;
         this.profilePhotoUrl = profilePhotoUrl;
         this.isLiked = isLiked;
+        this.isPinned = isPinned;
     }
 
     public CommentsResponseDTO(CommentEntity comment,boolean isLiked) {
@@ -39,7 +41,8 @@ public class CommentsResponseDTO {
         this.numberOfLikes = comment.getNumberofLikes();
         this.date = comment.getDate();
         this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
-        this.isLiked =isLiked;
+        this.isLiked = isLiked;
+        this.isPinned = comment.isPinned();
     }
     public CommentsResponseDTO() {}
 
@@ -121,5 +124,13 @@ public class CommentsResponseDTO {
 
     public void setLiked(boolean liked) {
         isLiked = liked;
+    }
+
+    public boolean isPinned() {
+        return isPinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        isPinned = pinned;
     }
 }

@@ -41,6 +41,9 @@ public class CommentEntity {
     @Column(name = "number_of_likes",nullable = false)
     private int numberofLikes = 0;
 
+    @Column(name = "is_pinned", nullable = false)
+    private boolean isPinned = false;
+
     @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CommentEntity> replies = new ArrayList<>();
 
@@ -123,5 +126,13 @@ public class CommentEntity {
 
     public void setLikes(List<LikeEntity> likes) {
         this.likes = likes;
+    }
+
+    public boolean isPinned() {
+        return isPinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        isPinned = pinned;
     }
 }

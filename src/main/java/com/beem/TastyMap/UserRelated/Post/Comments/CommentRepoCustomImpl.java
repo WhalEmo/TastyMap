@@ -31,7 +31,8 @@ public class CommentRepoCustomImpl implements CommentRepoCustom {
                 JPAExpressions.selectOne()
                         .from(like)
                         .where(like.comment.id.eq(comment.id).and(like.user.id.eq(myId)))
-                        .exists()
+                        .exists(),
+                comment.isPinned
         );
     }
 

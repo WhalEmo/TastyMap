@@ -15,6 +15,14 @@ public interface UserRepo extends JpaRepository<UserEntity,Long> {
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
 
+    @Query("SELECT u.id as id, u.username as username, u.profile as profile" +
+            "FROM UserEntity u WHERE u.id = :id")
+    Optional<UserProfileView> findUserProjectionById(@Param("id") Long id);
+    interface UserProfileView {
+        Long getId();
+        String getUsername();
+        String getProfile();
+    }
     @Query("SELECT u.privateProfile FROM UserEntity u WHERE u.id = :userId")
     Optional<Boolean> isProfilePrivate(@Param("userId") Long userId);
 

@@ -38,6 +38,9 @@ public class PostService {
     public PostResponseDTO addPost(PostRequestDTO dto,Long myId){
         UserEntity userRef = entityManager.getReference(UserEntity.class, myId);
 
+        var userView = userRepo.findUserProjectionById(myId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
+
         PlaceEmbedded place=new PlaceEmbedded();
         place.setPlaceId(dto.getPlaceId());
         place.setCity(dto.getCity());
@@ -60,7 +63,7 @@ public class PostService {
         post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
         userRepo.updatePostCount(userRef.getId(),1);
-        return convertToResponseDTO(post,false);
+        return convertToResponseDTO(post,false,userView);
     }
 
     public Page<PostResponseDTO> getPosts(Long userId, Long myId, int page, int size) {
@@ -87,6 +90,7 @@ public class PostService {
         if (!post.getUser().getId().equals(myId)) {
             throw new CustomExceptions.AuthorizationException("Bu postu güncelleme yetkin yok");
         }
+
         if (dto.getExplanation() != null) post.setExplanation(dto.getExplanation().trim());
         post.setPuan(dto.getPuan());
         post.setPhotoUrl(dto.getPhotoUrl());
@@ -107,7 +111,7 @@ public class PostService {
             post.setPinned(false);
         } else {
             long currentPinnedCount = postRepo.countByUserIdAndIsPinnedTrue(myId);
-            if (currentPinnedCount >= 5) {
+            if (currentPinnedCount >= 3) {
                 throw new CustomExceptions.BadRequestException("Maksimum 3 post sabitleyebilirsin.");
             }
             post.setPinned(true);
@@ -152,7 +156,7 @@ public class PostService {
         return likeRepo.findPostLikesFullOrdered(postId, myId, pageable);
     }
 
-    private PostResponseDTO convertToResponseDTO(PostEntity post, boolean isLiked) {
+    private PostResponseDTO convertToResponseDTO(PostEntity post, boolean isLiked, UserRepo.UserProfileView userView) {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
@@ -163,12 +167,13 @@ public class PostService {
         dto.setNumberof_likes(post.getNumberofLikes());
         dto.setCommentCount(post.getCommentCount());
         dto.setPinned(post.isPinned());
+        dto.setLiked(isLiked);
 
-        if (post.getUser() != null) {
-            dto.setUserId(post.getUser().getId());
-            dto.setUsername(post.getUser().getUsername());
-            dto.setProfilePhotoUrl(post.getUser().getProfile());
-        }
+
+        dto.setUserId(userView.getId());
+        dto.setUsername(userView.getUsername());
+        dto.setProfilePhotoUrl(userView.getProfile());
+
         if (post.getPlaceEmbedded() != null) {
             PlaceEmbedded place = post.getPlaceEmbedded();
             dto.setPlaceId(place.getPlaceId());
@@ -181,10 +186,44 @@ public class PostService {
             dto.setLongitude(place.getLongitude());
             dto.setAveragePuan(place.getAveragePuan());
         }
-        dto.setLiked(isLiked);
 
         return dto;
     }
+
+    private PostResponseDTO convertToResponseDTO(PostEntity post, boolean isLiked) {
+        PostResponseDTO dto = new PostResponseDTO();
+        dto.setPostId(post.getId());
+        dto.setExplanation(post.getExplanation());
+        dto.setPuan(post.getPuan());
+        dto.setPhotoUrl(post.getPhotoUrl());
+        dto.setCreatedAt(post.getCreatedAt());
+        dto.setCommentEnabled(post.isCommentEnabled());
+        dto.setNumberof_likes(post.getNumberofLikes());
+        dto.setCommentCount(post.getCommentCount());
+        dto.setPinned(post.isPinned());
+        dto.setLiked(isLiked);
+
+
+        dto.setUserId(post.getUser().getId());
+        dto.setUsername(post.getUser().getUsername());
+        dto.setProfilePhotoUrl(post.getUser().getProfile());
+
+        if (post.getPlaceEmbedded() != null) {
+            PlaceEmbedded place = post.getPlaceEmbedded();
+            dto.setPlaceId(place.getPlaceId());
+            dto.setPlaceName(place.getPlaceName());
+            dto.setCategories(place.getCategories());
+            dto.setCity(place.getCity());
+            dto.setDistrict(place.getDistrict());
+            dto.setNeighbourhood(place.getNeighbourhood());
+            dto.setLatitude(place.getLatitude());
+            dto.setLongitude(place.getLongitude());
+            dto.setAveragePuan(place.getAveragePuan());
+        }
+
+        return dto;
+    }
+
 }
 
 
