@@ -37,6 +37,14 @@ public class RedisCacheService {
         }
     }
 
+    public boolean exists(String key) {
+        try {
+            return Boolean.TRUE.equals(redis.hasKey(key));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public <T> void set(String key, T value, long TTL){
         try {
             String json = objectMapper.writeValueAsString(value);

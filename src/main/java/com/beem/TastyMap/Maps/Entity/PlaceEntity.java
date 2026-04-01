@@ -110,22 +110,6 @@ public class PlaceEntity {
 
 
         entity.setTypes(new HashSet<>(dto.getTypes()));
-
-        if (dto.getPhotos() != null) {
-            List<PhotoEntity> photos = dto.getPhotos().stream()
-                    .map(p -> {
-                        PhotoEntity photo = new PhotoEntity();
-                        photo.setPhotoReference(p.getPhoto_reference());
-                        photo.setWidth(p.getWidth());
-                        photo.setHeight(p.getHeight());
-                        photo.setPlace(entity);
-                        return photo;
-                    })
-                    .collect(Collectors.toList());
-            entity.setPhotos(photos);
-        }
-
-
         return entity;
     }
 
@@ -152,37 +136,11 @@ public class PlaceEntity {
         entity.setInternationalPhoneNumber(dto.getInternational_phone_number());
         entity.setWebsite(dto.getWebsite());
 
-        if (dto.getPhotos() != null) {
-            List<PhotoEntity> photos = dto.getPhotos().stream()
-                    .map(p -> {
-                        PhotoEntity photo = new PhotoEntity();
-                        photo.setPhotoReference(p.getPhoto_reference());
-                        photo.setWidth(p.getWidth());
-                        photo.setHeight(p.getHeight());
-                        photo.setPlace(entity);
-                        return photo;
-                    })
-                    .collect(Collectors.toList());
-            entity.setPhotos(photos);
-        }
 
         entity.openingHours = new OpeningHoursEmbeddable(
                 dto.getOpening_hours().getOpen_now(),
                 dto.getOpening_hours().getWeekday_text()
         );
-
-        entity.reviews = dto.getReviews()
-                .stream()
-                .map(review -> {
-                    return new ReviewEntity(
-                            review.getAuthor_name(),
-                            review.getRating(),
-                            review.getText(),
-                            review.getTime(),
-                            entity
-                    );
-                })
-                .collect(Collectors.toList());
 
         entity.setFormattedAddress(dto.getFormatted_address());
 
@@ -190,7 +148,6 @@ public class PlaceEntity {
     }
 
     public void updateFromDetailsDto(PlaceDetailsResult dto) {
-
         this.setName(dto.getName());
         this.setRating(dto.getRating());
         this.setPriceLevel(dto.getPrice_level());
@@ -211,38 +168,10 @@ public class PlaceEntity {
         this.setFormattedAddress(dto.getFormatted_address());
 
         if (dto.getOpening_hours() != null) {
-            this.setOpeningHours(
-                    new OpeningHoursEmbeddable(
-                            dto.getOpening_hours().getOpen_now(),
-                            dto.getOpening_hours().getWeekday_text()
-                    )
-            );
-        }
-
-        if (dto.getPhotos() != null) {
-            this.getPhotos().clear();
-            dto.getPhotos().forEach(p -> {
-                PhotoEntity photo = new PhotoEntity();
-                photo.setPhotoReference(p.getPhoto_reference());
-                photo.setWidth(p.getWidth());
-                photo.setHeight(p.getHeight());
-                photo.setPlace(this);
-                this.getPhotos().add(photo);
-            });
-        }
-
-        if (dto.getReviews() != null) {
-            this.getReviews().clear();
-            dto.getReviews().forEach(r -> {
-                ReviewEntity review = new ReviewEntity(
-                        r.getAuthor_name(),
-                        r.getRating(),
-                        r.getText(),
-                        r.getTime(),
-                        this
-                );
-                this.getReviews().add(review);
-            });
+            this.setOpeningHours(new OpeningHoursEmbeddable(
+                    dto.getOpening_hours().getOpen_now(),
+                    dto.getOpening_hours().getWeekday_text()
+            ));
         }
     }
 
@@ -271,12 +200,6 @@ public class PlaceEntity {
         return photos;
     }
 
-    public void setPhotos(List<PhotoEntity> photos) {
-        this.photos.clear();
-        if (photos != null) {
-            this.photos.addAll(photos);
-        }
-    }
 
     public Long getId() {
         return id;
@@ -403,6 +326,9 @@ public class PlaceEntity {
     }
 
     public void setOpeningHours(OpeningHoursEmbeddable openingHours) {
+        if(this.openingHours.equals(openingHours)){
+            return;
+        }
         this.openingHours = openingHours;
     }
 
@@ -410,9 +336,6 @@ public class PlaceEntity {
         return reviews;
     }
 
-    public void setReviews(List<ReviewEntity> reviews) {
-        this.reviews = reviews;
-    }
 
     public String getFormattedAddress() {
         return formattedAddress;

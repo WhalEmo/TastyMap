@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Exceptions;
 
+import com.beem.TastyMap.BaseApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -28,6 +29,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Bir hata oluştu: " + ex.getMessage());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<BaseApiResponse<Void>> handleIllegalStateException(IllegalStateException ex){
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(
+                        BaseApiResponse.error(ex.getMessage(),"ERR_SERVER")
+                );
+    }
+
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -37,6 +47,15 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .toList();
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(CustomExceptions.RedisKeyExistsException.class)
+    public ResponseEntity<BaseApiResponse<Void>> handleRedisKeyExistsException(CustomExceptions.RedisKeyExistsException ex){
+        return ResponseEntity
+                .status(HttpStatus.LOCKED)
+                .body(
+                        BaseApiResponse.error(ex.getMessage(), "ERR_SERVER")
+                );
     }
 
 }

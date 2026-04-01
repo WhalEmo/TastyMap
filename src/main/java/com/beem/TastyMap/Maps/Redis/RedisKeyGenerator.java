@@ -30,4 +30,8 @@ public class RedisKeyGenerator {
         return "place:" + placeId;
     }
 
+    public static String createPlaceUpdateEventKey(String placeId){
+        return "place:" + placeId + ":UpdateEvent";
+    }
+
 }

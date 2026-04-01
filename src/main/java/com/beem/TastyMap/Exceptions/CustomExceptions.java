@@ -41,5 +41,11 @@ public class CustomExceptions {
             super(message);
         }
     }
+    public static class RedisKeyExistsException extends RuntimeException{
+        public RedisKeyExistsException(String message){
+            super(message);
+        }
+    }
+
 
 }
