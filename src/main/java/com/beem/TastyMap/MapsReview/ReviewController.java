@@ -4,7 +4,6 @@ import com.beem.TastyMap.BaseApiResponse;
 import com.beem.TastyMap.MapsReview.Data.Request.SentReviewReq;
 import com.beem.TastyMap.MapsReview.Data.Request.UpdateReviewReq;
 import com.beem.TastyMap.MapsReview.Data.Response.CreatedReviewRes;
-import com.beem.TastyMap.MapsReview.Data.Response.UpdatedReviewRes;
 import com.beem.TastyMap.MapsReview.Data.Response.ReviewResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,13 +39,14 @@ public class ReviewController {
     @PostMapping("/send-review")
     public BaseApiResponse<CreatedReviewRes> sendPlaceReview(
             @RequestBody SentReviewReq request,
+            @RequestParam Long userId,
             Authentication authentication
     ){
         return BaseApiResponse
                 .success(
                         service.sendPlaceReview(
                                 request,
-                                (Long) authentication.getPrincipal()
+                                userId
                         )
                 );
     }

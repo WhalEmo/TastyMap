@@ -4,6 +4,8 @@ import com.beem.TastyMap.Maps.Data.PlaceDetailsResult;
 import com.beem.TastyMap.Maps.Data.PlaceResult;
 import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import jakarta.persistence.*;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,7 +14,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
+@Indexed
 @Entity
 @Table(name = "places")
 public class PlaceEntity {
@@ -23,9 +25,11 @@ public class PlaceEntity {
     @Column(name = "place_id", nullable = false, unique = true)
     private String placeId;
 
+    @FullTextField
     @Column(nullable = false)
     private String name;
 
+    @FullTextField
     private String vicinity;
 
     private Double rating;

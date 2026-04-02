@@ -1,9 +1,12 @@
 package com.beem.TastyMap.RegisterLogin;
 
 import jakarta.persistence.*;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 
 import java.time.LocalDateTime;
 
+@Indexed
 @Entity
 @Table(name = "users",uniqueConstraints = {
         @UniqueConstraint(columnNames = "username"),
@@ -14,12 +17,15 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @FullTextField
     @Column(nullable = false,unique = true,length = 20)
     private String username;
 
+    @FullTextField
     @Column(nullable = false,length = 20)
     private String name;
 
+    @FullTextField
     @Column(nullable = false,length = 20)
     private String surname;
 

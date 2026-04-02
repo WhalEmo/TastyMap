@@ -83,8 +83,7 @@ public class ReviewService {
     private ReviewResponse getReviewDataBaseToResponse(String placeId, int page, int size){
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         List<ReviewResult> reviewResults = reviewRepo
-                .findByPlace_PlaceId(placeId, pageable)
-                .getContent()
+                .findAllByPlaceId(placeId, pageable)
                 .stream()
                 .map(ReviewResult::fromEntity)
                 .toList();

@@ -44,7 +44,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         //login gerekmeyenler
-                        .requestMatchers( "/api/users/**","/auth/**").permitAll()
+                        .requestMatchers( "/api/users/**","/auth/**","/place-review/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

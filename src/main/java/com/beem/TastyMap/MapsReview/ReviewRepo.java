@@ -20,6 +20,9 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
 
     Page<ReviewEntity> findByPlace_PlaceId(String placeId, Pageable pageable);
 
+    @Query("SELECT r FROM ReviewEntity r LEFT JOIN FETCH r.user WHERE r.place.placeId = :placeId")
+    List<ReviewEntity> findAllByPlaceId(@Param("placeId") String placeId, Pageable pageable);
+
     boolean existsByIdAndPlaceId(Long id, Long placeId);
 
     boolean existsByIdAndPlaceIdAndSourceAndStatus(
