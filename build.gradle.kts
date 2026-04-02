@@ -3,6 +3,7 @@ plugins {
     java
     id("org.springframework.boot") version "3.3.5"
     id("io.spring.dependency-management") version "1.1.7"
+    kotlin("jvm")
 }
 
 group = "com.beem"
@@ -45,6 +46,7 @@ dependencies {
 
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.withType<Test> {

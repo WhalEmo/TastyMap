@@ -85,7 +85,6 @@ public class UserService implements UserDetailsService {
                     }
                 }
         );
-
         return new UserResponseDTO(userEntity);
     }
 

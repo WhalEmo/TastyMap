@@ -11,10 +11,22 @@ import java.util.Optional;
 
 public interface CommentRepo extends JpaRepository<CommentEntity,Long>,CommentRepoCustom {
 
-    boolean existsByIdAndPost_Id(Long id, Long postId);
+    long countByPostIdAndIsPinnedTrue(Long postId);
 
+    boolean existsByIdAndPost_Id(Long id, Long postId);
+/*
     @Query("SELECT c.user.id FROM CommentEntity c WHERE c.id = :commentId")
     Optional<Long> findOwnerIdByCommentId(@Param("commentId") Long postId);
+
+ */
+
+    public interface CommentStatsView {
+        Long getOwnerId();
+        int getNumberOfLikes();
+    }
+    @Query("SELECT c.user.id AS ownerId, c.numberofLikes AS numberOfLikes " +
+            "FROM CommentEntity c WHERE c.id = :commentId")
+    Optional<CommentStatsView> findStatsByCommentId(@Param("commentId") Long commentId);
 
     @Modifying
     @Query("""

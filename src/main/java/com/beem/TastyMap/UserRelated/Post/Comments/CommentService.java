@@ -6,6 +6,7 @@ import com.beem.TastyMap.RegisterLogin.UserRepo;
 import com.beem.TastyMap.UserRelated.Post.AccessChecker;
 import com.beem.TastyMap.UserRelated.Post.Comments.Like.LikeEntity;
 import com.beem.TastyMap.UserRelated.Post.Comments.Like.LikeRepo;
+import com.beem.TastyMap.UserRelated.Post.Comments.Like.LikeResponseDTO;
 import com.beem.TastyMap.UserRelated.Post.PostEntity;
 import com.beem.TastyMap.UserRelated.Post.PostRepo;
 import jakarta.persistence.EntityManager;
@@ -193,10 +194,13 @@ public class CommentService {
         if (!comment.getPost().getUser().getId().equals(userId)) {
             throw new CustomExceptions.ForbiddenException("Sadece post sahibi yorumları sabitleyebilir.");
         }
+        if (!comment.getPost().getId().equals(postId)) {
+            throw new CustomExceptions.BadRequestException("Bu yorum bu posta ait değil!");
+        }
         if (comment.isPinned()) {
             comment.setPinned(false);
         } else {
-           long currentPinnedCount = commentRepo.countByUserIdAndIsPinnedTrue(userId);
+           long currentPinnedCount = commentRepo.countByPostIdAndIsPinnedTrue(postId);
             if (currentPinnedCount >= 3) {
                 throw new CustomExceptions.BadRequestException("Maksimum 3 yorum sabitleyebilirsin.");
             }
@@ -208,16 +212,16 @@ public class CommentService {
     }
 
     @Transactional
-    public String toggleLike(Long commentId,Long userId){
-        Long commentUserId=commentRepo.findOwnerIdByCommentId(commentId)
+    public LikeResponseDTO toggleLike(Long commentId, Long userId){
+        var commentView=commentRepo.findStatsByCommentId(commentId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı."));
 
-        accessChecker.checkAccess(commentUserId, userId);
+        accessChecker.checkAccess(commentView.getOwnerId(), userId);
         Optional<Long> existingLike = likeRepo.findIdByCommentIdAndUserId(commentId, userId);
         if(existingLike.isPresent()){
             likeRepo.deleteById(existingLike.get());
             commentRepo.decrementLike(commentId);
-            return "Beğeni kaldırıldı.";
+            return new LikeResponseDTO(false,commentView.getNumberOfLikes());
         }else{
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             CommentEntity commentRef = entityManager.getReference(CommentEntity.class, commentId);
@@ -226,7 +230,7 @@ public class CommentService {
             like.setUser(userRef);
             likeRepo.saveAndFlush(like);
             commentRepo.incrementLike(commentId);
-            return "Beğenildi.";
+            return new LikeResponseDTO(true,commentView.getNumberOfLikes());
         }
     }
 }

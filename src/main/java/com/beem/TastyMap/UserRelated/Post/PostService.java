@@ -3,6 +3,7 @@ package com.beem.TastyMap.UserRelated.Post;
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
+import com.beem.TastyMap.UserRelated.Post.Like.PostLikeDTO;
 import com.beem.TastyMap.UserRelated.Post.Like.PostLikeEntity;
 import com.beem.TastyMap.UserRelated.Post.Like.PostLikeRepo;
 
@@ -14,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.Optional;
 
 @Service
@@ -122,16 +122,16 @@ public class PostService {
     }
 
     @Transactional
-    public String toggleLike(Long postId,Long userId){
-        Long postUserId = postRepo.findOwnerIdByPostId(postId)
+    public PostLikeDTO toggleLike(Long postId, Long userId){
+        var postView = postRepo.findStatsByCPostId(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
-        accessChecker.checkAccess(postUserId,userId);
+        accessChecker.checkAccess(postView.getOwnerId(),userId);
         Optional<Long> existingLike = likeRepo.findIdByPostIdAndUserId(postId, userId);
         if(existingLike.isPresent()){
             likeRepo.deleteById(existingLike.get());
             postRepo.decrementLike(postId);
-            return "Beğeni kaldırıldı.";
+            return new PostLikeDTO(false,postView.getNumberOfLikes());
         }else{
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
@@ -141,7 +141,7 @@ public class PostService {
 
             likeRepo.save(like);
             postRepo.incrementLike(postId);
-            return "Beğenildi.";
+            return new PostLikeDTO(true,postView.getNumberOfLikes());
         }
     }
 

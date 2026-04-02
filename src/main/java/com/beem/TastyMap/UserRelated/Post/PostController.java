@@ -1,6 +1,7 @@
 package com.beem.TastyMap.UserRelated.Post;
 
 
+import com.beem.TastyMap.UserRelated.Post.Like.PostLikeDTO;
 import com.beem.TastyMap.UserRelated.Post.Like.PostLikeUserDTO;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -70,13 +71,12 @@ public class PostController {
     }
 
     @PostMapping("/toggleLike/{postId}")
-    public Map<String,String>toggleLike(
+    public PostLikeDTO toggleLike(
             @PathVariable Long postId,
             Authentication authentication
     ){
         Long myId=(Long) authentication.getPrincipal();
-        String message =postService.toggleLike(postId,myId);
-        return Map.of("message",message);
+        return postService.toggleLike(postId,myId);
     }
 
     @GetMapping("/whosLike/{postId}")

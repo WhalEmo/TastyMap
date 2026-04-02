@@ -65,7 +65,6 @@ public class UserEntity {
         this.lastInteractionAt = lastInteractionAt;
     }
 
-
     public Long getId() {
         return id;
     }

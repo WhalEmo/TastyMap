@@ -1,5 +1,8 @@
 package com.beem.TastyMap.UserRelated.Post.Comments;
 
+import com.beem.TastyMap.UserRelated.Post.Comments.Like.LikeResponseDTO;
+import com.beem.TastyMap.UserRelated.Post.Like.PostLikeDTO;
+import com.beem.TastyMap.UserRelated.Post.PostResponseDTO;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
@@ -40,28 +43,24 @@ public class CommentsController {
     }
 
     @PostMapping("/addComments/{postId}")
-    public Map<String,String>addComment(
+    public CommentsResponseDTO addComment(
             @Valid @RequestBody CommentRequestDTO dto,
             @PathVariable Long postId,
             Authentication authentication
     ){
         Long myId=(Long) authentication.getPrincipal();
-        commentService.addComment(myId,postId,dto);
-
-        return Map.of("message","Yorum eklendi.");
+       return commentService.addComment(myId,postId,dto);
     }
 
     @PostMapping("/addReply/{postId}/{parentCommentId}")
-    public Map<String,String>addReply(
+    public CommentsResponseDTO addReply(
             @Valid @RequestBody CommentRequestDTO dto,
             @PathVariable Long postId,
             @PathVariable Long parentCommentId,
             Authentication authentication
     ){
         Long myId=(Long) authentication.getPrincipal();
-        commentService.addReplyComment(myId,postId,parentCommentId,dto);
-
-        return Map.of("message","Yanıt eklendi.");
+        return commentService.addReplyComment(myId,postId,parentCommentId,dto);
     }
 
     @DeleteMapping("/deleteComment/{postId}/{commentId}")
@@ -88,15 +87,23 @@ public class CommentsController {
         return Map.of("message","Yorum güncellendi.");
     }
     @PostMapping("/toggleLike/{commentId}")
-    public Map<String,String>toggleLike(
+    public LikeResponseDTO toggleLike(
             @PathVariable Long commentId,
             Authentication authentication
     ){
         Long myId=(Long) authentication.getPrincipal();
-        String message =commentService.toggleLike(commentId,myId);
 
-        return Map.of("message",message);
+        return commentService.toggleLike(commentId,myId);
     }
 
+    @PutMapping("/togglePin/{commentId}")
+    public CommentsResponseDTO togglePin(
+            @PathVariable Long commentId,
+            @PathVariable Long postId,
+            Authentication authentication
+    ){
+        Long myId=(Long) authentication.getPrincipal();
+        return commentService.togglePinComment(commentId,myId,postId);
+    }
 
 }

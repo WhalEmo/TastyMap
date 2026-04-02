@@ -1,5 +1,6 @@
 package com.beem.TastyMap.UserRelated.Post;
 
+import com.beem.TastyMap.UserRelated.Post.Comments.CommentRepo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,8 +17,19 @@ public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom 
     @Query("SELECT COUNT(p) > 0 FROM PostEntity p WHERE p.id = :postId AND p.user.id = :userId")
     boolean isOwner(@Param("postId") Long postId, @Param("userId") Long userId);
 
+    /*
     @Query("SELECT p.user.id FROM PostEntity p WHERE p.id = :postId")
     Optional<Long> findOwnerIdByPostId(@Param("postId") Long postId);
+
+     */
+
+    public interface PostStatsView {
+        Long getOwnerId();
+        int getNumberOfLikes();
+    }
+    @Query("SELECT p.user.id AS ownerId, p.numberofLikes AS numberOfLikes " +
+            "FROM PostEntity p WHERE p.id = :postId")
+    Optional<PostStatsView> findStatsByCPostId(@Param("postId") Long commentId);
 
 
     @Modifying
