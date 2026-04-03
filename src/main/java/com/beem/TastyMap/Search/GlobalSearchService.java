@@ -2,7 +2,10 @@ package com.beem.TastyMap.Search;
 
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
+import com.beem.TastyMap.Search.Data.AppUserResult;
 import com.beem.TastyMap.Search.Data.GlobalSearchResult;
+import com.beem.TastyMap.Search.Data.SearchMapper;
+import com.beem.TastyMap.Search.Data.VenueResult;
 import jakarta.persistence.EntityManager;
 import org.hibernate.search.engine.search.query.SearchResult;
 import org.hibernate.search.mapper.orm.Search;
@@ -15,9 +18,11 @@ import java.util.Arrays;
 public class GlobalSearchService {
 
     private final EntityManager manager;
+    private final SearchMapper mapper;
 
-    public GlobalSearchService(EntityManager manager) {
+    public GlobalSearchService(EntityManager manager, SearchMapper mapper) {
         this.manager = manager;
+        this.mapper = mapper;
     }
 
     public GlobalSearchResult searchEverything(String searchText, int page, int size){
@@ -28,6 +33,32 @@ public class GlobalSearchService {
         int offSet = page * size;
 
         SearchResult<Object> results = searchSession.search(Arrays.asList(PlaceEntity.class, UserEntity.class))
+                .select(f -> f.<Object>composite(
+                        projection -> {
+                            String username = (String) projection.get(2);
+
+                            if (username != null) {
+                                return new AppUserResult(
+                                        (Long) projection.get(0),
+                                        username,
+                                        (String) projection.get(3),
+                                        (String) projection.get(5)
+                                );
+                            } else {
+                                return new VenueResult(
+                                        (Long) projection.get(0),
+                                        (String) projection.get(1),
+                                        (String) projection.get(4)
+                                );
+                            }
+                        },
+                        f.field("id", Long.class),
+                        f.field("name", String.class),
+                        f.field("username", String.class),
+                        f.field("biography", String.class),
+                        f.field("vicinity", String.class),
+                        f.field("profile", String.class)
+                ))
                 .where(f -> f.bool()
                         .should(f.match()
                                 .fields("name", "vicinity", "username", "surname")
@@ -39,18 +70,11 @@ public class GlobalSearchService {
                                 .matching(queryText + "*")
                         )
                 )
-                .fetch(20);
+                .fetch(
+                        offSet,
+                        size
+                );
 
-        GlobalSearchResult globalSearchResult = new GlobalSearchResult();
-
-        for(Object hit: results.hits()){
-            if(hit instanceof PlaceEntity){
-                globalSearchResult.getVenues().add(((PlaceEntity) hit).getName());
-            }
-            else if(hit instanceof UserEntity){
-                globalSearchResult.getUsers().add(((UserEntity) hit).getUsername());
-            }
-        }
-        return globalSearchResult;
+        return mapper.toGlobalSearchResult(results.hits());
     }
 }

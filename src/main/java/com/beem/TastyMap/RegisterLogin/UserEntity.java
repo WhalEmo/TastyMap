@@ -1,7 +1,11 @@
 package com.beem.TastyMap.RegisterLogin;
 
 import jakarta.persistence.*;
+import org.hibernate.search.engine.backend.types.Projectable;
+import org.hibernate.search.engine.backend.types.Searchable;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 
 import java.time.LocalDateTime;
@@ -13,15 +17,18 @@ import java.time.LocalDateTime;
         @UniqueConstraint(columnNames = "email")
 })
 public class UserEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @DocumentId
+    @GenericField(projectable = Projectable.YES)
     private Long id;
 
-    @FullTextField
+    @FullTextField(projectable = Projectable.YES)
     @Column(nullable = false,unique = true,length = 20)
     private String username;
 
-    @FullTextField
+    @FullTextField(projectable = Projectable.YES)
     @Column(nullable = false,length = 20)
     private String name;
 
@@ -39,12 +46,14 @@ public class UserEntity {
     private String role;
 
     @Column(nullable = true)
+    @GenericField(projectable = Projectable.YES, searchable = Searchable.NO)
     private String profile;
 
     @Column(nullable = false)
     private LocalDateTime date;
 
     @Column(nullable = true, length = 200)
+    @FullTextField(projectable = Projectable.YES)
     private String biography;
 
     @Column(nullable = false)

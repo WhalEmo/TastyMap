@@ -16,10 +16,16 @@ public class GlobalSearchController {
         this.searchService = searchService;
     }
 
-    @GetMapping()
+    @GetMapping
     public GlobalSearchResult searchEverything(
-            @RequestParam String searchText
+            @RequestParam String searchText,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ){
-        return searchService.searchEverything(searchText);
+        return searchService.searchEverything(
+                searchText,
+                page,
+                size
+        );
     }
 }

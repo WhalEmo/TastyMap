@@ -4,7 +4,10 @@ import com.beem.TastyMap.Maps.Data.PlaceDetailsResult;
 import com.beem.TastyMap.Maps.Data.PlaceResult;
 import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
 import jakarta.persistence.*;
+import org.hibernate.search.engine.backend.types.Projectable;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 
 import java.time.LocalDateTime;
@@ -18,18 +21,21 @@ import java.util.stream.Collectors;
 @Entity
 @Table(name = "places")
 public class PlaceEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @DocumentId
+    @GenericField(projectable = Projectable.YES)
     private Long id;
 
     @Column(name = "place_id", nullable = false, unique = true)
     private String placeId;
 
-    @FullTextField
+    @FullTextField(projectable = Projectable.YES)
     @Column(nullable = false)
     private String name;
 
-    @FullTextField
+    @FullTextField(projectable = Projectable.YES)
     private String vicinity;
 
     private Double rating;
