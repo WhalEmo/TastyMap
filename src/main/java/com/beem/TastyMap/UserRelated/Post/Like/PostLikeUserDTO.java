@@ -4,7 +4,7 @@ public class PostLikeUserDTO{
     private Long userId;
     private String username;
     private String profile;
-    private boolean iFollow;
+    private boolean isFollow;
     private boolean followsMe;
     private boolean mutual;
 
@@ -12,11 +12,11 @@ public class PostLikeUserDTO{
     public PostLikeUserDTO() {
     }
 
-    public PostLikeUserDTO(Long userId, String username, String profile, boolean iFollow, boolean followsMe, boolean mutual) {
+    public PostLikeUserDTO(Long userId, String username, String profile, boolean isFollow, boolean followsMe, boolean mutual) {
         this.userId = userId;
         this.username = username;
         this.profile = profile;
-        this.iFollow = iFollow;
+        this.isFollow = isFollow;
         this.followsMe = followsMe;
         this.mutual = mutual;
     }
@@ -54,11 +54,11 @@ public class PostLikeUserDTO{
     }
 
     public boolean isiFollow() {
-        return iFollow;
+        return isFollow;
     }
 
     public void setiFollow(boolean iFollow) {
-        this.iFollow = iFollow;
+        this.isFollow = iFollow;
     }
 
     public boolean isMutual() {

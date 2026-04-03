@@ -1,16 +1,6 @@
-package com.beem.TastyMap.UserRelated.Post;
+package com.beem.TastyMap.UserRelated.Visit;
 
-import jakarta.validation.constraints.Size;
-
-public class PostRequestDTO {
-    @Size(max = 500, message = "Açıklama max 500 karakter olmalıdır")
-    private String explanation;
-
-    private Integer puan;
-    private String photoUrl;
-    private boolean commentEnabled;
-
-
+public class VisitRequestDTO {
     private String placeId;
     private String placeName;
     private String categories;
@@ -20,41 +10,7 @@ public class PostRequestDTO {
     private Double latitude;
     private Double longitude;
     private Double averagePuan;
-
-    public PostRequestDTO() {
-    }
-
-    public String getPhotoUrl() {
-        return photoUrl;
-    }
-
-    public void setPhotoUrl(String photoUrl) {
-        this.photoUrl = photoUrl;
-    }
-
-    public Double getAveragePuan() {
-        return averagePuan;
-    }
-
-    public void setAveragePuan(Double averagePuan) {
-        this.averagePuan = averagePuan;
-    }
-
-    public String getExplanation() {
-        return explanation;
-    }
-
-    public void setExplanation(String explanation) {
-        this.explanation = explanation;
-    }
-
-    public Integer getPuan() {
-        return puan;
-    }
-
-    public void setPuan(Integer puan) {
-        this.puan = puan;
-    }
+    private boolean isWantToPost;
 
     public String getPlaceId() {
         return placeId;
@@ -120,11 +76,19 @@ public class PostRequestDTO {
         this.longitude = longitude;
     }
 
-    public boolean isCommentEnabled() {
-        return commentEnabled;
+    public Double getAveragePuan() {
+        return averagePuan;
     }
 
-    public void setCommentEnabled(boolean commentEnabled) {
-        this.commentEnabled = commentEnabled;
+    public void setAveragePuan(Double averagePuan) {
+        this.averagePuan = averagePuan;
+    }
+
+    public boolean isWantToPost() {
+        return isWantToPost;
+    }
+
+    public void setWantToPost(boolean wantToPost) {
+        isWantToPost = wantToPost;
     }
 }

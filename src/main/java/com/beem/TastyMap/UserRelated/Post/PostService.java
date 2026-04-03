@@ -35,7 +35,7 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponseDTO addPost(PostRequestDTO dto,Long myId){
+    public PostResponseDTO addPost(PostAndVisitRequestDTO dto, Long myId){
         UserEntity userRef = entityManager.getReference(UserEntity.class, myId);
 
         var userView = userRepo.findUserProjectionById(myId)
@@ -85,15 +85,21 @@ public class PostService {
 
     @Transactional
     public PostResponseDTO updatePost(Long postId, Long myId, PostUpdateDTO dto) {
-        PostEntity post = postRepo.findById(postId)
+        PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
         if (!post.getUser().getId().equals(myId)) {
             throw new CustomExceptions.AuthorizationException("Bu postu güncelleme yetkin yok");
         }
 
-        if (dto.getExplanation() != null) post.setExplanation(dto.getExplanation().trim());
-        post.setPuan(dto.getPuan());
-        post.setPhotoUrl(dto.getPhotoUrl());
+        if (dto.getExplanation() != null&& !dto.getExplanation().equals(post.getExplanation())) {
+            post.setExplanation(dto.getExplanation().trim());
+        }
+        if(!dto.getPhotoUrl().equals(post.getPhotoUrl())){
+            post.setPhotoUrl(dto.getPhotoUrl());
+        }
+        if(!dto.getPuan().equals(post.getPuan())){
+            post.setPuan(dto.getPuan());
+        }
         postRepo.save(post);
         boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
         return convertToResponseDTO(post, isLiked);
@@ -101,7 +107,7 @@ public class PostService {
 
     @Transactional
     public PostResponseDTO togglePinPost(Long postId, Long myId) {
-        PostEntity post = postRepo.findById(postId)
+        PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
 
         if (!post.getUser().getId().equals(myId)) {
@@ -131,7 +137,7 @@ public class PostService {
         if(existingLike.isPresent()){
             likeRepo.deleteById(existingLike.get());
             postRepo.decrementLike(postId);
-            return new PostLikeDTO(false,postView.getNumberOfLikes());
+            return new PostLikeDTO(false,postView.getNumberOfLikes()-1);
         }else{
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
@@ -141,7 +147,7 @@ public class PostService {
 
             likeRepo.save(like);
             postRepo.incrementLike(postId);
-            return new PostLikeDTO(true,postView.getNumberOfLikes());
+            return new PostLikeDTO(true,postView.getNumberOfLikes()+1);
         }
     }
 

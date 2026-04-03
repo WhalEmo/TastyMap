@@ -4,9 +4,6 @@ import com.beem.TastyMap.UserRelated.Health.DTOs.AllergyInfoDTO;
 import com.beem.TastyMap.UserRelated.Health.DTOs.HealthResponseDTO;
 import com.beem.TastyMap.UserRelated.Health.Entitys.QAllergiesEntity;
 import com.beem.TastyMap.UserRelated.Health.Entitys.QUserAllergiesEntity;
-import com.beem.TastyMap.UserRelated.Health.Entitys.QUserHealthEntity;
-import com.beem.TastyMap.UserRelated.Health.Entitys.UserHealthEntity;
-import com.querydsl.core.QueryFactory;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 

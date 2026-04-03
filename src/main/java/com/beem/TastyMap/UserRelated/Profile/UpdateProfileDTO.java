@@ -34,6 +34,7 @@ public class UpdateProfileDTO {
 
     @Size(max = 200, message = "Biyografi en fazla 200 karakter olabilir")
     private String biyografi;
+    private boolean isPrivate;
 
     public String getUsername() {
         return username;
@@ -73,5 +74,13 @@ public class UpdateProfileDTO {
 
     public void setBiyografi(String biyografi) {
         this.biyografi = biyografi;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean aPrivate) {
+        isPrivate = aPrivate;
     }
 }

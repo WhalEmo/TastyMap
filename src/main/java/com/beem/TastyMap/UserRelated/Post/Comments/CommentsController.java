@@ -83,7 +83,7 @@ public class CommentsController {
             Authentication authentication
     ){
         Long myId=(Long) authentication.getPrincipal();
-        commentService.updateComment(commentId,myId,postId,dto);
+        commentService.updateComment(commentId,myId,dto);
         return Map.of("message","Yorum güncellendi.");
     }
     @PostMapping("/toggleLike/{commentId}")
@@ -96,7 +96,7 @@ public class CommentsController {
         return commentService.toggleLike(commentId,myId);
     }
 
-    @PutMapping("/togglePin/{commentId}")
+    @PutMapping("/togglePin/{postId}/{commentId}")
     public CommentsResponseDTO togglePin(
             @PathVariable Long commentId,
             @PathVariable Long postId,

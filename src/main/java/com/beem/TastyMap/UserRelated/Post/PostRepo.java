@@ -17,11 +17,6 @@ public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom 
     @Query("SELECT COUNT(p) > 0 FROM PostEntity p WHERE p.id = :postId AND p.user.id = :userId")
     boolean isOwner(@Param("postId") Long postId, @Param("userId") Long userId);
 
-    /*
-    @Query("SELECT p.user.id FROM PostEntity p WHERE p.id = :postId")
-    Optional<Long> findOwnerIdByPostId(@Param("postId") Long postId);
-
-     */
 
     public interface PostStatsView {
         Long getOwnerId();
@@ -30,6 +25,13 @@ public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom 
     @Query("SELECT p.user.id AS ownerId, p.numberofLikes AS numberOfLikes " +
             "FROM PostEntity p WHERE p.id = :postId")
     Optional<PostStatsView> findStatsByCPostId(@Param("postId") Long commentId);
+
+     @Query("""
+      SELECT p FROM PostEntity p
+       JOIN FETCH p.user
+       WHERE p.id = :postId
+   """)
+    Optional<PostEntity> findByIdWithUser(@Param("postId") Long postId);
 
 
     @Modifying

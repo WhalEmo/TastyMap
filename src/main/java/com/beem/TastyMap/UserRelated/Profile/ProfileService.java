@@ -39,6 +39,7 @@ public class ProfileService {
         user.setProfile(request.getProfilephoto());
         user.setName(request.getName().trim());
         user.setUsername(request.getUsername().trim());
+        user.setPrivateProfile(request.isPrivate());
         user.setSurname(request.getSurname().trim());
         user.setBiography(request.getBiyografi());
         userRepo.save(user);
@@ -88,7 +89,6 @@ public class ProfileService {
         if (passwordEncoder.matches(dto.getNewPassword(), user.getPassword())) {
             throw new CustomExceptions.InvalidCredentialsException("Yeni şifre eski şifreyle aynı olamaz!");
         }
-        user.setLastInteractionAt(LocalDateTime.now());
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
         userRepo.save(user);
     }

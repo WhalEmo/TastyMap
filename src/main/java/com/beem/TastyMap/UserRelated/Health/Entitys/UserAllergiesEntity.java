@@ -2,9 +2,17 @@ package com.beem.TastyMap.UserRelated.Health.Entitys;
 
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import jakarta.persistence.*;
-
 @Entity
-@Table(name = "user_allergies")
+@Table(
+        name = "user_allergies",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_allergy", columnNames = {"user_id", "allergies_id"})
+        },
+        indexes = {
+                @Index(name = "idx_user_allergies_user", columnList = "user_id"),
+                @Index(name = "idx_user_allergies_allergy", columnList = "allergies_id")
+        }
+)
 public class UserAllergiesEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

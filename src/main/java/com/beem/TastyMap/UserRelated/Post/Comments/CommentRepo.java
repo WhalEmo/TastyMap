@@ -1,5 +1,6 @@
 package com.beem.TastyMap.UserRelated.Post.Comments;
 
+import com.beem.TastyMap.UserRelated.Post.PostEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +20,12 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long>,CommentRe
     Optional<Long> findOwnerIdByCommentId(@Param("commentId") Long postId);
 
  */
+@Query("""
+      SELECT c FROM CommentEntity c
+       JOIN FETCH c.user
+       WHERE c.id = :commentId
+   """)
+Optional<CommentEntity> findByIdWithUser(@Param("commentId") Long commentId);
 
     public interface CommentStatsView {
         Long getOwnerId();

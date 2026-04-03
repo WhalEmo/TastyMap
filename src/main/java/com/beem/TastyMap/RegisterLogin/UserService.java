@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -90,63 +91,64 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
-
         UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException(("Kullanıcı bulunamadı")));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new CustomExceptions.InvalidCredentialsException(("Kullanıcı adı veya Şifre yanlış!"));
+            throw new CustomExceptions.InvalidCredentialsException("Kullanıcı adı veya Şifre yanlış!");
         }
         if (!user.isEmailVerified()) {
-            throw new CustomExceptions.AuthenticationException(
-                    "Email adresiniz doğrulanmamış"
-            );
+            throw new CustomExceptions.AuthenticationException("Email adresiniz doğrulanmamış");
         }
-
-        Optional<RefreshTokenEntity> existingDevice = refreshTokenRepo.findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());
+        Optional<RefreshTokenEntity> existingDevice = refreshTokenRepo
+                .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());
 
         if (existingDevice.isPresent()) {
-            RefreshTokenEntity rt = existingDevice.get();
-            if (!userAgent.equals(rt.getUserAgent())) {
-                rt.setUserAgent(userAgent);
-                refreshTokenRepo.save(rt);
-            }
-
-            return createTokensAndLogin(user, dto, userAgent);
+            return createTokensAndLogin(user, dto, userAgent, existingDevice.get());
         }
 
-        boolean hasRecentUserActivity = user.getLastInteractionAt() != null && user.getLastInteractionAt().isAfter(LocalDateTime.now().minusDays(30));
+        boolean hasRecentUserActivity = user.getLastInteractionAt() != null
+                && user.getLastInteractionAt().isAfter(LocalDateTime.now().minusDays(30));
+
         if (hasRecentUserActivity) {
             createOrUpdatePending(user, dto, userAgent);
-            return LoginResponseDTO.pendingSecurity(
-                    new UserResponseDTO(user)
-            );
+            return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
         }
 
-        return createTokensAndLogin(user, dto, userAgent);
+        return createTokensAndLogin(user, dto, userAgent, null);
+    }
+    @Transactional
+    public void updateLastInteraction(Long userId) {
+        UserEntity user = userRepo.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime last = user.getLastInteractionAt();
+
+        if (last == null || !last.toLocalDate().equals(today)) {
+            user.setLastInteractionAt(LocalDateTime.now());
+             userRepo.save(user);
+        }
     }
 
     @Transactional
-    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent) {
+    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent, RefreshTokenEntity existingToken) {
         String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtUtill.generateRefreshToken(user.getId(), dto.getDeviceId());
+        RefreshTokenEntity refresh = (existingToken != null) ? existingToken : new RefreshTokenEntity();
 
-        RefreshTokenEntity refresh = new RefreshTokenEntity();
         refresh.setUserId(user.getId());
         refresh.setToken(refreshToken);
         refresh.setDeviceId(dto.getDeviceId());
         refresh.setUserAgent(userAgent);
         refresh.setExpiryDate(LocalDateTime.now().plusDays(30));
+        refresh.setLastUsedAt(LocalDateTime.now());
+        refresh.setRevoked(false);
+
         if (dto.getFcmToken() != null) {
             refresh.setFcmToken(dto.getFcmToken());
         }
-        refresh.setLastUsedAt(LocalDateTime.now());
-        refresh.setRevoked(false);
         refreshTokenRepo.save(refresh);
-
-        user.setLastInteractionAt(LocalDateTime.now());
-        userRepo.save(user);
-
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }
 

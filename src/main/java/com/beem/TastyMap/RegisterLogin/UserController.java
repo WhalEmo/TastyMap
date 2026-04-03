@@ -5,8 +5,10 @@ import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import com.beem.TastyMap.Security.RefreshTokenResponseDTO;
 import com.beem.TastyMap.Security.RefreshTokenService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,6 +31,12 @@ public class UserController {
             @RequestHeader("User-Agent") String userAgent
     ) {
         return userService.login(dto, userAgent);
+    }
+    @PostMapping("/active")
+    public ResponseEntity<Void> updateLastInteraction(Authentication authentication) {
+        Long myId = (Long) authentication.getPrincipal();
+        userService.updateLastInteraction(myId);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/refresh")

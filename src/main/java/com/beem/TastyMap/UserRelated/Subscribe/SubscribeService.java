@@ -32,6 +32,9 @@ public class SubscribeService {
 
     @Transactional
     public void subscribe(Long subscribes, Long myId) {
+        if (myId.equals(subscribes)) {
+            throw new CustomExceptions.InvalidException("Kendine abone olamazsın!");
+        }
         boolean blocked = blockRepo.existsByBlocker_IdAndBlocked_Id(subscribes, myId) ||
                 blockRepo.existsByBlocker_IdAndBlocked_Id(myId, subscribes);
 

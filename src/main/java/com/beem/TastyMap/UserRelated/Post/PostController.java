@@ -19,15 +19,6 @@ public class PostController {
         this.postService = postService;
     }
 
-    @PostMapping("/addPost")
-    public void addPost(
-            @Valid @RequestBody PostRequestDTO dto,
-            Authentication authentication
-    ) {
-        Long myId = (Long) authentication.getPrincipal();
-        postService.addPost(dto, myId);
-    }
-
     @GetMapping("/getUserPosts/{userId}")
     public Page<PostResponseDTO> getUserPosts(
             @PathVariable Long userId,
@@ -42,7 +33,7 @@ public class PostController {
     @GetMapping("/getMePosts")
     public Page<PostResponseDTO> getMyPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "10") int size,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
@@ -59,7 +50,7 @@ public class PostController {
         return Map.of("meesage","Post silindi");
     }
 
-    @PutMapping("/updatePost/{postId}")
+    @PatchMapping ("/updatePost/{postId}")
     public Map<String,String> updatePost(
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateDTO dto,

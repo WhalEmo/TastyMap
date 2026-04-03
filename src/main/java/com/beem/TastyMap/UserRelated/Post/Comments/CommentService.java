@@ -172,8 +172,8 @@ public class CommentService {
 
 
     @Transactional
-    public CommentsResponseDTO updateComment(Long commentId,Long userId,Long postId,CommentRequestDTO dto){
-        CommentEntity comment = commentRepo.findById(commentId)
+    public CommentsResponseDTO updateComment(Long commentId,Long userId,CommentRequestDTO dto){
+        CommentEntity comment = commentRepo.findByIdWithUser(commentId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı"));
 
         if (!comment.getUser().getId().equals(userId)) {
@@ -188,7 +188,7 @@ public class CommentService {
 
     @Transactional
     public CommentsResponseDTO togglePinComment(Long commentId,Long userId , Long postId){
-        CommentEntity comment = commentRepo.findById(commentId)
+        CommentEntity comment = commentRepo.findByIdWithUser(commentId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Yorum bulunamadı"));
 
         if (!comment.getPost().getUser().getId().equals(userId)) {
@@ -221,7 +221,7 @@ public class CommentService {
         if(existingLike.isPresent()){
             likeRepo.deleteById(existingLike.get());
             commentRepo.decrementLike(commentId);
-            return new LikeResponseDTO(false,commentView.getNumberOfLikes());
+            return new LikeResponseDTO(false,commentView.getNumberOfLikes()-1);
         }else{
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             CommentEntity commentRef = entityManager.getReference(CommentEntity.class, commentId);
@@ -230,7 +230,7 @@ public class CommentService {
             like.setUser(userRef);
             likeRepo.saveAndFlush(like);
             commentRepo.incrementLike(commentId);
-            return new LikeResponseDTO(true,commentView.getNumberOfLikes());
+            return new LikeResponseDTO(true,commentView.getNumberOfLikes()+1);
         }
     }
 }
