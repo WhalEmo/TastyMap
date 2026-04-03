@@ -1,10 +1,8 @@
 package com.beem.TastyMap.Maps.Geo;
 
-import com.beem.TastyMap.Maps.Entity.PlaceEntity;
-import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
+import com.beem.TastyMap.Redis.RedisKeyGenerator;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 public class GridCell {

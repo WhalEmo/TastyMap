@@ -185,6 +185,11 @@ public class PlaceEntity {
         }
     }
 
+    public void addPhoto(PhotoEntity photo) {
+        photos.add(photo);
+        photo.setPlace(this);
+    }
+
 
 
     public LocalDateTime getCreatedAt() {
@@ -353,5 +358,14 @@ public class PlaceEntity {
 
     public void setFormattedAddress(String formattedAddress) {
         this.formattedAddress = formattedAddress;
+    }
+
+
+    public void setPhotos(List<PhotoEntity> photos) {
+        this.photos = photos;
+    }
+
+    public void setReviews(List<ReviewEntity> reviews) {
+        this.reviews = reviews;
     }
 }

@@ -1,5 +1,6 @@
 package com.beem.TastyMap.Search;
 
+import com.beem.TastyMap.BaseApiResponse;
 import com.beem.TastyMap.Search.Data.GlobalSearchResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,15 +18,18 @@ public class GlobalSearchController {
     }
 
     @GetMapping
-    public GlobalSearchResult searchEverything(
+    public BaseApiResponse<GlobalSearchResult> searchEverything(
             @RequestParam String searchText,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ){
-        return searchService.searchEverything(
-                searchText,
-                page,
-                size
+        return BaseApiResponse.success(
+                searchService.searchEverything(
+                        searchText,
+                        page,
+                        size
+                ),
+                "Search successfully."
         );
     }
 }

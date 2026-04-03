@@ -1,11 +1,9 @@
 package com.beem.TastyMap.MapsReview;
 
-import com.beem.TastyMap.Maps.Data.PlaceDetailsResult;
-import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
+import com.beem.TastyMap.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Service.PlacesService;
-import com.beem.TastyMap.Maps.Service.RedisCacheService;
+import com.beem.TastyMap.Redis.RedisCacheService;
 import com.beem.TastyMap.MapsReview.Enum.ReviewSource;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;

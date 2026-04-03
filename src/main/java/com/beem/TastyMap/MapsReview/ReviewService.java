@@ -2,7 +2,7 @@ package com.beem.TastyMap.MapsReview;
 
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
-import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
+import com.beem.TastyMap.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Service.PlacesService;
 import com.beem.TastyMap.MapsReview.Data.Request.SentReviewReq;
 import com.beem.TastyMap.MapsReview.Data.Request.UpdateReviewReq;

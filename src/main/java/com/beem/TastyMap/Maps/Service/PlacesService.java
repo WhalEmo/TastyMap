@@ -8,7 +8,9 @@ import com.beem.TastyMap.Maps.Entity.PhotoEntity;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.Maps.Geo.GeoUtils;
 import com.beem.TastyMap.Maps.Geo.GridCell;
-import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
+import com.beem.TastyMap.Maps.GridUpdateEvent;
+import com.beem.TastyMap.Redis.RedisCacheService;
+import com.beem.TastyMap.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Repository.GridRepo;
 import com.beem.TastyMap.Maps.Repository.PhotoRepo;
 import com.beem.TastyMap.Maps.Repository.PlaceRepo;
@@ -17,6 +19,7 @@ import com.beem.TastyMap.MapsReview.ReviewRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.persistence.EntityManager;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,8 +40,9 @@ public class PlacesService {
     private final GridRepo gridRepo;
     private final PhotoRepo photoRepo;
     private final ReviewRepo reviewRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, EntityManager entityManager, PlaceRepo placeRepo, GridRepo gridRepo, PhotoRepo photoRepo, ReviewRepo reviewRepo) {
+    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, EntityManager entityManager, PlaceRepo placeRepo, GridRepo gridRepo, PhotoRepo photoRepo, ReviewRepo reviewRepo, ApplicationEventPublisher eventPublisher) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
         this.entityManager = entityManager;
@@ -46,6 +50,7 @@ public class PlacesService {
         this.gridRepo = gridRepo;
         this.photoRepo = photoRepo;
         this.reviewRepo = reviewRepo;
+        this.eventPublisher = eventPublisher;
     }
 
     @Cacheable(
@@ -158,6 +163,8 @@ public class PlacesService {
             return null;
         }
 
+        eventPublisher.publishEvent(new GridUpdateEvent(grid.getId(), cell));
+
         List<PlaceResult> placeResults = grid.getPlaces()
                 .stream()
                 .map(PlaceResult::fromEntity)
@@ -188,7 +195,7 @@ public class PlacesService {
     }
 
     @Transactional
-    private List<PlaceResult> searchPlaceGoogleAPI(GridCell cell){
+    public List<PlaceResult> searchPlaceGoogleAPI(GridCell cell){
 
         List<PlaceResult> placeResults = fetchAndFilterPlaces(cell);
 
@@ -300,22 +307,11 @@ public class PlacesService {
     }
 
     private void syncPlacePhotos(PlaceEntity place, List<Photo> photos){
-        System.out.println("Sync Place Photos");
-
         Set<String> existingPhotoRefs = photoRepo
                 .findAllReferencesByPlaceId(place.getPlaceId())
                 .stream()
                 .map(ref -> ref.replaceAll("\\s", ""))
                 .collect(Collectors.toSet());
-
-        System.out.println("================existingPhotoRefs===================");
-        for(String refs: existingPhotoRefs){
-            System.out.println(refs);
-        }
-        System.out.println("================GooglePhotos===================");
-        for(Photo refs: photos){
-            System.out.println(refs.getPhoto_reference());
-        }
 
         List<PhotoEntity> newPhotos = photos.stream()
                 .filter(photo -> photo.getPhoto_reference() != null)
@@ -333,9 +329,9 @@ public class PlacesService {
                 })
                 .toList();
         if(!newPhotos.isEmpty()){
-            photoRepo.saveAll(newPhotos);
-
-            System.out.println("Yeni fotoğraflar tespit edildi ve kaydediliyor: " + newPhotos.size());
+            for(PhotoEntity newPhoto: newPhotos){
+                place.addPhoto(newPhoto);
+            }
         }
     }
 
