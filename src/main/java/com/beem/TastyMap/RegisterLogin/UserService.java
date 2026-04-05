@@ -93,7 +93,6 @@ public class UserService implements UserDetailsService {
     public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
         UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
-
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new CustomExceptions.InvalidCredentialsException("Kullanıcı adı veya Şifre yanlış!");
         }

@@ -24,6 +24,7 @@ public class CommentRepoCustomImpl implements CommentRepoCustom {
                 comment.post.id,
                 comment.contents,
                 comment.date,
+                comment.updateDate,
                 comment.numberofLikes,
                 user.id,
                 user.username,

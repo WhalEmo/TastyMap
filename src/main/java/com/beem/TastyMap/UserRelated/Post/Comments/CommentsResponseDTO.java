@@ -8,6 +8,7 @@ public class CommentsResponseDTO {
     private Long post_id;
     private String contents;
     private LocalDateTime date;
+    private LocalDateTime updateDate;
     private int numberOfLikes;
 
     private Long userId;
@@ -17,12 +18,13 @@ public class CommentsResponseDTO {
     private boolean isPinned;
 
 
-    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date, int numberOfLikes, Long userId, String username, String profilePhotoUrl,boolean isLiked,boolean isPinned) {
+    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date,LocalDateTime updateDate, int numberOfLikes, Long userId, String username, String profilePhotoUrl,boolean isLiked,boolean isPinned) {
         this.id = id;
         this.parentCommentId = parentCommentId;
         this.post_id = post_id;
         this.contents = contents;
         this.date = date;
+        this.updateDate = updateDate;
         this.numberOfLikes = numberOfLikes;
         this.userId = userId;
         this.username = username;
@@ -40,6 +42,7 @@ public class CommentsResponseDTO {
         this.contents = comment.getContents();
         this.numberOfLikes = comment.getNumberofLikes();
         this.date = comment.getDate();
+        this.updateDate = comment.getUpdateDate();
         this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
         this.isLiked = isLiked;
         this.isPinned = comment.isPinned();
@@ -132,5 +135,13 @@ public class CommentsResponseDTO {
 
     public void setPinned(boolean pinned) {
         isPinned = pinned;
+    }
+
+    public LocalDateTime getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(LocalDateTime updateDate) {
+        this.updateDate = updateDate;
     }
 }

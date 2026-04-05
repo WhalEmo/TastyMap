@@ -34,6 +34,9 @@ public class PostEntity {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "update_date")
+    private LocalDateTime updateDate;
+
     @Column(name = "number_of_likes")
     private int numberofLikes = 0;
 
@@ -163,5 +166,13 @@ public class PostEntity {
 
     public void setCommentCount(int commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public LocalDateTime getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(LocalDateTime updateDate) {
+        this.updateDate = updateDate;
     }
 }

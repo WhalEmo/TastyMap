@@ -17,6 +17,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -179,7 +180,10 @@ public class CommentService {
         if (!comment.getUser().getId().equals(userId)) {
             throw new CustomExceptions.ForbiddenException("Bu yorumu güncelleme yetkiniz yok.");
         }
-        comment.setContents(dto.getContents().trim());
+        if(!comment.getContents().equals(dto.getContents())) {
+            comment.setContents(dto.getContents().trim());
+            comment.setUpdateDate(LocalDateTime.now());
+        }
         commentRepo.save(comment);
 
         boolean isLiked = likeRepo.existsByCommentIdAndUserId(commentId, userId);

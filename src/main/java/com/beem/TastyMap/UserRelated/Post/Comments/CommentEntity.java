@@ -33,6 +33,7 @@ public class CommentEntity {
     private String contents;
 
     private LocalDateTime date;
+    private LocalDateTime updateDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_comment_id")
@@ -134,5 +135,13 @@ public class CommentEntity {
 
     public void setPinned(boolean pinned) {
         isPinned = pinned;
+    }
+
+    public LocalDateTime getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(LocalDateTime updateDate) {
+        this.updateDate = updateDate;
     }
 }

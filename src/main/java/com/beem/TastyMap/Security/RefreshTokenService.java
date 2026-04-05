@@ -58,7 +58,6 @@ public class RefreshTokenService {
         Duration remaining = Duration.between(LocalDateTime.now(), rf.getExpiryDate());
 
         boolean shouldRotate = remaining.toMillis() < (total.toMillis() / 2);
-
         if (!shouldRotate) {
             return new RefreshTokenResponseDTO(
                     newAccessToken,
@@ -66,13 +65,9 @@ public class RefreshTokenService {
                     "basarili"
             );
         }
-
-
         rf.setRevoked(true);
         refreshTokenRepo.save(rf);
-
         String newRefreshToken = jwtUtill.generateRefreshToken(user.getId(), rf.getDeviceId());
-
         RefreshTokenEntity newRf = new RefreshTokenEntity(
                 user.getId(),
                 newRefreshToken,

@@ -33,6 +33,7 @@ public class PostRepoCustomImpl implements PostRepoCustom{
                         post.photoUrl,
                         post.numberofLikes,
                         post.createdAt,
+                        post.updateDate,
                         user.id,
                         user.username,
                         user.profile,

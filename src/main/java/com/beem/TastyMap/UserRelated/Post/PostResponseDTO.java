@@ -10,6 +10,7 @@ public class PostResponseDTO {
     private String photoUrl;
     private int numberof_likes;
     private LocalDateTime createdAt;
+    private LocalDateTime updateDate;
 
     private Long userId;
     private String username;
@@ -31,7 +32,7 @@ public class PostResponseDTO {
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, int puan, String photoUrl, int numberof_likes, LocalDateTime createdAt, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePuan,boolean isLiked, int commentCount, boolean isPinned) {
+    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, int puan, String photoUrl, int numberof_likes, LocalDateTime createdAt,LocalDateTime updateDate, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePuan,boolean isLiked, int commentCount, boolean isPinned) {
         this.commentEnabled=commentEnabled;
         this.postId = postId;
         this.explanation = explanation;
@@ -39,6 +40,7 @@ public class PostResponseDTO {
         this.photoUrl = photoUrl;
         this.numberof_likes = numberof_likes;
         this.createdAt = createdAt;
+        this.updateDate = updateDate;
         this.userId = userId;
         this.username = username;
         this.profilePhotoUrl = profilePhotoUrl;
@@ -230,5 +232,13 @@ public class PostResponseDTO {
 
     public void setPinned(boolean pinned) {
         isPinned = pinned;
+    }
+
+    public LocalDateTime getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(LocalDateTime updateDate) {
+        this.updateDate = updateDate;
     }
 }

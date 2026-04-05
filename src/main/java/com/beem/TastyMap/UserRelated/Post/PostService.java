@@ -15,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -90,7 +92,6 @@ public class PostService {
         if (!post.getUser().getId().equals(myId)) {
             throw new CustomExceptions.AuthorizationException("Bu postu güncelleme yetkin yok");
         }
-
         if (dto.getExplanation() != null&& !dto.getExplanation().equals(post.getExplanation())) {
             post.setExplanation(dto.getExplanation().trim());
         }
@@ -100,6 +101,7 @@ public class PostService {
         if(!dto.getPuan().equals(post.getPuan())){
             post.setPuan(dto.getPuan());
         }
+        post.setUpdateDate(LocalDateTime.now());
         postRepo.save(post);
         boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
         return convertToResponseDTO(post, isLiked);
@@ -203,6 +205,7 @@ public class PostService {
         dto.setPuan(post.getPuan());
         dto.setPhotoUrl(post.getPhotoUrl());
         dto.setCreatedAt(post.getCreatedAt());
+        dto.setUpdateDate(post.getUpdateDate());
         dto.setCommentEnabled(post.isCommentEnabled());
         dto.setNumberof_likes(post.getNumberofLikes());
         dto.setCommentCount(post.getCommentCount());
@@ -226,7 +229,6 @@ public class PostService {
             dto.setLongitude(place.getLongitude());
             dto.setAveragePuan(place.getAveragePuan());
         }
-
         return dto;
     }
 
