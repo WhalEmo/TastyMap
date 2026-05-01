@@ -10,7 +10,7 @@ public class UserResponseDTO {
     private String surname;
     private String profile;
     private String role;
-    private LocalDateTime Date;
+    private LocalDateTime date;
     private String biography;
     private boolean emailVerified;
     private boolean privateProfile;
@@ -25,7 +25,7 @@ public class UserResponseDTO {
         this.surname = user.getSurname();
         this.profile = user.getProfile();
         this.role=user.getRole();
-        Date = user.getDate();
+        date = user.getDate();
         this.biography = user.getBiography();
         this.emailVerified=user.isEmailVerified();
         this.privateProfile= user.isPrivateProfile();
@@ -88,11 +88,11 @@ public class UserResponseDTO {
     }
 
     public LocalDateTime getDate() {
-        return Date;
+        return date;
     }
 
     public void setDate(LocalDateTime date) {
-        Date = date;
+        date = date;
     }
 
     public String getBiography() {

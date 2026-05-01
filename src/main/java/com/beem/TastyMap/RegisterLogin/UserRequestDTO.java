@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 public class UserRequestDTO {
-    private Long id;
     @NotBlank(message = "Kullanıcı adı boş olamaz")
     @Size(min = 3, max = 20, message = "Kullanıcı adı 3–20 karakter arasında olmalıdır")
     @Pattern(
@@ -31,8 +30,8 @@ public class UserRequestDTO {
     @NotBlank(message = "Soyad boş olamaz")
     @Size(min = 2, max = 20, message = "Soyad 2–50 karakter arasında olmalıdır")
     @Pattern(
-            regexp = "^[a-zA-ZçÇğĞıİöÖşŞüÜ ]+$",
-            message = "Soyad sadece harf ve boşluk içerebilir"
+            regexp = "^[a-zA-ZçÇğĞıİöÖşŞüÜ]+$",
+            message = "Soyad sadece harf içerebilir"
     )
     private String surname;
 
@@ -52,9 +51,6 @@ public class UserRequestDTO {
     private String role;
     private boolean privateProfile;
 
-    public Long getId() {
-        return id;
-    }
 
     public boolean isPrivateProfile() {
         return privateProfile;
@@ -62,10 +58,6 @@ public class UserRequestDTO {
 
     public void setPrivateProfile(boolean privateProfile) {
         this.privateProfile = privateProfile;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public String getUsername() {
