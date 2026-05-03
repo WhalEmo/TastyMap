@@ -2,6 +2,7 @@ package com.beem.TastyMap.Maps.Service;
 
 
 import com.beem.TastyMap.Maps.Data.*;
+import com.beem.TastyMap.Maps.Data.geojson.FeatureCollection;
 import com.beem.TastyMap.Maps.Entity.GridEntity;
 import com.beem.TastyMap.Maps.Entity.GridStatus;
 import com.beem.TastyMap.Maps.Entity.PhotoEntity;
@@ -41,8 +42,19 @@ public class PlacesService {
     private final PhotoRepo photoRepo;
     private final ReviewRepo reviewRepo;
     private final ApplicationEventPublisher eventPublisher;
+    private final PlaceMapper placeMapper;
 
-    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, EntityManager entityManager, PlaceRepo placeRepo, GridRepo gridRepo, PhotoRepo photoRepo, ReviewRepo reviewRepo, ApplicationEventPublisher eventPublisher) {
+    public PlacesService(
+            RedisCacheService service,
+            GooglePlacesService googlePlacesService,
+            EntityManager entityManager,
+            PlaceRepo placeRepo,
+            GridRepo gridRepo,
+            PhotoRepo photoRepo,
+            ReviewRepo reviewRepo,
+            ApplicationEventPublisher eventPublisher,
+            PlaceMapper placeMapper
+    ) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
         this.entityManager = entityManager;
@@ -51,6 +63,7 @@ public class PlacesService {
         this.photoRepo = photoRepo;
         this.reviewRepo = reviewRepo;
         this.eventPublisher = eventPublisher;
+        this.placeMapper = placeMapper;
     }
 
     @Cacheable(
@@ -104,8 +117,11 @@ public class PlacesService {
 
         }
 
+        FeatureCollection geoJson = placeMapper.convertToGeoJson(results);
+
         PlacesResponse response = new PlacesResponse();
         response.setResults(results);
+        response.setGeoJson(geoJson);
         response.setStatus("Ok");
 
         return response;
@@ -340,7 +356,7 @@ public class PlacesService {
 
         List<ReviewEntity> newReviews = reviews.stream()
                 .filter(review -> {
-                    return existingReviewsCreated.contains(review.getTime());
+                    return !existingReviewsCreated.contains(review.getTime());
                 })
                 .map(review -> {
                     return new ReviewEntity(

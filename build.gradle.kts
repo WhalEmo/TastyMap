@@ -17,6 +17,7 @@ java {
 
 repositories {
 	mavenCentral()
+    maven { url = uri("https://repo.osgeo.org/repository/release/") }
 }
 
 dependencies {
@@ -42,6 +43,7 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
 
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")

@@ -50,9 +50,10 @@ public class PlaceResult {
         geo.setLocation(location);
 
         result.setGeometry(geo);
+        /*
         if(entity.getPhotos() != null){
             result.setPhotos(entity.getPhotos().stream().map(Photo::fromEntity).toList());
-        }
+        }*/
 
         return result;
     }

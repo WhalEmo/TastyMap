@@ -32,6 +32,8 @@ public class GridUpdateListener {
         this.redisCacheService = redisCacheService;
     }
 
+
+
     @Async
     @Transactional
     @EventListener
