@@ -11,6 +11,7 @@ import com.beem.TastyMap.Security.RefreshTokenRepo;
 import com.beem.TastyMap.Security.Verification.EmailVerify.EmailEntitiy;
 import com.beem.TastyMap.Security.Verification.EmailVerify.EmailRepo;
 import com.beem.TastyMap.Security.Verification.EmailVerify.EmailService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -34,8 +35,9 @@ public class UserService implements UserDetailsService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, EmailRepo emailRepo, EmailService emailService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, EmailRepo emailRepo, EmailService emailService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
@@ -43,6 +45,7 @@ public class UserService implements UserDetailsService {
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -74,18 +77,7 @@ public class UserService implements UserDetailsService {
         verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
         emailRepo.save(verification);
 
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            emailService.sendVerificationMail(token, user.getEmail());
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-        );
+        eventPublisher.publishEvent(new OnUserRegistrationEvent(userEntity, token));
         return new UserResponseDTO(userEntity);
     }
 
@@ -182,5 +174,26 @@ public class UserService implements UserDetailsService {
                         new UsernameNotFoundException("Kullanıcı bulunamadı: " + username)
                 );
         return new CustomUserDetails(user);
+    }
+
+    @Transactional
+    public void resendVerification(String email) {
+        UserEntity user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
+
+        if (user.isEmailVerified()) {
+            throw new CustomExceptions.NotFoundException("Bu hesap zaten doğrulanmış.");
+        }
+
+        emailRepo.deleteByUser(user);
+        String newToken = UUID.randomUUID().toString();
+        EmailEntitiy verification = new EmailEntitiy();
+        verification.setUser(user);
+        verification.setToken(newToken);
+        verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        emailRepo.save(verification);
+
+        emailService.sendVerificationMail(newToken, user.getEmail());
+
     }
 }

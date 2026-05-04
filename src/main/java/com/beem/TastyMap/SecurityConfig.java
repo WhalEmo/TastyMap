@@ -6,6 +6,7 @@ import com.beem.TastyMap.Security.Verification.ServletFilter.JwtAuthenticationFi
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -36,6 +37,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http, UserService service) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service);
         http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
@@ -45,6 +47,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         //login gerekmeyenler
                         .requestMatchers( "/api/users/**","/auth/**").permitAll()
+                        .requestMatchers("/.well-known/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

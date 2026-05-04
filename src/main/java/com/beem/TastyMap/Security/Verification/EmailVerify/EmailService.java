@@ -27,7 +27,8 @@ public class EmailService {
 
     public void sendVerificationMail(String token,String email){
         String subject="Email Doğrulama";
-        String verificationLink=baseURL+"/auth/verify?token="+token;
+        //String verificationLink=baseURL+"/auth/verify?token="+token;
+        String verificationLink = "http://localhost:8081/#verify?token=" + token;
         String body =
                 "Merhaba,\n\n" +
                         "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
@@ -45,9 +46,18 @@ public class EmailService {
     public String verifyEmail(String token){
         EmailEntitiy emailtoken=emailRepo.findByToken(token)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
+
         if(emailtoken.getExpiryDate().isBefore(LocalDateTime.now())){
-            throw new CustomExceptions.InvalidException("Token süresi dolmuş");
+            //emailRepo.delete(emailToken);
+            throw new CustomExceptions.InvalidException("Doğrulama linkinin süresi dolmuş. Lütfen yeni bir link isteyin.");
         }
+        /*
+        if (user.isEmailVerified()) {
+            emailRepo.delete(emailToken); // Temizlik
+            return "E-posta adresi zaten doğrulanmış.";
+        }
+
+         */
         UserEntity user= emailtoken.getUser();
         user.setEmailVerified(true);
         userRepo.save(user);

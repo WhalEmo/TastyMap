@@ -51,5 +51,15 @@ public class UserController {
     ) {
         return refreshTokenService.refreshApproved(dto);
     }
+    @PostMapping("/resendMail")
+    public ResponseEntity<String> resendMail(
+            @RequestParam String email
+    ) {
+         userService.resendVerification(email);
+        return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
+    }
+
+
+
 
 }
