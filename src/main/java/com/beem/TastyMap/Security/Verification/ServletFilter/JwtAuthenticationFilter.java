@@ -25,12 +25,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header=request.getHeader("Authorization");
         String token=null;
 
-        if (header == null || !header.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
         if(header != null && header.startsWith("Bearer ")){
             token=header.substring(7);
+        }else if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        if(token == null){
+            filterChain.doFilter(request, response);
+            return;
         }
         try {
             if (token != null && jwtUtill.validateAccessToken(token)) {

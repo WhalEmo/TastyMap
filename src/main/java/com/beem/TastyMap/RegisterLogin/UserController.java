@@ -5,6 +5,8 @@ import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import com.beem.TastyMap.Security.RefreshTokenResponseDTO;
 import com.beem.TastyMap.Security.RefreshTokenService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 
@@ -25,13 +27,27 @@ public class UserController {
     public UserResponseDTO register( @Valid @RequestBody UserRequestDTO dto){
         return userService.register(dto);
     }
+
     @PostMapping("/login")
-    public LoginResponseDTO login(
+    public ResponseEntity<LoginResponseDTO> login(
             @Valid @RequestBody LoginRequestDTO dto,
             @RequestHeader("User-Agent") String userAgent
     ) {
-        return userService.login(dto, userAgent);
+        LoginResponseDTO loginResponse = userService.login(dto, userAgent);
+        if (loginResponse.getAccessToken() != null) {
+
+            ResponseCookie accessCookie = userService.createCookie("access_token", loginResponse.getAccessToken(), 900, "/");
+            ResponseCookie refreshCookie = userService.createCookie("refresh_token", loginResponse.getRefreshToken(), 2592000, "/api/users/refresh");
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(loginResponse);
+        }
+
+        return ResponseEntity.ok(loginResponse);
     }
+
     @PostMapping("/active")
     public ResponseEntity<Void> updateLastInteraction(Authentication authentication) {
         Long myId = (Long) authentication.getPrincipal();
@@ -40,16 +56,32 @@ public class UserController {
     }
 
     @PostMapping("/refresh")
-    public RefreshTokenResponseDTO refresh(
+    public ResponseEntity<RefreshTokenResponseDTO> refresh(
             @RequestBody RefreshTokenRequestDTO dto
     ) {
-        return refreshTokenService.refresh(dto);
+
+        RefreshTokenResponseDTO response = refreshTokenService.refresh(dto);
+        ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
+        ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(response);
     }
+
     @PostMapping("/refresh/approved")
-    public RefreshTokenResponseDTO refreshApproved(
+    public ResponseEntity<RefreshTokenResponseDTO> refreshApproved(
             @RequestBody ApprovedRefreshRequestDTO dto
     ) {
-        return refreshTokenService.refreshApproved(dto);
+        RefreshTokenResponseDTO response = refreshTokenService.refreshApproved(dto);
+
+        ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
+        ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh");
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(response);
     }
     @PostMapping("/resendMail")
     public ResponseEntity<String> resendMail(

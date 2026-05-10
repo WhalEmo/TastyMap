@@ -27,13 +27,32 @@ public class EmailService {
 
     public void sendVerificationMail(String token,String email){
         String subject="Email Doğrulama";
-        //String verificationLink=baseURL+"/auth/verify?token="+token;
-        String verificationLink = "http://localhost:8081/#verify?token=" + token;
-        String body =
+        String body;
+
+        String verificationLinkW = "http://localhost:8081/#verify?token=" + token;
+       // String verificationLinkA=baseURL+"/auth/verify?token="+token;
+        body =
                 "Merhaba,\n\n" +
                         "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
-                        verificationLink +
+                        verificationLinkW +
                         "\n\nBu link 5 dakika geçerlidir.";
+        /*
+        if(place == "Android"){
+             body =
+                    "Merhaba,\n\n" +
+                            "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
+                            verificationLinkA +
+                            "\n\nBu link 5 dakika geçerlidir.";
+        }else{
+             body =
+                    "Merhaba,\n\n" +
+                            "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
+                            verificationLinkW +
+                            "\n\nBu link 5 dakika geçerlidir.";
+        }
+
+         */
+
         SimpleMailMessage simpleMailMessage=new SimpleMailMessage();
         simpleMailMessage.setFrom("beemdevops@gmail.com");
         simpleMailMessage.setTo(email);

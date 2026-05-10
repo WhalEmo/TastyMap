@@ -12,6 +12,7 @@ import com.beem.TastyMap.Security.Verification.EmailVerify.EmailEntitiy;
 import com.beem.TastyMap.Security.Verification.EmailVerify.EmailRepo;
 import com.beem.TastyMap.Security.Verification.EmailVerify.EmailService;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -194,6 +195,16 @@ public class UserService implements UserDetailsService {
         emailRepo.save(verification);
 
         emailService.sendVerificationMail(newToken, user.getEmail());
-
+    }
+    protected ResponseCookie createCookie(String name, String value, long maxAge, String path) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)
+                //.secure(true)
+                .secure(false)
+                .path(path)
+                .maxAge(maxAge)
+                //.sameSite("Lax")
+                .sameSite("None")
+                .build();
     }
 }
