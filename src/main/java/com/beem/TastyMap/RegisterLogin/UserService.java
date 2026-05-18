@@ -85,7 +85,7 @@ public class UserService implements UserDetailsService {
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
         UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı adı veya Şifre yanlış!"));
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new CustomExceptions.InvalidCredentialsException("Kullanıcı adı veya Şifre yanlış!");
         }
@@ -199,8 +199,8 @@ public class UserService implements UserDetailsService {
     protected ResponseCookie createCookie(String name, String value, long maxAge, String path) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
-                //.secure(true)
-                .secure(false)
+                .secure(true)
+                //.secure(false)
                 .path(path)
                 .maxAge(maxAge)
                 //.sameSite("Lax")

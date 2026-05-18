@@ -31,21 +31,23 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(
             @Valid @RequestBody LoginRequestDTO dto,
-            @RequestHeader("User-Agent") String userAgent
+            @RequestHeader("User-Agent") String userAgent,
+            @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType
     ) {
         LoginResponseDTO loginResponse = userService.login(dto, userAgent);
-        if (loginResponse.getAccessToken() != null) {
 
+        if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
+            return ResponseEntity.ok().body(loginResponse);
+        } else {
             ResponseCookie accessCookie = userService.createCookie("access_token", loginResponse.getAccessToken(), 900, "/");
             ResponseCookie refreshCookie = userService.createCookie("refresh_token", loginResponse.getRefreshToken(), 2592000, "/api/users/refresh");
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(loginResponse);
+                    .body(new BaseResponse("Giriş başarılı"));
         }
 
-        return ResponseEntity.ok(loginResponse);
     }
 
     @PostMapping("/active")
@@ -57,31 +59,52 @@ public class UserController {
 
     @PostMapping("/refresh")
     public ResponseEntity<RefreshTokenResponseDTO> refresh(
-            @RequestBody RefreshTokenRequestDTO dto
+            @CookieValue(value = "refresh_token", required = false) String cookieRefreshToken,
+            @RequestBody(required = false) RefreshTokenRequestDTO dto,
+            @RequestHeader(value = "X-Client-Type", defaultValue = "WEB") String clientType
     ) {
 
-        RefreshTokenResponseDTO response = refreshTokenService.refresh(dto);
-        ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
-        ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh");
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(response);
+        String finalToken = (ClientTypes.MOBILE.equalsIgnoreCase(clientType) && dto != null) ? dto.getRefreshToken() : cookieRefreshToken;
+        String finalDeviceId = (dto != null) ? dto.getDeviceId() : "WEB_CLIENT";
+
+        if (finalToken == null || finalToken.isEmpty()) {
+            return ResponseEntity.status(401).body(new BaseResponse("Refresh token bulunamadı"));
+        }
+
+        RefreshTokenResponseDTO response = refreshTokenService.refresh(finalToken, finalDeviceId);
+
+        if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
+            return ResponseEntity.ok().body(response);
+        } else {
+            ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
+            ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh");
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(new BaseResponse("Token başarıyla yenilendi"));
+        }
+
     }
 
     @PostMapping("/refresh/approved")
     public ResponseEntity<RefreshTokenResponseDTO> refreshApproved(
-            @RequestBody ApprovedRefreshRequestDTO dto
+            @RequestBody ApprovedRefreshRequestDTO dto,
+            @RequestHeader(value = "X-Client-Type", defaultValue = "WEB") String clientType
     ) {
         RefreshTokenResponseDTO response = refreshTokenService.refreshApproved(dto);
 
-        ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
-        ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh");
+        if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
+            return ResponseEntity.ok().body(response);
+        } else {
+            ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
+            ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh/approved");
 
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(response);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .body(new BaseResponse("Giriş başarılı"));
+        }
     }
     @PostMapping("/resendMail")
     public ResponseEntity<String> resendMail(

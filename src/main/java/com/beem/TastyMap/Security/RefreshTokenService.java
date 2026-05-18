@@ -29,15 +29,15 @@ public class RefreshTokenService {
         this.notificationRepo = notificationRepo;
     }
     @Transactional
-    public RefreshTokenResponseDTO refresh(RefreshTokenRequestDTO dto) {
+    public RefreshTokenResponseDTO refresh(String refreshToken, String deviceId) {
 
         RefreshTokenEntity rf = refreshTokenRepo
-                .findByTokenAndRevokedFalse(dto.getRefreshToken())
+                .findByTokenAndRevokedFalse(refreshToken)
                 .orElseThrow(() ->
                         new CustomExceptions.AuthorizationException("Refresh token geçersiz")
                 );
 
-        if (!jwtUtill.validateRefreshToken(dto.getRefreshToken())) {
+        if (!jwtUtill.validateRefreshToken(refreshToken)) {
             throw new CustomExceptions.InvalidException("Refresh token geçersiz");
         }
 
@@ -45,7 +45,7 @@ public class RefreshTokenService {
             throw new CustomExceptions.InvalidException("Refresh token süresi dolmuş");
         }
 
-        if (!rf.getDeviceId().equals(dto.getDeviceId())) {
+        if (!rf.getDeviceId().equals(deviceId)) {
             throw new CustomExceptions.AuthorizationException("Bu token farklı cihaza ait");
         }
 
@@ -61,7 +61,7 @@ public class RefreshTokenService {
         if (!shouldRotate) {
             return new RefreshTokenResponseDTO(
                     newAccessToken,
-                    dto.getRefreshToken(),
+                    refreshToken,
                     "basarili"
             );
         }

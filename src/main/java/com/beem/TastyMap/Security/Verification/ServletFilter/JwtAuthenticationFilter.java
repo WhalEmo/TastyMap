@@ -40,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         try {
-            if (token != null && jwtUtill.validateAccessToken(token)) {
+            if (jwtUtill.validateAccessToken(token)) {
                 Long userId = jwtUtill.getUserId(token);
                 String role = jwtUtill.getRole(token);
 
