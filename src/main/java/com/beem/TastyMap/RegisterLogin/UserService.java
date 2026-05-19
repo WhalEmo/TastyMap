@@ -199,11 +199,9 @@ public class UserService implements UserDetailsService {
     protected ResponseCookie createCookie(String name, String value, long maxAge, String path) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
-                .secure(true)
-                //.secure(false)
+                .secure(true) //Localde HTTPS uğraşmamak için şimdilik false yapıyoruz
                 .path(path)
                 .maxAge(maxAge)
-                //.sameSite("Lax")
                 .sameSite("None")
                 .build();
     }

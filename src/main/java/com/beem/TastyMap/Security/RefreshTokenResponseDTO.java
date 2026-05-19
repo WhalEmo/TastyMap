@@ -1,5 +1,8 @@
 package com.beem.TastyMap.Security;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class RefreshTokenResponseDTO {
     private String accessToken;
     private String refreshtoken;
@@ -10,6 +13,10 @@ public class RefreshTokenResponseDTO {
         this.refreshtoken=refreshtoken;
         this.message=message;
     }
+    public RefreshTokenResponseDTO(String message) {
+        this.message=message;
+    }
+
 
     public String getMessage() {
         return message;

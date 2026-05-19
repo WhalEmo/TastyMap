@@ -45,7 +45,7 @@ public class UserController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new BaseResponse("Giriş başarılı"));
+                    .body(new LoginResponseDTO("Giriş başarılı"));
         }
 
     }
@@ -68,7 +68,7 @@ public class UserController {
         String finalDeviceId = (dto != null) ? dto.getDeviceId() : "WEB_CLIENT";
 
         if (finalToken == null || finalToken.isEmpty()) {
-            return ResponseEntity.status(401).body(new BaseResponse("Refresh token bulunamadı"));
+            return ResponseEntity.status(401).body(new RefreshTokenResponseDTO("Refresh token bulunamadı"));
         }
 
         RefreshTokenResponseDTO response = refreshTokenService.refresh(finalToken, finalDeviceId);
@@ -82,7 +82,7 @@ public class UserController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new BaseResponse("Token başarıyla yenilendi"));
+                    .body(new RefreshTokenResponseDTO("Token başarıyla yenilendi"));
         }
 
     }
@@ -103,7 +103,7 @@ public class UserController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new BaseResponse("Giriş başarılı"));
+                    .body(new RefreshTokenResponseDTO("Giriş başarılı"));
         }
     }
     @PostMapping("/resendMail")

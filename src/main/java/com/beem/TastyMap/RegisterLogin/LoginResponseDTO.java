@@ -1,5 +1,8 @@
 package com.beem.TastyMap.RegisterLogin;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoginResponseDTO {
     private String accessToken;
     private String refreshToken;
@@ -14,6 +17,9 @@ public class LoginResponseDTO {
         this.userResponseDTO = userResponseDTO;
         this.status = LoginStatus.SUCCESS;
         this.message = "Giriş başarılı";
+    }
+    public  LoginResponseDTO(String message){
+        this.message=message;
     }
     public static LoginResponseDTO pendingSecurity(UserResponseDTO user) {
         LoginResponseDTO dto = new LoginResponseDTO();

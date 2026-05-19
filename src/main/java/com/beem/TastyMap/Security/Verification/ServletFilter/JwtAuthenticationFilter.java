@@ -22,12 +22,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String header=request.getHeader("Authorization");
-        String token=null;
 
-        if(header != null && header.startsWith("Bearer ")){
-            token=header.substring(7);
-        }else if (request.getCookies() != null) {
+        // 1. ÖNEMLİ: Tarayıcının attığı gizli OPTIONS isteğini en başta yakala ve hemen 200 OK dön.
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            filterChain.doFilter(request, response);
+            return; // Metottan tamamen çık, aşağıdaki kodlar çalışmasın!
+        }
+
+        String header = request.getHeader("Authorization");
+        String token = null;
+
+        if (header != null && header.startsWith("Bearer ")) {
+            token = header.substring(7);
+        } else if (request.getCookies() != null) {
             for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
                 if ("access_token".equals(cookie.getName())) {
                     token = cookie.getValue();
@@ -35,12 +43,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         }
-        if(token == null){
+
+
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
+
         try {
-            if (jwtUtill.validateAccessToken(token)) {
+
+            if (jwtUtill != null && jwtUtill.validateAccessToken(token)) {
                 Long userId = jwtUtill.getUserId(token);
                 String role = jwtUtill.getRole(token);
 
@@ -57,11 +69,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 auth.setDetails(userId);
                 SecurityContextHolder.getContext().setAuthentication(auth);
-
             }
         } catch (Exception e) {
             logger.error("JWT Authentication hatası: ", e);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Geçersiz Token");
+            return;
         }
+
         filterChain.doFilter(request, response);
     }
 }

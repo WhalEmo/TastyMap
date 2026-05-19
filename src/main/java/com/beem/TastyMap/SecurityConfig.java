@@ -81,6 +81,7 @@ public class SecurityConfig {
                 "Content-Type",
                 "Accept",
                 "X-Requested-With",
+                "X-Client-Type",
                 "ngrok-skip-browser-warning"
         ));
 
