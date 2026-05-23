@@ -1,5 +1,6 @@
 package com.beem.TastyMap.UserRelated.Profile;
 
+import com.beem.TastyMap.RegisterLogin.UserResponseDTO;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
@@ -55,12 +56,20 @@ public class MyProfileController {
         return Map.of("message","Şifre başarıyla değiştirildi!");
     }
 
-    @GetMapping("/me")
+    @GetMapping("/meProfile")
     private ProfileDTOresponse getProfile(
             Authentication authentication
     ){
         Long myId=(Long)authentication.getPrincipal();
         return profileService.getProfile(myId,myId);
+    }
+
+    @GetMapping("/me")
+    private UserResponseDTO getMe(
+            Authentication authentication
+    ){
+        Long myId=(Long)authentication.getPrincipal();
+        return profileService.getMe(myId);
     }
 
 }

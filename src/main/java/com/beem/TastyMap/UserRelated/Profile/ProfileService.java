@@ -3,6 +3,7 @@ package com.beem.TastyMap.UserRelated.Profile;
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
+import com.beem.TastyMap.RegisterLogin.UserResponseDTO;
 import com.beem.TastyMap.Security.RefreshTokenEntity;
 import com.beem.TastyMap.Security.RefreshTokenRepo;
 import com.beem.TastyMap.Security.RefreshTokenRequestDTO;
@@ -123,4 +124,10 @@ public class ProfileService {
                 user.getSubscribedCount()
         );
     }
+    public UserResponseDTO getMe(Long myId){
+        UserEntity user=userRepo.findById(myId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
+        return new UserResponseDTO(user);
+    }
+
 }

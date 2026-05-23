@@ -29,7 +29,8 @@ public class EmailService {
         String subject="Email Doğrulama";
         String body;
 
-        String verificationLinkW = "http://localhost:8081/#verify?token=" + token;
+        String verificationLinkW = baseURL+"/#verify?token=" + token;
+        //String verificationLinkW = "http://localhost:8081/#verify?token=" + token;
        // String verificationLinkA=baseURL+"/auth/verify?token="+token;
         body =
                 "Merhaba,\n\n" +
