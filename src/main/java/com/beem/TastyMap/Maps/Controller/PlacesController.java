@@ -16,7 +16,7 @@ public class PlacesController {
         this.placesService = placesService;
     }
 
-    @GetMapping("/nearby")
+    @PostMapping("/nearby")
     public PlacesResponse nearbyPlaces(@RequestBody ScanRequest requestDto){
         return placesService.getPlaces(requestDto);
     }

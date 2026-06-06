@@ -2,17 +2,25 @@ package com.beem.TastyMap.Maps.Service;
 
 
 import com.beem.TastyMap.Maps.Data.*;
+import com.beem.TastyMap.Maps.Data.geojson.FeatureCollection;
 import com.beem.TastyMap.Maps.Entity.GridEntity;
 import com.beem.TastyMap.Maps.Entity.GridStatus;
+import com.beem.TastyMap.Maps.Entity.PhotoEntity;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
 import com.beem.TastyMap.Maps.Geo.GeoUtils;
 import com.beem.TastyMap.Maps.Geo.GridCell;
-import com.beem.TastyMap.Maps.Redis.RedisKeyGenerator;
+import com.beem.TastyMap.Maps.GridUpdateEvent;
+import com.beem.TastyMap.Redis.RedisCacheService;
+import com.beem.TastyMap.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Repository.GridRepo;
+import com.beem.TastyMap.Maps.Repository.PhotoRepo;
 import com.beem.TastyMap.Maps.Repository.PlaceRepo;
+import com.beem.TastyMap.MapsReview.Entity.ReviewEntity;
+import com.beem.TastyMap.MapsReview.ReviewRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.persistence.EntityManager;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,13 +39,31 @@ public class PlacesService {
     private final EntityManager entityManager;
     private final PlaceRepo placeRepo;
     private final GridRepo gridRepo;
+    private final PhotoRepo photoRepo;
+    private final ReviewRepo reviewRepo;
+    private final ApplicationEventPublisher eventPublisher;
+    private final PlaceMapper placeMapper;
 
-    public PlacesService(RedisCacheService service, GooglePlacesService googlePlacesService, EntityManager entityManager, PlaceRepo placeRepo, GridRepo gridRepo) {
+    public PlacesService(
+            RedisCacheService service,
+            GooglePlacesService googlePlacesService,
+            EntityManager entityManager,
+            PlaceRepo placeRepo,
+            GridRepo gridRepo,
+            PhotoRepo photoRepo,
+            ReviewRepo reviewRepo,
+            ApplicationEventPublisher eventPublisher,
+            PlaceMapper placeMapper
+    ) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
         this.entityManager = entityManager;
         this.placeRepo = placeRepo;
         this.gridRepo = gridRepo;
+        this.photoRepo = photoRepo;
+        this.reviewRepo = reviewRepo;
+        this.eventPublisher = eventPublisher;
+        this.placeMapper = placeMapper;
     }
 
     @Cacheable(
@@ -91,13 +117,17 @@ public class PlacesService {
 
         }
 
+        FeatureCollection geoJson = placeMapper.convertToGeoJson(results);
+
         PlacesResponse response = new PlacesResponse();
         response.setResults(results);
+        response.setGeoJson(geoJson);
         response.setStatus("Ok");
 
         return response;
     }
 
+    @Transactional
     public PlaceDetailsResponse getPlaceDetails(String placeID){
         String key = RedisKeyGenerator.createPlaceDetailsKey(placeID);
 
@@ -149,6 +179,8 @@ public class PlacesService {
             return null;
         }
 
+        eventPublisher.publishEvent(new GridUpdateEvent(grid.getId(), cell));
+
         List<PlaceResult> placeResults = grid.getPlaces()
                 .stream()
                 .map(PlaceResult::fromEntity)
@@ -179,7 +211,7 @@ public class PlacesService {
     }
 
     @Transactional
-    private List<PlaceResult> searchPlaceGoogleAPI(GridCell cell){
+    public List<PlaceResult> searchPlaceGoogleAPI(GridCell cell){
 
         List<PlaceResult> placeResults = fetchAndFilterPlaces(cell);
 
@@ -202,8 +234,8 @@ public class PlacesService {
         return placeResults;
     }
 
-    private PlaceDetailsResult searchPlaceDetailsGoogleAPI(String placeId, String key){
-        PlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId);
+    public PlaceDetailsResult searchPlaceDetailsGoogleAPI(String placeId, String key){
+        PlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId, key);
 
         if (!"OK".equals(response.getStatus())) {
             throw new ResponseStatusException(
@@ -221,7 +253,7 @@ public class PlacesService {
     }
 
     private List<PlaceResult> fetchAndFilterPlaces(GridCell cell){
-        PlacesResponse googleResponse = googlePlacesService.getNearbyFoodPlaces(cell);
+        PlacesResponse googleResponse = googlePlacesService.getNearbyFoodPlaces(cell, cell.getGridKey());
 
         return googleResponse.getResults()
                 .stream()
@@ -253,6 +285,15 @@ public class PlacesService {
                 });
     }
     private PlaceEntity getOrCreatedOrUpdatePlace(PlaceDetailsResult details){
+
+        Optional<PlaceEntity> existingPlaceEntity = placeRepo.findByPlaceId(details.getPlace_id());
+
+        if(existingPlaceEntity.isPresent()){
+            PlaceEntity place = existingPlaceEntity.get();
+            syncPlaceContent(place, details);
+            return place;
+        }
+
         Long gridId = gridRepo
                 .findIdByGridLatAndLng(
                         GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLat()),
@@ -262,18 +303,75 @@ public class PlacesService {
 
         GridEntity gridRef = entityManager.getReference(GridEntity.class, gridId);
 
-        PlaceEntity place = placeRepo
-                .findByPlaceId(details.getPlace_id())
-                .orElseGet(()->{
-                    PlaceEntity entity = PlaceEntity.fromDetailsDto(details);
-                    entity.setGrid(gridRef);
-                    return entity;
-                });
+        PlaceEntity newPlace = PlaceEntity.fromDetailsDto(details);
+        syncPlaceContent(newPlace, details);
+        newPlace.setGrid(gridRef);
 
-        if(place.getId() !=null){
-            place.updateFromDetailsDto(details);
+        return placeRepo.save(newPlace);
+    }
+
+    @Transactional
+    private void syncPlaceContent(PlaceEntity place, PlaceDetailsResult details){
+        place.updateFromDetailsDto(details);
+
+        if(details.getPhotos() != null){
+            syncPlacePhotos(place, details.getPhotos());
         }
-        return placeRepo.save(place);
+        if(details.getReviews() != null){
+            syncPlaceReviews(place, details.getReviews());
+        }
+    }
+
+    private void syncPlacePhotos(PlaceEntity place, List<Photo> photos){
+        Set<String> existingPhotoRefs = photoRepo
+                .findAllReferencesByPlaceId(place.getPlaceId())
+                .stream()
+                .map(ref -> ref.replaceAll("\\s", ""))
+                .collect(Collectors.toSet());
+
+        List<PhotoEntity> newPhotos = photos.stream()
+                .filter(photo -> photo.getPhoto_reference() != null)
+                .filter(photo -> {
+                    String cleanRef = photo.getPhoto_reference().replaceAll("\\s", "");
+                    return !existingPhotoRefs.contains(cleanRef);
+                })
+                .map(photo -> {
+                    PhotoEntity newPhoto = new PhotoEntity();
+                    newPhoto.setPhotoReference(photo.getPhoto_reference().replaceAll("\\s", ""));
+                    newPhoto.setPlace(place);
+                    newPhoto.setHeight(photo.getHeight());
+                    newPhoto.setWidth(photo.getWidth());
+                    return newPhoto;
+                })
+                .toList();
+        if(!newPhotos.isEmpty()){
+            for(PhotoEntity newPhoto: newPhotos){
+                place.addPhoto(newPhoto);
+            }
+        }
+    }
+
+    private void syncPlaceReviews(PlaceEntity place, List<Review> reviews){
+        Set<Long> existingReviewsCreated = reviewRepo.findAllCreatedAtsByPlaceId(place.getPlaceId());
+
+        List<ReviewEntity> newReviews = reviews.stream()
+                .filter(review -> {
+                    return !existingReviewsCreated.contains(review.getTime());
+                })
+                .map(review -> {
+                    return new ReviewEntity(
+                            review.getAuthor_name(),
+                            review.getRating(),
+                            review.getText(),
+                            review.getTime(),
+                            place
+                    );
+                })
+                .toList();
+        if (!newReviews.isEmpty()){
+            reviewRepo.saveAll(newReviews);
+        }
+
     }
 
     private void persistPlaces(GridEntity grid, List<PlaceResult> results) {
@@ -340,6 +438,10 @@ public class PlacesService {
 
         PlaceEntity entity = PlaceEntity.fromDto(dto);
         entity.setGrid(grid);
+
+        if(dto.getPhotos() != null){
+            syncPlacePhotos(entity, dto.getPhotos());
+        }
 
         Long existingId = existingIds.get(entity.getPlaceId());
         if (existingId != null) {

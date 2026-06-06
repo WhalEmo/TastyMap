@@ -2,6 +2,7 @@ package com.beem.TastyMap.MapsReview;
 
 import com.beem.TastyMap.Exceptions.CustomExceptions;
 import com.beem.TastyMap.Maps.Entity.PlaceEntity;
+import com.beem.TastyMap.Redis.RedisKeyGenerator;
 import com.beem.TastyMap.Maps.Service.PlacesService;
 import com.beem.TastyMap.MapsReview.Data.Request.SentReviewReq;
 import com.beem.TastyMap.MapsReview.Data.Request.UpdateReviewReq;
@@ -19,6 +20,7 @@ import com.beem.TastyMap.MapsReview.Enum.ScoreType;
 import com.beem.TastyMap.RegisterLogin.UserEntity;
 import com.beem.TastyMap.RegisterLogin.UserRepo;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -27,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,29 +44,53 @@ public class ReviewService {
     private final EntityManager entityManager;
     private final UserRepo userRepo;
     private final ReviewMapper reviewMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ReviewService(ReviewRepo reviewRepo, PlacesService placesService,
-                         EntityManager entityManager, UserRepo userRepo, ReviewMapper reviewMapper) {
+                         EntityManager entityManager, UserRepo userRepo, ReviewMapper reviewMapper,
+                         ApplicationEventPublisher eventPublisher) {
         this.reviewRepo = reviewRepo;
         this.placesService = placesService;
         this.entityManager = entityManager;
         this.userRepo = userRepo;
         this.reviewMapper = reviewMapper;
+        this.eventPublisher = eventPublisher;
     }
 
+    @Transactional
     public ReviewResponse getPlaceReviews(String placeId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        List<ReviewResult> entityList = reviewRepo
-                .findByPlace_PlaceId(placeId, pageable)
-                .getContent()
+        boolean hasData = reviewRepo.existsByPlace_PlaceIdAndSource(placeId, ReviewSource.GOOGLE);
+
+        if(hasData){
+            eventPublisher.publishEvent(new ReviewUpdateEvent(placeId));
+        }
+        else{
+            String key = RedisKeyGenerator.createPlaceDetailsKey(placeId);
+            System.out.println("getPlaceReviews");
+            placesService.searchPlaceDetailsGoogleAPI(
+                    placeId,
+                    key
+            );
+        }
+
+        return getReviewDataBaseToResponse(
+                placeId,
+                page,
+                size
+        );
+    }
+
+    private ReviewResponse getReviewDataBaseToResponse(String placeId, int page, int size){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        List<ReviewResult> reviewResults = reviewRepo
+                .findAllByPlaceId(placeId, pageable)
                 .stream()
                 .map(ReviewResult::fromEntity)
                 .toList();
-
         return new ReviewResponse(
                 page,
                 size,
-                entityList,
+                reviewResults,
                 placeId
         );
     }
@@ -219,7 +244,7 @@ public class ReviewService {
 
     private void updateChildParentScoreControl(ReviewEntity entity, UpdateReviewReq request){
         boolean isChildReview = entity.getParent() != null;
-        boolean hasScores = request.getScores() != null && request.getScores().isEmpty();
+        boolean hasScores = request.getScores() != null && !request.getScores().isEmpty();
 
         if(isChildReview && hasScores){
             throw new CustomExceptions.ServiceException(
@@ -257,7 +282,7 @@ public class ReviewService {
     private void applyScoreListCreate(SentReviewReq request, ReviewEntity entity){
 
         boolean isChildReview = request.getParentId() != null;
-        boolean hasScores = request.getScores() != null && request.getScores().isEmpty();
+        boolean hasScores = request.getScores() != null && !request.getScores().isEmpty();
 
         if(isChildReview && hasScores){
             throw new CustomExceptions.ServiceException(

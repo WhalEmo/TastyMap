@@ -1,9 +1,9 @@
 package com.beem.TastyMap.MapsReview;
 
+import com.beem.TastyMap.BaseApiResponse;
 import com.beem.TastyMap.MapsReview.Data.Request.SentReviewReq;
 import com.beem.TastyMap.MapsReview.Data.Request.UpdateReviewReq;
 import com.beem.TastyMap.MapsReview.Data.Response.CreatedReviewRes;
-import com.beem.TastyMap.MapsReview.Data.Response.UpdatedReviewRes;
 import com.beem.TastyMap.MapsReview.Data.Response.ReviewResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +22,12 @@ public class ReviewController {
     }
 
     @GetMapping("/place-reviews/{placeId}")
-    public ResponseEntity<ReviewResponse> getPlaceReviews(
+    public BaseApiResponse<ReviewResponse> getPlaceReviews(
             @PathVariable String placeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ){
-        return ResponseEntity.ok(
+        return BaseApiResponse.success(
                 service.getPlaceReviews(
                         placeId,
                         page,
@@ -37,16 +37,16 @@ public class ReviewController {
     }
 
     @PostMapping("/send-review")
-    public ResponseEntity<CreatedReviewRes> sendPlaceReview(
+    public BaseApiResponse<CreatedReviewRes> sendPlaceReview(
             @RequestBody SentReviewReq request,
+            @RequestParam Long userId,
             Authentication authentication
     ){
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(
+        return BaseApiResponse
+                .success(
                         service.sendPlaceReview(
                                 request,
-                                (Long) authentication.getPrincipal()
+                                userId
                         )
                 );
     }
