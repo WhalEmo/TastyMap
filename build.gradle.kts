@@ -3,6 +3,7 @@ plugins {
     java
     id("org.springframework.boot") version "3.3.5"
     id("io.spring.dependency-management") version "1.1.7"
+    kotlin("jvm")
 }
 
 group = "com.beem"
@@ -32,6 +33,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 
     implementation("org.hibernate.search:hibernate-search-mapper-orm:7.1.0.Final")
     implementation("org.hibernate.search:hibernate-search-backend-lucene:7.1.0.Final")
@@ -50,6 +52,7 @@ dependencies {
 
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.withType<Test> {

@@ -1,13 +1,13 @@
-package com.beem.TastyMap.Maps;
+package com.beem.TastyMap.maps;
 
-import com.beem.TastyMap.Exceptions.CustomExceptions;
-import com.beem.TastyMap.Maps.Entity.GridEntity;
-import com.beem.TastyMap.Maps.Entity.GridStatus;
-import com.beem.TastyMap.Maps.Geo.GridCell;
-import com.beem.TastyMap.Maps.Repository.GridRepo;
-import com.beem.TastyMap.Maps.Service.PlacesService;
-import com.beem.TastyMap.Redis.RedisCacheService;
-import com.beem.TastyMap.Redis.RedisKeyGenerator;
+import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.maps.entity.GridEntity;
+import com.beem.TastyMap.maps.entity.GridStatus;
+import com.beem.TastyMap.maps.geo.GridCell;
+import com.beem.TastyMap.maps.repository.GridRepo;
+import com.beem.TastyMap.maps.service.PlacesService;
+import com.beem.TastyMap.redis.RedisCacheService;
+import com.beem.TastyMap.redis.RedisKeyGenerator;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;

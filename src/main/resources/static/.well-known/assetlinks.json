@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "org.beem.tastymap",
+    "sha256_cert_fingerprints": ["4C:92:C3:49:D2:F0:AC:68:02:67:B1:1C:A3:6F:67:17:7B:EA:03:EF:E8:71:0C:CA:56:A9:0E:3B:5C:0A:4E:06"]
+  }
+}]
