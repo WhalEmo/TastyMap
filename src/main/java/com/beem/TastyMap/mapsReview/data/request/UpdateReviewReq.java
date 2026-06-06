@@ -1,4 +1,6 @@
-package com.beem.TastyMap.mapsReview.data.Request;
+package com.beem.TastyMap.mapsReview.data.request;
+
+import com.beem.TastyMap.mapsReview.data.ScoreDto;
 
 import java.util.List;
 
@@ -6,16 +8,16 @@ public class UpdateReviewReq {
     private Long reviewId;
     private String content;
 
-    private List<ScoreRequest> scores;
+    private List<ScoreDto> scores;
 
     public UpdateReviewReq() {
     }
 
-    public List<ScoreRequest> getScores() {
+    public List<ScoreDto> getScores() {
         return scores;
     }
 
-    public void setScores(List<ScoreRequest> scores) {
+    public void setScores(List<ScoreDto> scores) {
         this.scores = scores;
     }
 

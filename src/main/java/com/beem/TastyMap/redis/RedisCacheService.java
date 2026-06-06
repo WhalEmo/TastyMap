@@ -1,4 +1,4 @@
-package com.beem.TastyMap.maps.service;
+package com.beem.TastyMap.redis;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +37,14 @@ public class RedisCacheService {
         }
     }
 
+    public boolean exists(String key) {
+        try {
+            return Boolean.TRUE.equals(redis.hasKey(key));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public <T> void set(String key, T value, long TTL){
         try {
             String json = objectMapper.writeValueAsString(value);
@@ -44,6 +52,19 @@ public class RedisCacheService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public <T> Boolean setIfAbsent(String key, T value, long TTL){
+        try {
+            String json = objectMapper.writeValueAsString(value);
+            return redis.opsForValue().setIfAbsent(key, json, Duration.ofSeconds(TTL));
+        }catch (Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void delete(String key) {
+        redis.delete(key);
     }
 
 }

@@ -1,4 +1,4 @@
-package com.beem.TastyMap.mapsReview.Enum;
+package com.beem.TastyMap.mapsReview.enums;
 
 public enum ScoreType {
     TASTE,

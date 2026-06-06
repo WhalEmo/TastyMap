@@ -1,4 +1,4 @@
-package com.beem.TastyMap.mapsReview.data.Response;
+package com.beem.TastyMap.mapsReview.data.response;
 
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 

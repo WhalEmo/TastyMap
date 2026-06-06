@@ -1,8 +1,8 @@
 package com.beem.TastyMap.mapsReview.entity;
 
 import com.beem.TastyMap.maps.entity.PlaceEntity;
-import com.beem.TastyMap.mapsReview.Enum.ReviewSource;
-import com.beem.TastyMap.mapsReview.Enum.ReviewStatus;
+import com.beem.TastyMap.mapsReview.enums.ReviewSource;
+import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import jakarta.persistence.*;
 
@@ -51,6 +51,9 @@ public class ReviewEntity {
     private Boolean deleted = false;
 
     private Integer likeCount = 0;
+
+    @Version
+    private Long version;
 
     @OneToMany(
             mappedBy = "review",
@@ -219,4 +222,16 @@ public class ReviewEntity {
     public void setScores(List<ScoreEntity> scores) {
         this.scores = scores;
     }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+    public void recalculateRating() {
+        this.rating = calculateTotalRating();
+    }
+
 }
