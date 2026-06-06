@@ -1,12 +1,11 @@
 package com.beem.TastyMap;
 
-import com.beem.TastyMap.RegisterLogin.UserService;
-import com.beem.TastyMap.Security.Verification.ServletFilter.JWTUtill;
-import com.beem.TastyMap.Security.Verification.ServletFilter.JwtAuthenticationFilter;
+import com.beem.TastyMap.registerLogin.UserService;
+import com.beem.TastyMap.security.verification.servletFilter.JWTUtill;
+import com.beem.TastyMap.security.verification.servletFilter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
