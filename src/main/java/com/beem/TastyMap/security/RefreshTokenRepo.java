@@ -9,17 +9,16 @@ import java.util.List;
 import java.util.Optional;
 
 public interface RefreshTokenRepo extends JpaRepository<RefreshTokenEntity,Long> {
-    Optional<RefreshTokenEntity>findByTokenAndRevokedFalse(String token);
-    Optional<RefreshTokenEntity>findByUserIdAndDeviceIdAndRevokedFalse(Long userid,String DeviceId);
-    boolean existsByUserIdAndDeviceIdAndRevokedFalse(Long userid,String DeviceId);
-    List<RefreshTokenEntity> findAllByUserIdAndRevokedFalse(Long userId);
-    long countByUserIdAndRevokedFalse(Long userId);
+    Optional<RefreshTokenEntity> findByUser_IdAndDeviceIdAndRevokedFalse(Long userId, String deviceId);
+    boolean existsByUser_IdAndDeviceIdAndRevokedFalse(Long userId, String deviceId);
+    @Query("SELECT r FROM RefreshTokenEntity r JOIN FETCH r.user WHERE r.token = :token AND r.revoked = false")
+    Optional<RefreshTokenEntity> findByTokenWithUser(@Param("token") String token);
 
     @Modifying(clearAutomatically = true)
     @Query("""
         UPDATE RefreshTokenEntity r
         SET r.revoked = true
-        WHERE r.userId = :userId
+        WHERE r.user.id = :userId
           AND r.revoked = false
     """)
     int revokeAllByUser(@Param("userId") Long userId);

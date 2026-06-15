@@ -38,3 +38,5 @@ out/
 ### ENV FILES ###
 .env
 .env.*
+### GEO DATA ###
+*.mmdb

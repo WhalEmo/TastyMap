@@ -1,13 +1,22 @@
 package com.beem.TastyMap.registerLogin;
 
+import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
+import com.beem.TastyMap.event.model.SecurityAlertEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.security.CustomUserDetails;
-import com.beem.TastyMap.security.verification.servletFilter.JWTUtill;
+import com.beem.TastyMap.security.Location.GeoLocationService;
+import com.beem.TastyMap.security.device.UserDeviceEntity;
+import com.beem.TastyMap.security.device.UserDeviceRepo;
+import com.beem.TastyMap.security.device.UserDeviceService;
+import com.beem.TastyMap.security.risk.BruteForceService;
+import com.beem.TastyMap.security.risk.RiskAnalysisService;
+import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.security.RefreshTokenEntity;
 import com.beem.TastyMap.security.RefreshTokenRepo;
+import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
 import com.beem.TastyMap.security.verification.emailVerify.EmailService;
@@ -19,10 +28,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,22 +37,31 @@ public class UserService implements UserDetailsService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final NotificationRepo notificationRepo;
+    private final BruteForceService bruteForceService;
+    private final RiskAnalysisService riskAnalysisService;
+    private final UserDeviceService userDeviceService;
     private final EmailRepo emailRepo;
     private final EmailService emailService;
+    private final UserDeviceRepo userDeviceRepo;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, EmailRepo emailRepo, EmailService emailService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, EmailService emailService, UserDeviceRepo userDeviceRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
+        this.bruteForceService = bruteForceService;
+        this.riskAnalysisService = riskAnalysisService;
+        this.userDeviceService = userDeviceService;
         this.emailRepo = emailRepo;
         this.emailService = emailService;
+        this.userDeviceRepo = userDeviceRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
         this.eventPublisher = eventPublisher;
     }
+
 
     @Transactional
     public UserResponseDTO register(UserRequestDTO user){
@@ -82,30 +98,42 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
+
+        String username = dto.getUsername().trim();
+        String deviceId = dto.getDeviceId();
+        String ip = IpUtils.getClientIp();
+
+        if (bruteForceService.isBlocked(username)) {
+            throw new CustomExceptions.AuthenticationException(
+                    "Çok fazla hatalı giriş. 30 dakika bekleyiniz."
+            );
+        }
+
         UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı adı veya Şifre yanlış!"));
+
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new CustomExceptions.InvalidCredentialsException("Kullanıcı adı veya Şifre yanlış!");
+            bruteForceService.registerFailedAttempt(username);
+            throw new CustomExceptions.InvalidCredentialsException(
+                    "Kullanıcı adı veya Şifre yanlış!"
+            );
         }
+
+        bruteForceService.resetAttempts(username);
+
         if (!user.isEmailVerified()) {
-            throw new CustomExceptions.AuthenticationException("Email adresiniz doğrulanmamış");
-        }
-        Optional<RefreshTokenEntity> existingDevice = refreshTokenRepo
-                .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());
-
-        if (existingDevice.isPresent()) {
-            return createTokensAndLogin(user, dto, userAgent, existingDevice.get());
+            throw new CustomExceptions.AuthenticationException(
+                    "Email adresiniz doğrulanmamış"
+            );
         }
 
-        boolean hasRecentUserActivity = user.getLastInteractionAt() != null
-                && user.getLastInteractionAt().isAfter(LocalDateTime.now().minusDays(30));
+        int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId);
 
-        if (hasRecentUserActivity) {
-            createOrUpdatePending(user, dto, userAgent);
-            return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
+        if (riskScore >= 70) {
+            return handleHighRiskLogin(user, dto, userAgent, ip);
         }
 
-        return createTokensAndLogin(user, dto, userAgent, null);
+        return createTokensAndLogin(user, dto, userAgent, ip,null);
     }
     @Transactional
     public void updateLastInteraction(Long userId) {
@@ -122,48 +150,40 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent, RefreshTokenEntity existingToken) {
+    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, RefreshTokenEntity existingToken) {
         String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtUtill.generateRefreshToken(user.getId(), dto.getDeviceId());
         RefreshTokenEntity refresh = (existingToken != null) ? existingToken : new RefreshTokenEntity();
 
-        refresh.setUserId(user.getId());
+        refresh.setUser(user);
         refresh.setToken(refreshToken);
         refresh.setDeviceId(dto.getDeviceId());
-        refresh.setUserAgent(userAgent);
         refresh.setExpiryDate(LocalDateTime.now().plusDays(30));
-        refresh.setLastUsedAt(LocalDateTime.now());
         refresh.setRevoked(false);
 
-        if (dto.getFcmToken() != null) {
-            refresh.setFcmToken(dto.getFcmToken());
-        }
+        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true);
         refreshTokenRepo.save(refresh);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }
 
-    @Transactional
-    private void createOrUpdatePending(
+    private LoginResponseDTO handleHighRiskLogin(
             UserEntity user,
             LoginRequestDTO dto,
-            String userAgent
+            String userAgent,
+            String ip
     ) {
 
-        Optional<NotificationEntity> existingPending =
-                notificationRepo.findByUserIdAndDeviceIdAndStatus(user.getId(), dto.getDeviceId(), Status.PENDING);
-        if (existingPending.isPresent()) {
-            return;
-        }
-        NotificationEntity n = new NotificationEntity();
-        n.setUserId(user.getId());
-        n.setDeviceId(dto.getDeviceId());
-        n.setUserAgent(userAgent);
-        n.setStatus(Status.PENDING);
-        n.setCreatedAt(LocalDateTime.now());
-        n.setExpiresAt(LocalDateTime.now().plusMinutes(10));//10 dakika gecerli
-        notificationRepo.save(n);
+        boolean exists = notificationRepo
+                .existsByUserIdAndDeviceIdAndStatus(
+                        user.getId(),
+                        dto.getDeviceId(),
+                        Status.PENDING
+                );
 
-        // 🔔 SADECE BURADA bildirim at
+        if (!exists) {
+            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip));
+        }
+        return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
     }
 
     @Override

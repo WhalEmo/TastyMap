@@ -1,5 +1,6 @@
-package com.beem.TastyMap.registerLogin;
+package com.beem.TastyMap.event.listener;
 
+import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.security.verification.emailVerify.EmailService;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;

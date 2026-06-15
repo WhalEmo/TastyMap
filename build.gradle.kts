@@ -33,6 +33,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("com.maxmind.geoip2:geoip2:4.2.1")
+    implementation("com.google.firebase:firebase-admin:9.4.3")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 

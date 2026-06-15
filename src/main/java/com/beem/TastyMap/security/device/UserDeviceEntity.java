@@ -1,4 +1,4 @@
-package com.beem.TastyMap.notification;
+package com.beem.TastyMap.security.device;
 
 import com.beem.TastyMap.registerLogin.UserEntity;
 import jakarta.persistence.*;
@@ -6,7 +6,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-public class NotificationEntity {
+@Table(name = "user_devices")
+public class UserDeviceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,26 +16,18 @@ public class NotificationEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
+    @Column(nullable = false)
     private String deviceId;
+
     private String userAgent;
-
-    @Enumerated(EnumType.STRING)
-    private Status status;
-
     private String lastIpAddress;
+    private String fcmToken;
+    @Column(length = 100)
     private String lastCity;
+
     private boolean isTrusted = false;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime expiresAt;
-
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
-    }
-
-    public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
+    private LocalDateTime lastLoginAt;
 
     public Long getId() {
         return id;
@@ -60,29 +53,12 @@ public class NotificationEntity {
         this.deviceId = deviceId;
     }
 
-
     public String getUserAgent() {
         return userAgent;
     }
 
     public void setUserAgent(String userAgent) {
         this.userAgent = userAgent;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 
     public String getLastIpAddress() {
@@ -93,12 +69,12 @@ public class NotificationEntity {
         this.lastIpAddress = lastIpAddress;
     }
 
-    public String getLastCity() {
-        return lastCity;
+    public String getFcmToken() {
+        return fcmToken;
     }
 
-    public void setLastCity(String lastCity) {
-        this.lastCity = lastCity;
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
     }
 
     public boolean isTrusted() {
@@ -107,5 +83,21 @@ public class NotificationEntity {
 
     public void setTrusted(boolean trusted) {
         isTrusted = trusted;
+    }
+
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+    }
+
+    public String getLastCity() {
+        return lastCity;
+    }
+
+    public void setLastCity(String lastCity) {
+        this.lastCity = lastCity;
     }
 }

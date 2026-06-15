@@ -43,8 +43,10 @@ public class UserController {
             ResponseCookie refreshCookie = userService.createCookie("refresh_token", loginResponse.getRefreshToken(), 2592000, "/api/users/refresh");
 
             return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                    .headers(headers -> {
+                        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
+                        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+                    })
                     .body(new LoginResponseDTO("Giriş başarılı"));
         }
 
