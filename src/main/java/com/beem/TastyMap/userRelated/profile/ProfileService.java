@@ -4,15 +4,13 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.registerLogin.UserResponseDTO;
-import com.beem.TastyMap.security.RefreshTokenEntity;
-import com.beem.TastyMap.security.RefreshTokenRepo;
-import com.beem.TastyMap.security.RefreshTokenRequestDTO;
-import com.beem.TastyMap.security.device.UserDeviceEntity;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -48,36 +46,24 @@ public class ProfileService {
         userRepo.save(user);
     }
 
-    @Transactional
     public void logout(RefreshTokenRequestDTO dto, Long userId) {
-        RefreshTokenEntity rf = refreshTokenRepo.findByTokenWithUser(dto.getRefreshToken())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Token bulunamadı"));
-
+        RefreshTokenEntity rf = refreshTokenRepo
+                .findByTokenAndRevokedFalse(dto.getRefreshToken())
+                .orElseThrow(() ->
+                        new CustomExceptions.NotFoundException("Refresh token bulunamadı"));
         if (!rf.getUser().getId().equals(userId) || !rf.getDeviceId().equals(dto.getDeviceId())) {
             throw new CustomExceptions.AuthorizationException("Yetkisiz veya geçersiz cihaz");
         }
-
         rf.setRevoked(true);
         refreshTokenRepo.save(rf);
-        userDeviceRepo.findByUser_IdAndDeviceId(userId, dto.getDeviceId())
-                .ifPresent(device -> {
-                    device.setTrusted(false);
-                    userDeviceRepo.save(device);
-                });
     }
 
-    public List<ActiveDeviceDTO> getActiveDevices(Long userId) {
-        List<UserDeviceEntity> devices = userDeviceRepo.findByUser_IdAndIsTrustedTrue(userId);
-
-        return devices.stream().map(device -> new ActiveDeviceDTO(
-                device.getDeviceId(),
-                device.getUserAgent(),
-                device.getLastLoginAt()
-        )).toList();
+    public List<ActiveDeviceDTO> getActiveDevices(Long userId){
+        return refreshTokenRepo.findActiveDevices(userId);
     }
 
     public long getActiveDeviceCount(Long userId) {
-        return userDeviceRepo.countByUser_IdAndIsTrustedTrue(userId);
+        return refreshTokenRepo.countByUser_IdAndRevokedFalse(userId);
     }
 
     public void changePassword(ChangePasswordDTO dto, Long userId){

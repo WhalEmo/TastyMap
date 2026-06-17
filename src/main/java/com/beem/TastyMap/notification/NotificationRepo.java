@@ -6,8 +6,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface NotificationRepo extends JpaRepository<NotificationEntity,Long> {
-    Optional<NotificationEntity>findByUserIdAndDeviceId(Long userId, String deviceId);
-    boolean existsByUserIdAndDeviceIdAndStatus(Long userid, String deviceId,Status status);
+    Optional<NotificationEntity> findByUser_IdAndDeviceId(Long userId, String deviceId);
+    boolean existsByUser_IdAndDeviceIdAndStatus(Long userId, String deviceId, Status status);
     @Query("SELECT n.user.id FROM NotificationEntity n WHERE n.id = :id")
     Optional<Long> findUserIdById(@Param("id") Long id);
 }

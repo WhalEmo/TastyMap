@@ -24,6 +24,7 @@ public class NotificationEntity {
     private String lastIpAddress;
     private String lastCity;
     private boolean isTrusted = false;
+    private boolean isRead = false;
 
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
@@ -107,5 +108,13 @@ public class NotificationEntity {
 
     public void setTrusted(boolean trusted) {
         isTrusted = trusted;
+    }
+
+    public boolean isRead() {
+        return isRead;
+    }
+
+    public void setRead(boolean read) {
+        isRead = read;
     }
 }

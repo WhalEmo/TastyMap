@@ -1,10 +1,11 @@
 package com.beem.TastyMap.event.listener;
 
-import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
 import com.beem.TastyMap.notification.*;
 import com.beem.TastyMap.security.device.UserDeviceEntity;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
+import com.beem.TastyMap.security.verification.pendingRiskVerify.PendingRepo;
+import com.beem.TastyMap.security.verification.pendingRiskVerify.PendingService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -23,6 +24,7 @@ public class SecurityNotificationListener {
         this.userDeviceRepo = userDeviceRepo;
         this.fcmService = fcmService;
     }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleSecurityAlert(SecurityAlertEvent event) {
         NotificationEntity n = new NotificationEntity();
@@ -50,7 +52,7 @@ public class SecurityNotificationListener {
                     fcmService.sendSecurityNotification(
                             device.getFcmToken(),
                             "Güvenlik Uyarısı!",
-                            "Hesabınıza yeni bir cihazdan giriş denemesi yapıldı. Siz misiniz?",
+                            device.getLastCity()+" konumundan hesabınıza yeni bir cihazdan giriş denemesi yapıldı. Siz misiniz?",
                             savedNotification.getId()
                     );
                 }

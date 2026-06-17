@@ -1,4 +1,4 @@
-package com.beem.TastyMap.security;
+package com.beem.TastyMap.security.refreshToken;
 
 import com.beem.TastyMap.registerLogin.UserEntity;
 import jakarta.persistence.*;

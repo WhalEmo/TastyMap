@@ -2,24 +2,22 @@ package com.beem.TastyMap.registerLogin;
 
 import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
+import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.security.CustomUserDetails;
-import com.beem.TastyMap.security.Location.GeoLocationService;
-import com.beem.TastyMap.security.device.UserDeviceEntity;
-import com.beem.TastyMap.security.device.UserDeviceRepo;
 import com.beem.TastyMap.security.device.UserDeviceService;
 import com.beem.TastyMap.security.risk.BruteForceService;
 import com.beem.TastyMap.security.risk.RiskAnalysisService;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
-import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.security.RefreshTokenEntity;
-import com.beem.TastyMap.security.RefreshTokenRepo;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
 import com.beem.TastyMap.security.verification.emailVerify.EmailService;
+import com.beem.TastyMap.security.verification.pendingRiskVerify.PendingEntity;
+import com.beem.TastyMap.security.verification.pendingRiskVerify.PendingRepo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -41,13 +39,12 @@ public class UserService implements UserDetailsService {
     private final RiskAnalysisService riskAnalysisService;
     private final UserDeviceService userDeviceService;
     private final EmailRepo emailRepo;
-    private final EmailService emailService;
-    private final UserDeviceRepo userDeviceRepo;
+    private final PendingRepo pendingRepo;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, EmailService emailService, UserDeviceRepo userDeviceRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, PendingRepo pendingRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
@@ -55,8 +52,7 @@ public class UserService implements UserDetailsService {
         this.riskAnalysisService = riskAnalysisService;
         this.userDeviceService = userDeviceService;
         this.emailRepo = emailRepo;
-        this.emailService = emailService;
-        this.userDeviceRepo = userDeviceRepo;
+        this.pendingRepo = pendingRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
         this.eventPublisher = eventPublisher;
@@ -132,8 +128,7 @@ public class UserService implements UserDetailsService {
         if (riskScore >= 70) {
             return handleHighRiskLogin(user, dto, userAgent, ip);
         }
-
-        return createTokensAndLogin(user, dto, userAgent, ip,null);
+        return createTokensAndLogin(user, dto, userAgent,null);
     }
     @Transactional
     public void updateLastInteraction(Long userId) {
@@ -150,7 +145,7 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, RefreshTokenEntity existingToken) {
+    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent,RefreshTokenEntity existingToken) {
         String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtUtill.generateRefreshToken(user.getId(), dto.getDeviceId());
         RefreshTokenEntity refresh = (existingToken != null) ? existingToken : new RefreshTokenEntity();
@@ -174,7 +169,7 @@ public class UserService implements UserDetailsService {
     ) {
 
         boolean exists = notificationRepo
-                .existsByUserIdAndDeviceIdAndStatus(
+                .existsByUser_IdAndDeviceIdAndStatus(
                         user.getId(),
                         dto.getDeviceId(),
                         Status.PENDING
@@ -182,6 +177,14 @@ public class UserService implements UserDetailsService {
 
         if (!exists) {
             eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip));
+            String token= UUID.randomUUID().toString();
+            PendingEntity verification=new PendingEntity();
+            verification.setUser(user);
+            verification.setToken(token);
+            verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+            pendingRepo.save(verification);
+
+            eventPublisher.publishEvent(new SecurityEmailModel(user,token));
         }
         return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
     }
@@ -195,25 +198,6 @@ public class UserService implements UserDetailsService {
         return new CustomUserDetails(user);
     }
 
-    @Transactional
-    public void resendVerification(String email) {
-        UserEntity user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
-
-        if (user.isEmailVerified()) {
-            throw new CustomExceptions.NotFoundException("Bu hesap zaten doğrulanmış.");
-        }
-
-        emailRepo.deleteByUser(user);
-        String newToken = UUID.randomUUID().toString();
-        EmailEntitiy verification = new EmailEntitiy();
-        verification.setUser(user);
-        verification.setToken(newToken);
-        verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
-        emailRepo.save(verification);
-
-        emailService.sendVerificationMail(newToken, user.getEmail());
-    }
     protected ResponseCookie createCookie(String name, String value, long maxAge, String path) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)

@@ -1,9 +1,9 @@
 package com.beem.TastyMap.registerLogin;
 
-import com.beem.TastyMap.security.ApprovedRefreshRequestDTO;
-import com.beem.TastyMap.security.RefreshTokenRequestDTO;
-import com.beem.TastyMap.security.RefreshTokenResponseDTO;
-import com.beem.TastyMap.security.RefreshTokenService;
+import com.beem.TastyMap.security.refreshToken.ApprovedRefreshRequestDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenResponseDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -107,13 +107,6 @@ public class UserController {
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                     .body(new RefreshTokenResponseDTO("Giriş başarılı"));
         }
-    }
-    @PostMapping("/resendMail")
-    public ResponseEntity<String> resendMail(
-            @RequestParam String email
-    ) {
-         userService.resendVerification(email);
-        return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
     }
 
 

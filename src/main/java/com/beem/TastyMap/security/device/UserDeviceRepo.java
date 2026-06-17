@@ -1,6 +1,5 @@
 package com.beem.TastyMap.security.device;
 
-import com.beem.TastyMap.security.RefreshTokenEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

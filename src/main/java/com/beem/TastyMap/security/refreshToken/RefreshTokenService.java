@@ -1,4 +1,4 @@
-package com.beem.TastyMap.security;
+package com.beem.TastyMap.security.refreshToken;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
@@ -6,12 +6,8 @@ import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.security.Location.GeoLocationService;
-import com.beem.TastyMap.security.device.UserDeviceEntity;
-import com.beem.TastyMap.security.device.UserDeviceRepo;
 import com.beem.TastyMap.security.device.UserDeviceService;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
-import com.beem.TastyMap.security.util.IpUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -95,17 +91,12 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshTokenResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
-        Optional<NotificationEntity> notificationOpt = notificationRepo.findByUserIdAndDeviceId(dto.getUserId(), dto.getDeviceId());
+        Optional<NotificationEntity> notificationOpt = notificationRepo.findByUser_IdAndDeviceId(dto.getUserId(), dto.getDeviceId());
         if (notificationOpt.isEmpty()) {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");
         }
         NotificationEntity notification = notificationOpt.get();
 
-        if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
-            notification.setStatus(Status.EXPIRED);
-            notificationRepo.save(notification);
-            throw new CustomExceptions.InvalidException("Onay süresi dolmuş");
-        }
 
         if (notification.getStatus() == Status.REJECTED) {
             throw new CustomExceptions.AuthorizationException("Cihaz için onay verilmedi");
