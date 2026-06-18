@@ -18,8 +18,8 @@ public class BruteForceService {
 
     public void registerFailedAttempt(String username) {
         String key = "login_attempts:" + username;
-        Object value = redisTemplate.opsForValue().get(key);
-        Integer attempts = (value == null) ? null : Integer.valueOf(value.toString());
+        String value = (String) redisTemplate.opsForValue().get(key);
+        Integer attempts = value == null ? null : Integer.valueOf(value);
         int newAttempts = (attempts == null) ? 1 : attempts + 1;
 
         redisTemplate.opsForValue().set(key, newAttempts, Duration.ofMinutes(BLOCK_TIME_MINUTES));

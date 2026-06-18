@@ -96,14 +96,8 @@ public class RefreshTokenService {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");
         }
         NotificationEntity notification = notificationOpt.get();
-
-
-        if (notification.getStatus() == Status.REJECTED) {
-            throw new CustomExceptions.AuthorizationException("Cihaz için onay verilmedi");
-        }
-
-        if (notification.getStatus() == Status.PENDING) {
-            throw new CustomExceptions.InvalidException("Cihaz için onay bekleniyor");
+        if (notification.getStatus() != Status.APPROVED) {
+            throw new CustomExceptions.AuthorizationException("Cihaz henüz onaylanmadı, önce e-posta onayını yap!");
         }
         UserEntity user = userRepo.findById(dto.getUserId())
                 .orElseThrow(() ->

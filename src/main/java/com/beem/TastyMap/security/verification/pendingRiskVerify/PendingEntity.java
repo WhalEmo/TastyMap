@@ -14,8 +14,11 @@ public class PendingEntity {
     private String token;
     private boolean used = false;
 
-    @OneToOne
+    private String deviceId;
+
+    @ManyToOne
     private UserEntity user;
+
     private LocalDateTime expiryDate;
 
     public Long getId() {
@@ -40,6 +43,14 @@ public class PendingEntity {
 
     public void setUsed(boolean used) {
         this.used = used;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public UserEntity getUser() {

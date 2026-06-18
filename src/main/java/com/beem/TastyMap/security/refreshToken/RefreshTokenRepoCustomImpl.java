@@ -1,5 +1,5 @@
 package com.beem.TastyMap.security.refreshToken;
-import com.beem.TastyMap.security.QRefreshTokenEntity;
+import com.beem.TastyMap.security.refreshToken.QRefreshTokenEntity;
 import com.beem.TastyMap.security.device.QUserDeviceEntity;
 import com.beem.TastyMap.userRelated.profile.ActiveDeviceDTO;
 import com.querydsl.core.types.Projections;

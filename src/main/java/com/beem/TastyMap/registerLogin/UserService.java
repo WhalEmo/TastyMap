@@ -104,7 +104,6 @@ public class UserService implements UserDetailsService {
                     "Çok fazla hatalı giriş. 30 dakika bekleyiniz."
             );
         }
-
         UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı adı veya Şifre yanlış!"));
 
@@ -130,6 +129,7 @@ public class UserService implements UserDetailsService {
         }
         return createTokensAndLogin(user, dto, userAgent,null);
     }
+
     @Transactional
     public void updateLastInteraction(Long userId) {
         UserEntity user = userRepo.findById(userId)
@@ -180,6 +180,7 @@ public class UserService implements UserDetailsService {
             String token= UUID.randomUUID().toString();
             PendingEntity verification=new PendingEntity();
             verification.setUser(user);
+            verification.setDeviceId(dto.getDeviceId());
             verification.setToken(token);
             verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
             pendingRepo.save(verification);

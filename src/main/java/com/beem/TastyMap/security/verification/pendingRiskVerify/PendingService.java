@@ -3,26 +3,29 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.registerLogin.LoginStatus;
+import com.beem.TastyMap.websocket.LoginSecureEventService;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class PendingService {
     private final PendingRepo pendingRepo;
     private final NotificationRepo notificationRepo;
+    private final LoginSecureEventService loginSecureEventService;
     private final JavaMailSender javaMailSender;
 
-    public PendingService(PendingRepo pendingRepo, NotificationRepo notificationRepo, JavaMailSender javaMailSender) {
+    public PendingService(PendingRepo pendingRepo, NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, JavaMailSender javaMailSender) {
         this.pendingRepo = pendingRepo;
         this.notificationRepo = notificationRepo;
+        this.loginSecureEventService = loginSecureEventService;
         this.javaMailSender = javaMailSender;
     }
     @Value("${app.base-url}")
@@ -36,11 +39,11 @@ public class PendingService {
         helper.setTo(email);
         helper.setSubject("Güvenlik Uyarısı: Şüpheli Giriş Denemesi");
 
-        String approveLink = "https://tastymap.com/api/auth/approve?token=" + token + "&action=approve";
-        String rejectLink = "https://tastymap.com/api/auth/reject?token=" + token + "&action=reject";
+        String approveLink = baseURL+ "/auth/verifyLogin?token=" + token + "&action=approve";
+        String rejectLink = baseURL+ "/auth/verifyLogin?token="+ token + "&action=reject";
 
 
-        String verificationLinkW = "http://localhost:8081/#verify?token=" + token; //web
+        //String verificationLinkW = "http://localhost:8081/#verify?token=" + token; //web
         //String verificationLinkA=baseURL+"/auth/verify?token="+token;
 
         String htmlBody = """
@@ -60,32 +63,39 @@ public class PendingService {
     }
 
     @Transactional
-    public boolean verifyToken(String token,String action,Long userId,String deviceId){
-        PendingEntity pendingToken=pendingRepo.findByToken(token)
+    public void verifyToken(String token,String action){
+        PendingEntity pendingToken=pendingRepo.findByTokenWithUser(token)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
 
-        NotificationEntity notificationOpt = notificationRepo.findByUser_IdAndDeviceId(userId, deviceId)
+        NotificationEntity notification = notificationRepo.findByUser_IdAndDeviceId(pendingToken.getUser().getId(), pendingToken.getDeviceId())
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Bildirim bulunamadı"));
 
         if(pendingToken.getExpiryDate().isBefore(LocalDateTime.now())){
+            notification.setStatus(Status.REJECTED);
             throw new CustomExceptions.TokenExpiredException("Doğrulama linkinin süresi dolmuş. Lütfen yeni bir link isteyin.");
         }
         if (pendingToken.isUsed()) {
             throw new CustomExceptions.AlreadyVerifiedException("Zaten cevap verilmiş");
         }
-        boolean success = false;
         if ("approve".equals(action)) {
-            notificationOpt.setRead(true);
-            notificationOpt.setStatus(Status.APPROVED);
-            success = refreshservice.refreshApproved(pendingToken.getUserId(), pendingToken.getSessionId());
+            notification.setStatus(Status.APPROVED);
+            notification.setRead(true);
+            try {
+                loginSecureEventService.loginApproved(notification.getDeviceId());
+            } catch (IOException e) {
+                log.error("WebSocket hatası", e);
+            }
         } else {
-
+            notification.setStatus(Status.REJECTED);
+            try {
+                loginSecureEventService.loginRejected(notification.getDeviceId());
+            } catch (IOException e) {
+                log.error("WebSocket hatası", e);
+            }
         }
 
-        // 5. Token'ı "kullanıldı" olarak işaretle
         pendingToken.setUsed(true);
         pendingRepo.save(pendingToken);
-
-        return success;
+        notificationRepo.save(notification);
     }
 }

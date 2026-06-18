@@ -3,7 +3,6 @@ plugins {
     java
     id("org.springframework.boot") version "3.3.5"
     id("io.spring.dependency-management") version "1.1.7"
-    kotlin("jvm")
 }
 
 group = "com.beem"
@@ -35,6 +34,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
     implementation("com.maxmind.geoip2:geoip2:4.2.1")
     implementation("com.google.firebase:firebase-admin:9.4.3")
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
@@ -49,7 +49,8 @@ dependencies {
 
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
-    implementation(kotlin("stdlib-jdk8"))
+    compileOnly("org.projectlombok:lombok:1.18.32")
+    annotationProcessor("org.projectlombok:lombok:1.18.32")
 }
 
 tasks.withType<Test> {
