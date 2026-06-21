@@ -15,9 +15,6 @@ import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
-import com.beem.TastyMap.security.verification.emailVerify.EmailService;
-import com.beem.TastyMap.security.verification.pendingRiskVerify.PendingEntity;
-import com.beem.TastyMap.security.verification.pendingRiskVerify.PendingRepo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -39,12 +36,11 @@ public class UserService implements UserDetailsService {
     private final RiskAnalysisService riskAnalysisService;
     private final UserDeviceService userDeviceService;
     private final EmailRepo emailRepo;
-    private final PendingRepo pendingRepo;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, PendingRepo pendingRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
@@ -52,7 +48,6 @@ public class UserService implements UserDetailsService {
         this.riskAnalysisService = riskAnalysisService;
         this.userDeviceService = userDeviceService;
         this.emailRepo = emailRepo;
-        this.pendingRepo = pendingRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
         this.eventPublisher = eventPublisher;
@@ -167,7 +162,6 @@ public class UserService implements UserDetailsService {
             String userAgent,
             String ip
     ) {
-
         boolean exists = notificationRepo
                 .existsByUser_IdAndDeviceIdAndStatus(
                         user.getId(),
@@ -176,16 +170,8 @@ public class UserService implements UserDetailsService {
                 );
 
         if (!exists) {
-            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip));
             String token= UUID.randomUUID().toString();
-            PendingEntity verification=new PendingEntity();
-            verification.setUser(user);
-            verification.setDeviceId(dto.getDeviceId());
-            verification.setToken(token);
-            verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
-            pendingRepo.save(verification);
-
-            eventPublisher.publishEvent(new SecurityEmailModel(user,token));
+            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token));
         }
         return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
     }

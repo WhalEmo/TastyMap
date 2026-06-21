@@ -1,8 +1,6 @@
 package com.beem.TastyMap.security.refreshToken;
 
 public class ApprovedRefreshRequestDTO {
-
-    private Long userId;
     private String deviceId;
     private String userAgent;
     private String fcmToken;
@@ -13,14 +11,6 @@ public class ApprovedRefreshRequestDTO {
 
     public void setFcmToken(String fcmToken) {
         this.fcmToken = fcmToken;
-    }
-
-    public Long getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Long userId) {
-        this.userId = userId;
     }
 
     public String getDeviceId() {

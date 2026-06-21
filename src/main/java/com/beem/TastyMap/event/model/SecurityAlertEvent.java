@@ -8,12 +8,14 @@ public class SecurityAlertEvent {
     private final LoginRequestDTO dto;
     private final String userAgent;
     private final String ip;
+    private final String token;
 
-    public SecurityAlertEvent(UserEntity user, LoginRequestDTO dto, String userAgent, String ip) {
+    public SecurityAlertEvent(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, String token) {
         this.user = user;
         this.dto = dto;
         this.userAgent = userAgent;
         this.ip = ip;
+        this.token = token;
     }
 
     public UserEntity getUser() {
@@ -30,5 +32,9 @@ public class SecurityAlertEvent {
 
     public String getIp() {
         return ip;
+    }
+
+    public String getToken() {
+        return token;
     }
 }

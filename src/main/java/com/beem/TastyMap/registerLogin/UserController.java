@@ -90,22 +90,22 @@ public class UserController {
     }
 
     @PostMapping("/refresh/approved")
-    public ResponseEntity<RefreshTokenResponseDTO> refreshApproved(
+    public ResponseEntity<LoginResponseDTO> refreshApproved(
             @RequestBody ApprovedRefreshRequestDTO dto,
             @RequestHeader(value = "X-Client-Type", defaultValue = "WEB") String clientType
     ) {
-        RefreshTokenResponseDTO response = refreshTokenService.refreshApproved(dto);
+        LoginResponseDTO response = refreshTokenService.refreshApproved(dto);
 
         if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
             return ResponseEntity.ok().body(response);
         } else {
             ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
-            ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh/approved");
+            ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshToken(), 2592000, "/api/users/refresh/approved");
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new RefreshTokenResponseDTO("Giriş başarılı"));
+                    .body(new LoginResponseDTO("Giriş başarılı"));
         }
     }
 

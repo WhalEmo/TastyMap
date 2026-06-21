@@ -6,6 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "notifications", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_user_device", columnNames = {"user_id", "deviceId"})
+})
 public class NotificationEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,10 +27,11 @@ public class NotificationEntity {
     private String lastIpAddress;
     private String lastCity;
     private boolean isTrusted = false;
-    private boolean isRead = false;
 
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
+    private String token;
+    private boolean isUsed;
 
     public LocalDateTime getExpiresAt() {
         return expiresAt;
@@ -110,11 +114,20 @@ public class NotificationEntity {
         isTrusted = trusted;
     }
 
-    public boolean isRead() {
-        return isRead;
+
+    public String getToken() {
+        return token;
     }
 
-    public void setRead(boolean read) {
-        isRead = read;
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public boolean isUsed() {
+        return isUsed;
+    }
+
+    public void setUsed(boolean used) {
+        isUsed = used;
     }
 }

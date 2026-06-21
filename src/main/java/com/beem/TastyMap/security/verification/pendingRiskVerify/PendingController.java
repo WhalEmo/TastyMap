@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.io.IOException;
+
 @Controller
 @RequestMapping("/auth")
 public class PendingController {
@@ -18,7 +20,7 @@ public class PendingController {
     public String verify(
             @RequestParam String token,
             @RequestParam String action
-    ) {
+    ) throws IOException {
         pendingService.verifyToken(token, action);
 
         boolean isApproved = "approve".equals(action);

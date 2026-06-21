@@ -1,4 +1,5 @@
 package com.beem.TastyMap.security.verification.pendingRiskVerify;
+import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
@@ -17,13 +18,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class PendingService {
-    private final PendingRepo pendingRepo;
     private final NotificationRepo notificationRepo;
     private final LoginSecureEventService loginSecureEventService;
     private final JavaMailSender javaMailSender;
 
-    public PendingService(PendingRepo pendingRepo, NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, JavaMailSender javaMailSender) {
-        this.pendingRepo = pendingRepo;
+    public PendingService( NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, JavaMailSender javaMailSender) {
         this.notificationRepo = notificationRepo;
         this.loginSecureEventService = loginSecureEventService;
         this.javaMailSender = javaMailSender;
@@ -63,39 +62,29 @@ public class PendingService {
     }
 
     @Transactional
-    public void verifyToken(String token,String action){
-        PendingEntity pendingToken=pendingRepo.findByTokenWithUser(token)
+    public void verifyToken(String token, String action) throws IOException {
+        NotificationEntity notification = notificationRepo.findByTokenWithUser(token)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
 
-        NotificationEntity notification = notificationRepo.findByUser_IdAndDeviceId(pendingToken.getUser().getId(), pendingToken.getDeviceId())
-                .orElseThrow(() -> new CustomExceptions.InvalidException("Bildirim bulunamadı"));
+        if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            notification.setStatus(Status.EXPIRED);
+            notificationRepo.save(notification);
+            throw new CustomExceptions.TokenExpiredException("Süre dolmuş.");
+        }
 
-        if(pendingToken.getExpiryDate().isBefore(LocalDateTime.now())){
-            notification.setStatus(Status.REJECTED);
-            throw new CustomExceptions.TokenExpiredException("Doğrulama linkinin süresi dolmuş. Lütfen yeni bir link isteyin.");
+        if (notification.isUsed()) {
+            throw new CustomExceptions.AlreadyVerifiedException("Zaten cevap verilmiş.");
         }
-        if (pendingToken.isUsed()) {
-            throw new CustomExceptions.AlreadyVerifiedException("Zaten cevap verilmiş");
-        }
+
         if ("approve".equals(action)) {
             notification.setStatus(Status.APPROVED);
-            notification.setRead(true);
-            try {
-                loginSecureEventService.loginApproved(notification.getDeviceId());
-            } catch (IOException e) {
-                log.error("WebSocket hatası", e);
-            }
+            loginSecureEventService.loginApproved(notification.getDeviceId());
         } else {
             notification.setStatus(Status.REJECTED);
-            try {
-                loginSecureEventService.loginRejected(notification.getDeviceId());
-            } catch (IOException e) {
-                log.error("WebSocket hatası", e);
-            }
+            loginSecureEventService.loginRejected(notification.getDeviceId());
         }
 
-        pendingToken.setUsed(true);
-        pendingRepo.save(pendingToken);
+        notification.setUsed(true);
         notificationRepo.save(notification);
     }
 }

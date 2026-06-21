@@ -1,11 +1,13 @@
 package com.beem.TastyMap.security.refreshToken;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.registerLogin.LoginResponseDTO;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
+import com.beem.TastyMap.registerLogin.UserResponseDTO;
 import com.beem.TastyMap.security.device.UserDeviceService;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import org.springframework.stereotype.Service;
@@ -90,8 +92,10 @@ public class RefreshTokenService {
 
 
     @Transactional
-    public RefreshTokenResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
-        Optional<NotificationEntity> notificationOpt = notificationRepo.findByUser_IdAndDeviceId(dto.getUserId(), dto.getDeviceId());
+    public LoginResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
+        Optional<NotificationEntity> notificationOpt = notificationRepo
+                .findByDeviceIdAndStatusWithUser(dto.getDeviceId(), Status.PENDING);
+
         if (notificationOpt.isEmpty()) {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");
         }
@@ -99,22 +103,18 @@ public class RefreshTokenService {
         if (notification.getStatus() != Status.APPROVED) {
             throw new CustomExceptions.AuthorizationException("Cihaz henüz onaylanmadı, önce e-posta onayını yap!");
         }
-        UserEntity user = userRepo.findById(dto.getUserId())
-                .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Kullanıcı bulunamadı")
-                );
 
-        boolean alreadyHasToken = refreshTokenRepo.existsByUser_IdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());
+        boolean alreadyHasToken = refreshTokenRepo.existsByUser_IdAndDeviceIdAndRevokedFalse(notification.getUser().getId(), dto.getDeviceId());
 
         if (alreadyHasToken) {
             throw new CustomExceptions.InvalidException("Bu cihaz zaten yetkilendirilmiş");
         }
-        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true);
+        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true);
 
-        String refreshToken = jwtUtill.generateRefreshToken(user.getId(),dto.getDeviceId());
+        String refreshToken = jwtUtill.generateRefreshToken(notification.getUser().getId(),dto.getDeviceId());
 
         RefreshTokenEntity rf = new RefreshTokenEntity(
-                user,
+                notification.getUser(),
                 refreshToken,
                 dto.getDeviceId(),
                 LocalDateTime.now().plusDays(30),
@@ -122,9 +122,9 @@ public class RefreshTokenService {
         );
 
         refreshTokenRepo.save(rf);
-        String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
+        String accessToken = jwtUtill.generateAccessToken(notification.getUser().getId(), notification.getUser().getRole());
         notificationRepo.delete(notification);
-
-        return new RefreshTokenResponseDTO(accessToken, refreshToken, "basarili");
+        return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(notification.getUser()));
+        //return new RefreshTokenResponseDTO(accessToken, refreshToken, "basarili");
     }
 }
