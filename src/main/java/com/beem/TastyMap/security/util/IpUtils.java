@@ -12,10 +12,6 @@ public class IpUtils {
             return "0.0.0.0";
         }
         HttpServletRequest request = attributes.getRequest();
-
-        //Eğer server.forward-headers-strategy=native ayarlıysa,
-        // request.getRemoteAddr() zaten proxy tarafından gelen gerçek IP'dir.
-        //BURASI PROXY OLUNCA DEGISECEK GERI DON
         String ip = request.getRemoteAddr();
         return (ip == null || ip.isEmpty()) ? "0.0.0.0" : ip;
     }

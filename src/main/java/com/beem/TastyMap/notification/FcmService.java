@@ -22,7 +22,8 @@ public class FcmService {
         try {
             FirebaseMessaging.getInstance().send(message);
         } catch (FirebaseMessagingException e) {
-
+            System.err.println("Cihaz " + fcmToken + " için bildirim gönderilirken hata oluştu:");
+            e.printStackTrace();
         }
     }
 }

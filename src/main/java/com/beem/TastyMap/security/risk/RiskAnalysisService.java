@@ -1,5 +1,7 @@
 package com.beem.TastyMap.security.risk;
 
+import com.beem.TastyMap.notification.NotificationRepo;
+import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.security.Location.GeoLocationService;
 import com.beem.TastyMap.security.device.UserDeviceEntity;
@@ -15,16 +17,25 @@ public class RiskAnalysisService {
 
     private final UserDeviceRepo userDeviceRepo;
     private final GeoLocationService geoLocationService;
+    private final NotificationRepo notificationRepo;
 
     public RiskAnalysisService(
             UserDeviceRepo userDeviceRepo,
-            GeoLocationService geoLocationService
+            GeoLocationService geoLocationService, NotificationRepo notificationRepo
     ) {
         this.userDeviceRepo = userDeviceRepo;
         this.geoLocationService = geoLocationService;
+        this.notificationRepo = notificationRepo;
     }
 
     public int calculateRiskScore(UserEntity user, String currentIp, String deviceId) {
+        boolean isApprovedDevice = notificationRepo.existsByUser_IdAndDeviceIdAndStatus(
+                user.getId(), deviceId, Status.APPROVED);
+
+        if (isApprovedDevice) {
+            return 0;
+        }
+
         List<UserDeviceEntity> userDevices =
                 userDeviceRepo.findByUser_Id(user.getId());
 

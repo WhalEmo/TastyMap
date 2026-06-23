@@ -35,8 +35,9 @@ public class FcmListener {
                     );
                 }
             } catch (Exception e) {
-                System.err.println("Cihaz " + device.getId() + " için bildirim gönderilirken hata oluştu:");
-                e.printStackTrace();
+                //System.err.println("Cihaz " + device.getId() + " için bildirim gönderilirken hata oluştu:");
+                //e.printStackTrace();
+                System.err.println("Cihaz " + device.getId() + " için bildirim gönderilemedi, atlanıyor: " + e.getMessage());
             }
         }
     }

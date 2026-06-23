@@ -8,6 +8,8 @@ import com.beem.TastyMap.security.device.UserDeviceEntity;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -25,7 +27,7 @@ public class SecurityNotificationHandler {
         this.userDeviceRepo = userDeviceRepo;
         this.eventPublisher = eventPublisher;
     }
-
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleSecurityAlert(SecurityAlertEvent event) {
         NotificationEntity n = new NotificationEntity();
@@ -45,7 +47,7 @@ public class SecurityNotificationHandler {
                     n.setLastCity(device.getLastCity());
                     n.setTrusted(device.isTrusted());
                 });
-        NotificationEntity savedNotification = notificationRepo.save(n);
+        NotificationEntity savedNotification =   notificationRepo.saveAndFlush(n);
         eventPublisher.publishEvent(new SecurityEmailModel(event.getUser(), event.getToken()));
         eventPublisher.publishEvent(new FcmNotificationEvent(event.getUser().getId(), savedNotification.getId()));
     }

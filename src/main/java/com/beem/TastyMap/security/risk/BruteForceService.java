@@ -2,7 +2,6 @@ package com.beem.TastyMap.security.risk;
 
 import org.springframework.stereotype.Service;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
 import java.time.Duration;
 
 @Service
@@ -18,8 +17,8 @@ public class BruteForceService {
 
     public void registerFailedAttempt(String username) {
         String key = "login_attempts:" + username;
-        String value = (String) redisTemplate.opsForValue().get(key);
-        Integer attempts = value == null ? null : Integer.valueOf(value);
+        Object value = redisTemplate.opsForValue().get(key);
+        Integer attempts = (value instanceof Integer) ? (Integer) value : null;
         int newAttempts = (attempts == null) ? 1 : attempts + 1;
 
         redisTemplate.opsForValue().set(key, newAttempts, Duration.ofMinutes(BLOCK_TIME_MINUTES));

@@ -40,3 +40,5 @@ out/
 .env.*
 ### GEO DATA ###
 *.mmdb
+### Firebase ###
+src/main/resources/firebase-service-account.json

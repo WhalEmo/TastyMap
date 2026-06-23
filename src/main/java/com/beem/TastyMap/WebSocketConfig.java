@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(authWebSocketHandler, "/ws/auth/{deviceId}")
-                .setAllowedOrigins("*")
+                .setAllowedOriginPatterns("*")
                 .addInterceptors(new HttpSessionHandshakeInterceptor() {
                     @Override
                     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,

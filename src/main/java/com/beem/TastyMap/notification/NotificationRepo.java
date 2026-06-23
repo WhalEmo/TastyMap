@@ -7,8 +7,8 @@ import java.util.Optional;
 
 public interface NotificationRepo extends JpaRepository<NotificationEntity,Long> {
     Optional<NotificationEntity> findByUser_IdAndDeviceId(Long userId, String deviceId);
-    @Query("SELECT n FROM NotificationEntity n JOIN FETCH n.user WHERE n.deviceId = :deviceId AND n.status = :status")
-    Optional<NotificationEntity> findByDeviceIdAndStatusWithUser(@Param("deviceId") String deviceId, @Param("status") Status status);
+    @Query("SELECT n FROM NotificationEntity n JOIN FETCH n.user WHERE n.deviceId = :deviceId AND n.isUsed = true ORDER BY n.createdAt DESC")
+    Optional<NotificationEntity> findFirstByDeviceIdAndUsedTrueWithUser(@Param("deviceId") String deviceId);
 
     @Query("SELECT n FROM NotificationEntity n JOIN FETCH n.user WHERE n.token = :token")
     Optional<NotificationEntity> findByTokenWithUser(@Param("token") String token);

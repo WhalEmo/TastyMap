@@ -19,15 +19,13 @@ import java.util.Optional;
 
 @Service
 public class RefreshTokenService {
-    private final UserRepo userRepo;
     private final UserDeviceService userDeviceService;
     private final JWTUtill jwtUtill;
     private final RefreshTokenRepo refreshTokenRepo;
     private final NotificationRepo notificationRepo;
 
 
-    public RefreshTokenService(UserRepo userRepo, UserDeviceService userDeviceService, JWTUtill jwtUtill, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo) {
-        this.userRepo = userRepo;
+    public RefreshTokenService(UserDeviceService userDeviceService, JWTUtill jwtUtill, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo) {
         this.userDeviceService = userDeviceService;
         this.jwtUtill = jwtUtill;
         this.refreshTokenRepo = refreshTokenRepo;
@@ -93,8 +91,9 @@ public class RefreshTokenService {
 
     @Transactional
     public LoginResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
+        System.out.println("Gelen istek  Refreshtokenservıce- DeviceID: " + dto.getDeviceId());
         Optional<NotificationEntity> notificationOpt = notificationRepo
-                .findByDeviceIdAndStatusWithUser(dto.getDeviceId(), Status.PENDING);
+                .findFirstByDeviceIdAndUsedTrueWithUser(dto.getDeviceId());
 
         if (notificationOpt.isEmpty()) {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");

@@ -20,6 +20,7 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
 
         String deviceId = getDeviceId(session);
+        System.out.println("Cihaz bağlandıauthwebsockethandler: " + deviceId);
 
         sessionManager.addSession(deviceId, session);
     }

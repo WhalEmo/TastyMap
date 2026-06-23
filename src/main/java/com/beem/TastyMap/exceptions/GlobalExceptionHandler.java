@@ -79,7 +79,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralExceptions(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("Beklenmedik bir sunucu hatası oluştu."));
+                .body(new ErrorResponse("Beklenmedik bir sunucu hatası oluştu."+ ex));
     }
 
 }

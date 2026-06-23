@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         //login gerekmeyenler
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/ws/auth/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
                         .anyRequest().authenticated()

@@ -15,6 +15,7 @@ import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
+import lombok.extern.java.Log;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
+
 
 @Service
 public class UserService implements UserDetailsService {
@@ -119,7 +121,7 @@ public class UserService implements UserDetailsService {
 
         int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId);
 
-        if (riskScore >= 70) {
+        if (riskScore != 0){//riskScore >= 70) {
             return handleHighRiskLogin(user, dto, userAgent, ip);
         }
         return createTokensAndLogin(user, dto, userAgent,null);
