@@ -122,6 +122,7 @@ public class UserService implements UserDetailsService {
         int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId);
 
         if (riskScore != 0){//riskScore >= 70) {
+            System.out.println("USerservıce ife gırdı");
             return handleHighRiskLogin(user, dto, userAgent, ip);
         }
         return createTokensAndLogin(user, dto, userAgent,null);
@@ -172,10 +173,12 @@ public class UserService implements UserDetailsService {
                 );
 
         if (!exists) {
+            System.out.println("USerservıce handlerıskıfıne  gırdı");
             String token= UUID.randomUUID().toString();
             eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token));
         }
-        return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
+        System.out.println("USerservıce handlerıskıfıne  gırmedı");
+        return LoginResponseDTO.pendingSecurity();
     }
 
     @Override

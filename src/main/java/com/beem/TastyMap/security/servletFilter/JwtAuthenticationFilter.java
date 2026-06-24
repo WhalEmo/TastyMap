@@ -21,6 +21,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+
+        return path.startsWith("/api/users")
+                || path.startsWith("/auth")
+                || path.startsWith("/ws/auth");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         // 1. ÖNEMLİ: Tarayıcının attığı gizli OPTIONS isteğini en başta yakala ve hemen 200 OK dön.

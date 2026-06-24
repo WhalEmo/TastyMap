@@ -41,13 +41,12 @@ public class UserController {
         } else {
             ResponseCookie accessCookie = userService.createCookie("access_token", loginResponse.getAccessToken(), 900, "/");
             ResponseCookie refreshCookie = userService.createCookie("refresh_token", loginResponse.getRefreshToken(), 2592000, "/api/users/refresh");
-
             return ResponseEntity.ok()
                     .headers(headers -> {
                         headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
                         headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
                     })
-                    .body(new LoginResponseDTO("Giriş başarılı"));
+                    .body(new LoginResponseDTO(loginResponse.getMessage(),loginResponse.getUserResponseDTO(), loginResponse.getStatus()));
         }
 
     }
@@ -105,7 +104,7 @@ public class UserController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new LoginResponseDTO("Giriş başarılı"));
+                    .body(new LoginResponseDTO(response.getMessage(),response.getUserResponseDTO(), response.getStatus()));
         }
     }
 

@@ -18,14 +18,15 @@ public class LoginResponseDTO {
         this.status = LoginStatus.SUCCESS;
         this.message = "Giriş başarılı";
     }
-    public  LoginResponseDTO(String message){
+    public  LoginResponseDTO(String message,UserResponseDTO userResponseDTO,LoginStatus status){
         this.message=message;
+        this.userResponseDTO= userResponseDTO;
+        this.status=status;
     }
-    public static LoginResponseDTO pendingSecurity(UserResponseDTO user) {
+    public static LoginResponseDTO pendingSecurity() {
         LoginResponseDTO dto = new LoginResponseDTO();
         dto.status = LoginStatus.PENDING_SECURITY;
         dto.message = "Yeni cihaz tespit edildi. Güvenlik onayı bekleniyor.";
-        dto.userResponseDTO = user;
         return dto;
     }
 

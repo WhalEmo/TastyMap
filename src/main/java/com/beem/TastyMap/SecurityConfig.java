@@ -60,7 +60,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .headers(headers -> {
                             headers.contentSecurityPolicy(csp ->
-                                    csp.policyDirectives("default-src 'self'")
+                                    csp.policyDirectives("default-src 'self'; connect-src 'self' wss://coleman-nonethic-marinda.ngrok-free.dev http://localhost:8081;")
 
                             );
                             headers.httpStrictTransportSecurity(hsts ->
@@ -68,6 +68,7 @@ public class SecurityConfig {
                             );
                         }
                 );
+
         return http.build();
     }
 
@@ -82,7 +83,12 @@ public class SecurityConfig {
                 "Accept",
                 "X-Requested-With",
                 "X-Client-Type",
-                "ngrok-skip-browser-warning"
+                "ngrok-skip-browser-warning",
+                "Origin",
+                "Upgrade",
+                "Connection",
+                "Sec-WebSocket-Key",
+                "Sec-WebSocket-Version"
         ));
 
         configuration.setAllowCredentials(true);
