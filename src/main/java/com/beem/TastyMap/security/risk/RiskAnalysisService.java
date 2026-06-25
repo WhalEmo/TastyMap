@@ -17,22 +17,21 @@ public class RiskAnalysisService {
 
     private final UserDeviceRepo userDeviceRepo;
     private final GeoLocationService geoLocationService;
-    private final NotificationRepo notificationRepo;
 
     public RiskAnalysisService(
             UserDeviceRepo userDeviceRepo,
-            GeoLocationService geoLocationService, NotificationRepo notificationRepo
+            GeoLocationService geoLocationService
     ) {
         this.userDeviceRepo = userDeviceRepo;
         this.geoLocationService = geoLocationService;
-        this.notificationRepo = notificationRepo;
     }
 
-    public int calculateRiskScore(UserEntity user, String currentIp, String deviceId) {
-        boolean isApprovedDevice = notificationRepo.existsByUser_IdAndDeviceIdAndStatus(
-                user.getId(), deviceId, Status.APPROVED);
+    public int calculateRiskScore(UserEntity user, String currentIp, String deviceId, String fingerprintHash) {
+        UserDeviceEntity device = userDeviceRepo
+                .findByUser_IdAndDeviceId(user.getId(), deviceId)
+                .orElse(null);
 
-        if (isApprovedDevice) {
+        if (device != null && device.isTrusted()) {
             return 0;
         }
 
@@ -44,20 +43,21 @@ public class RiskAnalysisService {
         }
 
         int risk = 0;
-        UserDeviceEntity currentDevice = userDevices.stream()
-                .filter(d -> d.getDeviceId().equals(deviceId))
-                .findFirst()
-                .orElse(null);
 
-        if (currentDevice != null && currentDevice.isTrusted()) {
-            return 0;
-        }
-        if (currentDevice == null) {
+        if (device == null) {
             risk += 50;
-        }
+        } else {
 
-        if (currentDevice != null && !currentDevice.isTrusted()) {
-            risk += 10;
+            if (!java.util.Objects.equals(
+                    device.getFingerprintHash(),
+                    fingerprintHash)) {
+
+                risk += 60;
+            }
+
+            if (!device.isTrusted()) {
+                risk += 10;
+            }
         }
 
         String currentCity =

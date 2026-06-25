@@ -91,7 +91,6 @@ public class RefreshTokenService {
 
     @Transactional
     public LoginResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
-        System.out.println("Gelen istek  Refreshtokenservıce- DeviceID: " + dto.getDeviceId());
         Optional<NotificationEntity> notificationOpt = notificationRepo
                 .findFirstByDeviceIdAndUsedTrueWithUser(dto.getDeviceId());
 
@@ -108,7 +107,7 @@ public class RefreshTokenService {
         if (alreadyHasToken) {
             throw new CustomExceptions.InvalidException("Bu cihaz zaten yetkilendirilmiş");
         }
-        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true);
+        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true, dto.getFingerprintHash());
 
         String refreshToken = jwtUtill.generateRefreshToken(notification.getUser().getId(),dto.getDeviceId());
 

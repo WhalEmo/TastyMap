@@ -18,7 +18,7 @@ public class UserDeviceService {
     }
 
     @Transactional
-    public void registerOrUpdateDevice(UserEntity user, String deviceId, String userAgent, String fcmToken, boolean isTrusted) {
+    public void registerOrUpdateDevice(UserEntity user, String deviceId, String userAgent, String fcmToken, boolean isTrusted, String fingerprintHash) {
         UserDeviceEntity device = userDeviceRepo.findByUser_IdAndDeviceId(user.getId(), deviceId)
                 .orElse(new UserDeviceEntity());
 
@@ -26,6 +26,7 @@ public class UserDeviceService {
 
         device.setUser(user);
         device.setDeviceId(deviceId);
+        device.setFingerprintHash(fingerprintHash);
         device.setUserAgent(userAgent);
         device.setLastIpAddress(ip);
         device.setLastCity(geoLocationService.getCity(ip));

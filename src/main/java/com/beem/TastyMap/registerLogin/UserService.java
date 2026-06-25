@@ -119,7 +119,7 @@ public class UserService implements UserDetailsService {
             );
         }
 
-        int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId);
+        int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId, dto.getFingerprintHash());
 
         if (riskScore != 0){//riskScore >= 70) {
             System.out.println("USerservıce ife gırdı");
@@ -154,7 +154,7 @@ public class UserService implements UserDetailsService {
         refresh.setExpiryDate(LocalDateTime.now().plusDays(30));
         refresh.setRevoked(false);
 
-        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true);
+        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,dto.getFingerprintHash());
         refreshTokenRepo.save(refresh);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }

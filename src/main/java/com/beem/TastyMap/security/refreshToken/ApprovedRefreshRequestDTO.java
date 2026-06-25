@@ -2,6 +2,7 @@ package com.beem.TastyMap.security.refreshToken;
 
 public class ApprovedRefreshRequestDTO {
     private String deviceId;
+    private String fingerprintHash;
     private String userAgent;
     private String fcmToken;
 
@@ -27,5 +28,13 @@ public class ApprovedRefreshRequestDTO {
 
     public void setUserAgent(String userAgent) {
         this.userAgent = userAgent;
+    }
+
+    public String getFingerprintHash() {
+        return fingerprintHash;
+    }
+
+    public void setFingerprintHash(String fingerprintHash) {
+        this.fingerprintHash = fingerprintHash;
     }
 }

@@ -33,6 +33,9 @@ public class FcmListener {
                             device.getLastCity()+" konumundan hesabınıza yeni bir cihazdan giriş denemesi yapıldı. Siz misiniz?",
                             event.getNotificationId()
                     );
+                    System.out.println("✅ Bildirim başarıyla gönderildi: Cihaz ID -> " + device.getId());
+                } else {
+                    System.out.println("⚠️ Cihaz ID " + device.getId() + " için FCM token bulunamadı, atlanıyor.");
                 }
             } catch (Exception e) {
                 //System.err.println("Cihaz " + device.getId() + " için bildirim gönderilirken hata oluştu:");
