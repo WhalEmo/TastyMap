@@ -92,7 +92,7 @@ public class RefreshTokenService {
     @Transactional
     public LoginResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
         Optional<NotificationEntity> notificationOpt = notificationRepo
-                .findFirstByDeviceIdAndUsedTrueWithUser(dto.getDeviceId());
+                .findFirstByDeviceIdAndIsUsedTrueOrderByCreatedAtDesc(dto.getDeviceId());
 
         if (notificationOpt.isEmpty()) {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");

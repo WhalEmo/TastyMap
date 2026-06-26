@@ -1,7 +1,4 @@
 package com.beem.TastyMap.security.risk;
-
-import com.beem.TastyMap.notification.NotificationRepo;
-import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.security.Location.GeoLocationService;
 import com.beem.TastyMap.security.device.UserDeviceEntity;

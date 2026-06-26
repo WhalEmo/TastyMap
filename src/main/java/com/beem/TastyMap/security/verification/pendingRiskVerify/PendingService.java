@@ -4,6 +4,8 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
+import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.websocket.LoginSecureEventService;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.UUID;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -46,16 +50,17 @@ public class PendingService {
         //String verificationLinkA=baseURL+"/auth/verify?token="+token;
 
         String htmlBody = """
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-            <h2 style="color: #001970;">Hesabınızda Şüpheli Bir Giriş Tespit Ettik</h2>
-            <p>Eğer bu giriş denemesi size ait değilse, hesabınızı korumak için lütfen hemen reddedin.</p>
-            <div style="margin: 30px 0;">
-                <a href="%s" style="background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Girişi Onayla</a>
-                <a href="%s" style="background-color: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-left: 15px;">Girişi Reddet</a>
-            </div>
-            <p style="color: #666; font-size: 12px;">Bu işlem size ait değilse lütfen şifrenizi güncelleyin.</p>
-        </div>
-        """.formatted(approveLink, rejectLink);
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+    <h2 style="color: #001970;">Hesabınızda Şüpheli Bir Giriş Tespit Ettik</h2>
+    <p>Eğer bu giriş denemesi size ait değilse, hesabınızı korumak için lütfen hemen reddedin.</p>
+    <p style="color: #d9534f; font-size: 14px; font-weight: bold; margin-bottom: 20px;">⚠️ Güvenliğiniz için bu işlem bağlantılarının geçerlilik süresi 10 dakikadır.</p>
+    <div style="margin: 30px 0;">
+        <a href="%s" style="background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Girişi Onayla</a>
+        <a href="%s" style="background-color: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-left: 15px;">Girişi Reddet</a>
+    </div>
+    <p style="color: #666; font-size: 12px;">Bu işlem size ait değilse lütfen şifrenizi güncelleyin.</p>
+</div>
+""".formatted(approveLink, rejectLink);
 
         helper.setText(htmlBody, true);
         javaMailSender.send(mimeMessage);
@@ -87,4 +92,32 @@ public class PendingService {
         notification.setUsed(true);
         notificationRepo.save(notification);
     }
+
+    @Transactional
+    public String resendSecurityAlertMail(String deviceId) throws Exception {
+        NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedFalseOrderByCreatedAtDesc(deviceId)
+                .orElseThrow(() -> new CustomExceptions.InvalidException("Bekleyen aktif bir giriş onayı bulunamadı."));
+
+        if (notification.getStatus() == Status.APPROVED || notification.getStatus() == Status.REJECTED) {
+            throw new CustomExceptions.AlreadyVerifiedException("Bu işlem zaten sonuçlandırılmış.");
+        }
+        if (notification.getExpiresAt().isAfter(LocalDateTime.now())) {
+            throw new CustomExceptions.AlreadyVerifiedException(
+                    "Aktif bir doğrulama e-postanız zaten bulunmaktadır. Lütfen e-posta kutunuzu kontrol ediniz."
+            );
+        }
+
+        String newToken = UUID.randomUUID().toString();
+        notification.setToken(newToken);
+        notification.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        notification.setStatus(Status.PENDING);
+
+        notificationRepo.save(notification);
+
+        String userEmail = notification.getUser().getEmail();
+        sendSecurityAlertMail(newToken, userEmail);
+        return "Email gönderildi!";
+    }
+
+
 }
