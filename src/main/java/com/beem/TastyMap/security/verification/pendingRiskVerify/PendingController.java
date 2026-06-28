@@ -81,12 +81,15 @@ public class PendingController {
             return ResponseEntity.ok(response);
 
         } catch (CustomExceptions.AlreadyVerifiedException e) {
-            response.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            response.put("message", e.getMessage());
+            return ResponseEntity.ok(response);
 
+        } catch (CustomExceptions.InvalidException e) {
+            response.put("message", e.getMessage());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            response.put("error", "Mail gönderilirken bir hata oluştu.");
-            return ResponseEntity.internalServerError().body(response);
+            response.put("message", e.getMessage());
+            return ResponseEntity.ok(response);
         }
     }
 }

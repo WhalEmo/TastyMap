@@ -4,9 +4,13 @@ import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
 import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.notification.NotificationEntity;
+import com.beem.TastyMap.security.banned.BannedDeviceEntity;
+import com.beem.TastyMap.security.banned.BannedDeviceRepo;
 import com.beem.TastyMap.security.device.UserDeviceService;
 import com.beem.TastyMap.security.risk.BruteForceService;
 import com.beem.TastyMap.security.risk.RiskAnalysisService;
+import com.beem.TastyMap.security.risk.SecurityValidationService;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
@@ -16,6 +20,7 @@ import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
 import lombok.extern.java.Log;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,9 +31,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-
-
 @Service
 public class UserService implements UserDetailsService {
     private final UserRepo userRepo;
@@ -38,11 +43,13 @@ public class UserService implements UserDetailsService {
     private final RiskAnalysisService riskAnalysisService;
     private final UserDeviceService userDeviceService;
     private final EmailRepo emailRepo;
+    private final BannedDeviceRepo bannedDeviceRepo;
+    private final SecurityValidationService securityValidationService;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, BannedDeviceRepo bannedDeviceRepo, SecurityValidationService securityValidationService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
@@ -50,10 +57,14 @@ public class UserService implements UserDetailsService {
         this.riskAnalysisService = riskAnalysisService;
         this.userDeviceService = userDeviceService;
         this.emailRepo = emailRepo;
+        this.bannedDeviceRepo = bannedDeviceRepo;
+        this.securityValidationService = securityValidationService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
         this.eventPublisher = eventPublisher;
     }
+    @Value("${app.lockout-minutes}")
+    private int lockoutMinutes;
 
 
     @Transactional
@@ -118,6 +129,12 @@ public class UserService implements UserDetailsService {
                     "Email adresiniz doğrulanmamış"
             );
         }
+        if (bannedDeviceRepo.existsByUserIdAndDeviceId(user.getId(), deviceId)) {
+            throw new CustomExceptions.AuthorizationException(
+                    "Bu cihazdan yapılan şüpheli istekler nedeniyle erişiminiz kalıcı olarak engellenmiştir. " +
+                            "Lütfen destek ekibiyle iletişime geçin."
+            );
+        }
 
         int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId, dto.getFingerprintHash());
 
@@ -159,27 +176,27 @@ public class UserService implements UserDetailsService {
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }
 
-    private LoginResponseDTO handleHighRiskLogin(
-            UserEntity user,
-            LoginRequestDTO dto,
-            String userAgent,
-            String ip
-    ) {
-        boolean exists = notificationRepo
-                .existsByUser_IdAndDeviceIdAndStatus(
-                        user.getId(),
-                        dto.getDeviceId(),
-                        Status.PENDING
-                );
 
-        if (!exists) {
-            System.out.println("USerservıce handlerıskıfıne  gırdı");
-            String token= UUID.randomUUID().toString();
+
+    private LoginResponseDTO handleHighRiskLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip) {
+        String deviceId = dto.getDeviceId();
+        LocalDateTime now = LocalDateTime.now();
+
+        List<NotificationEntity> history24Hours = notificationRepo
+                .findAllByDeviceIdAndCreatedAtAfterOrderByCreatedAtDesc(deviceId, now.minusHours(24));
+
+        securityValidationService.checkThrottlingAndBanRules(user, deviceId, ip, history24Hours);
+
+        boolean hasActivePending = notificationRepo.existsActiveNotification(user.getId(), deviceId, Status.PENDING);
+
+        if (!hasActivePending) {
+            String token = UUID.randomUUID().toString();
             eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token));
         }
-        System.out.println("USerservıce handlerıskıfıne  gırmedı");
+
         return LoginResponseDTO.pendingSecurity();
     }
+
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

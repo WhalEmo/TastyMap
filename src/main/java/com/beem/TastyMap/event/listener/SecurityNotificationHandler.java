@@ -30,6 +30,7 @@ public class SecurityNotificationHandler {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleSecurityAlert(SecurityAlertEvent event) {
+        System.out.println("secutirynotıfıctaıohandlera gırdı");
         NotificationEntity n = new NotificationEntity();
 
         n.setUser(event.getUser());

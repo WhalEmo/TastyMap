@@ -123,6 +123,5 @@ public class RefreshTokenService {
         String accessToken = jwtUtill.generateAccessToken(notification.getUser().getId(), notification.getUser().getRole());
         notificationRepo.delete(notification);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(notification.getUser()));
-        //return new RefreshTokenResponseDTO(accessToken, refreshToken, "basarili");
     }
 }

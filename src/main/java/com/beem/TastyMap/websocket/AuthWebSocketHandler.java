@@ -1,7 +1,6 @@
 package com.beem.TastyMap.websocket;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 
@@ -36,8 +35,17 @@ public class AuthWebSocketHandler extends TextWebSocketHandler {
 
         sessionManager.removeSession(deviceId);
     }
+    @Override
+    public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
+        String payload = message.getPayload().toString();
 
+        if ("ping".equalsIgnoreCase(payload)) {
+            session.sendMessage(new TextMessage("pong"));
+            return;
+        }
 
+        super.handleMessage(session, message);
+    }
     private String getDeviceId(WebSocketSession session) {
 
         return (String) session.getAttributes().get("deviceId");

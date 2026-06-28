@@ -6,8 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notifications", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_user_device", columnNames = {"user_id", "deviceId"})
+@Table(name = "notifications", indexes = {
+        @Index(name = "idx_device_status_updated", columnList = "deviceId, status, updatedAt"),
+        @Index(name = "idx_device_created", columnList = "deviceId, createdAt")
 })
 public class NotificationEntity {
     @Id
@@ -32,6 +33,7 @@ public class NotificationEntity {
     private LocalDateTime expiresAt;
     private String token;
     private boolean isUsed;
+    private LocalDateTime updatedAt;
 
     public LocalDateTime getExpiresAt() {
         return expiresAt;
@@ -129,5 +131,13 @@ public class NotificationEntity {
 
     public void setUsed(boolean used) {
         isUsed = used;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

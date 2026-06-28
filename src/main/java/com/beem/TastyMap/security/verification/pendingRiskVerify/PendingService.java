@@ -4,17 +4,18 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.registerLogin.UserEntity;
-import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
+import com.beem.TastyMap.security.risk.SecurityValidationService;
 import com.beem.TastyMap.websocket.LoginSecureEventService;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
@@ -25,11 +26,15 @@ public class PendingService {
     private final NotificationRepo notificationRepo;
     private final LoginSecureEventService loginSecureEventService;
     private final JavaMailSender javaMailSender;
+    private final ApplicationEventPublisher eventPublisher;
+    private final SecurityValidationService securityValidationService;
 
-    public PendingService( NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, JavaMailSender javaMailSender) {
+    public PendingService(NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, JavaMailSender javaMailSender, ApplicationEventPublisher eventPublisher, SecurityValidationService securityValidationService) {
         this.notificationRepo = notificationRepo;
         this.loginSecureEventService = loginSecureEventService;
         this.javaMailSender = javaMailSender;
+        this.eventPublisher = eventPublisher;
+        this.securityValidationService = securityValidationService;
     }
     @Value("${app.base-url}")
     private String baseURL;
@@ -86,6 +91,7 @@ public class PendingService {
             loginSecureEventService.loginApproved(notification.getDeviceId());
         } else {
             notification.setStatus(Status.REJECTED);
+            notification.setUpdatedAt(LocalDateTime.now());
             loginSecureEventService.loginRejected(notification.getDeviceId());
         }
 
@@ -95,29 +101,46 @@ public class PendingService {
 
     @Transactional
     public String resendSecurityAlertMail(String deviceId) throws Exception {
+        LocalDateTime now = LocalDateTime.now();
+
         NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedFalseOrderByCreatedAtDesc(deviceId)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Bekleyen aktif bir giriş onayı bulunamadı."));
 
         if (notification.getStatus() == Status.APPROVED || notification.getStatus() == Status.REJECTED) {
             throw new CustomExceptions.AlreadyVerifiedException("Bu işlem zaten sonuçlandırılmış.");
         }
-        if (notification.getExpiresAt().isAfter(LocalDateTime.now())) {
+
+        if (notification.getExpiresAt().isAfter(now)) {
             throw new CustomExceptions.AlreadyVerifiedException(
                     "Aktif bir doğrulama e-postanız zaten bulunmaktadır. Lütfen e-posta kutunuzu kontrol ediniz."
             );
         }
 
-        String newToken = UUID.randomUUID().toString();
-        notification.setToken(newToken);
-        notification.setExpiresAt(LocalDateTime.now().plusMinutes(10));
-        notification.setStatus(Status.PENDING);
+        List<NotificationEntity> history24Hours = notificationRepo
+                .findAllByDeviceIdAndCreatedAtAfterOrderByCreatedAtDesc(deviceId, now.minusHours(24));
 
+        securityValidationService.checkThrottlingAndBanRules(notification.getUser(), deviceId, notification.getLastIpAddress(), history24Hours);
+
+        NotificationEntity newNotification = new NotificationEntity();
+        newNotification.setUser(notification.getUser());
+        newNotification.setDeviceId(deviceId);
+        newNotification.setUserAgent(notification.getUserAgent());
+        newNotification.setLastIpAddress(notification.getLastIpAddress());
+        newNotification.setLastCity(notification.getLastCity());
+        newNotification.setTrusted(notification.isTrusted());
+        newNotification.setToken(UUID.randomUUID().toString());
+        newNotification.setExpiresAt(now.plusMinutes(10));
+        newNotification.setStatus(Status.PENDING);
+        newNotification.setCreatedAt(now);
+        newNotification.setUsed(false);
+
+        notification.setUsed(true);
         notificationRepo.save(notification);
 
-        String userEmail = notification.getUser().getEmail();
-        sendSecurityAlertMail(newToken, userEmail);
+        notificationRepo.save(newNotification);
+
+        eventPublisher.publishEvent(new SecurityEmailModel(newNotification.getUser(), newNotification.getToken()));
         return "Email gönderildi!";
     }
-
 
 }
