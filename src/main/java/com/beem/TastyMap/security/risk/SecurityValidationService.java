@@ -22,6 +22,7 @@ public class SecurityValidationService {
     }
 
     public void checkThrottlingAndBanRules(UserEntity user, String deviceId, String ip, List<NotificationEntity> history24Hours) {
+        System.out.println("SECURITY VALIDATION /n"+ history24Hours);
         LocalDateTime now = LocalDateTime.now();
         long rejectCount = history24Hours.stream().filter(n -> n.getStatus() == Status.REJECTED).count();
 
@@ -63,8 +64,10 @@ public class SecurityValidationService {
                 (pendingCount == 3) ? 60 :
                         (pendingCount == 2) ? 30 : 0;
 
+        System.out.println("SECURITY VALIDATION "+ mailThrottlingMinutes);
         if (mailThrottlingMinutes > 0) {
             boolean isMailThrottled = notificationRepo.existsByDeviceIdAndCreatedAtAfter(deviceId, now.minusMinutes(mailThrottlingMinutes));
+            System.out.println("SECURITY VALIDATION "+ isMailThrottled);
             if (isMailThrottled) {
                 throw new CustomExceptions.AuthorizationException(
                         String.format("Çok sık şüpheli giriş isteği üretildi. Lütfen %d dakika sonra tekrar deneyiniz.", mailThrottlingMinutes)

@@ -6,9 +6,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notifications", indexes = {
-        @Index(name = "idx_device_status_updated", columnList = "deviceId, status, updatedAt"),
-        @Index(name = "idx_device_created", columnList = "deviceId, createdAt")
+@Table(indexes = {
+        @Index(name = "idx_user_device_status", columnList = "user_id, deviceId, status, createdAt"),
+        @Index(name = "idx_device_token", columnList = "deviceId, token")
 })
 public class NotificationEntity {
     @Id

@@ -37,4 +37,5 @@ public interface NotificationRepo extends JpaRepository<NotificationEntity,Long>
 
     List<NotificationEntity> findAllByDeviceIdAndCreatedAtAfterOrderByCreatedAtDesc(String deviceId, LocalDateTime after);
 
+
 }

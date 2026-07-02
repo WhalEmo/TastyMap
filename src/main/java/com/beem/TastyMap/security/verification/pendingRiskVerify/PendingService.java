@@ -3,6 +3,7 @@ import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
+import com.beem.TastyMap.notification.NotificationResponse;
 import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.security.risk.SecurityValidationService;
 import com.beem.TastyMap.websocket.LoginSecureEventService;
@@ -143,4 +144,10 @@ public class PendingService {
         return "Email gönderildi!";
     }
 
+    public NotificationResponse isUsedNotification(String deviceId){
+        NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedTrueOrderByCreatedAtDesc(deviceId)
+                .orElseThrow(() -> new CustomExceptions.InvalidException("Cevap verilmemiş"));
+
+        return new NotificationResponse(notification.getStatus(),notification.isUsed());
+    }
 }

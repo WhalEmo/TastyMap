@@ -1,6 +1,7 @@
 package com.beem.TastyMap.security.verification.pendingRiskVerify;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.notification.NotificationResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -70,26 +71,33 @@ public class PendingController {
     }
 
     @PostMapping("/resend-security-mail")
-    public ResponseEntity<Map<String, String>> resendSecurityMail(
+    public ResponseEntity<String> resendSecurityMail(
             @RequestParam String deviceId
     ) {
-        Map<String, String> response = new HashMap<>();
         try {
             String result = pendingService.resendSecurityAlertMail(deviceId);
-
-            response.put("message", result);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(result);
 
         } catch (CustomExceptions.AlreadyVerifiedException e) {
-            response.put("message", e.getMessage());
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(e.getMessage());
 
         } catch (CustomExceptions.InvalidException e) {
-            response.put("message", e.getMessage());
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(e.getMessage());
         } catch (Exception e) {
-            response.put("message", e.getMessage());
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(e.getMessage());
         }
+
+
+    }
+
+    @GetMapping("/is-used")
+    public ResponseEntity<NotificationResponse> isUsedNotification(
+            @RequestParam String deviceId
+    ) {
+        return ResponseEntity.ok(
+                pendingService.isUsedNotification(deviceId)
+        );
     }
 }
+
+

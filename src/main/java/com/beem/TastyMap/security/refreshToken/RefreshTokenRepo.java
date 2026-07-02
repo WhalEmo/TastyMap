@@ -23,4 +23,6 @@ public interface RefreshTokenRepo extends JpaRepository<RefreshTokenEntity,Long>
           AND r.revoked = false
     """)
     int revokeAllByUser(@Param("userId") Long userId);
+
+    Optional<RefreshTokenEntity> findByUserIdAndDeviceIdAndRevokedFalse(Long userId, String deviceId);
 }

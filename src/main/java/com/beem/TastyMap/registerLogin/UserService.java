@@ -142,7 +142,11 @@ public class UserService implements UserDetailsService {
             System.out.println("USerservıce ife gırdı");
             return handleHighRiskLogin(user, dto, userAgent, ip);
         }
-        return createTokensAndLogin(user, dto, userAgent,null);
+        RefreshTokenEntity existingToken = refreshTokenRepo
+                .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId())
+                .orElse(null);
+
+        return createTokensAndLogin(user, dto, userAgent,existingToken);
     }
 
     @Transactional

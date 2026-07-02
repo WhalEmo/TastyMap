@@ -12,12 +12,15 @@ public class FcmService {
 
         Message message = Message.builder()
                 .setToken(fcmToken)
-                .putData("title", title)
-                .putData("body", body)
+                .setNotification(
+                        com.google.firebase.messaging.Notification.builder()
+                                .setTitle(title)
+                                .setBody(body)
+                                .build()
+                )
                 .putData("type", "SECURITY_ALERT")
                 .putData("notificationId", notificationId.toString())
                 .build();
-
         try {
             FirebaseMessaging.getInstance().send(message);
         } catch (FirebaseMessagingException e) {
