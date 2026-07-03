@@ -6,7 +6,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_devices")
+@Table(name = "user_devices", indexes = {
+        @Index(name = "idx_user_device", columnList = "user_id, deviceId"),
+        @Index(name = "idx_user_city", columnList = "user_id, lastCity"),
+        @Index(name = "idx_user_ip", columnList = "user_id, lastIpAddress"),
+        @Index(name = "idx_device_fcm_token", columnList = "fcmToken")
+})
+
 public class UserDeviceEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

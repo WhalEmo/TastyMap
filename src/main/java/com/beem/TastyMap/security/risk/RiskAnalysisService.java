@@ -1,6 +1,7 @@
 package com.beem.TastyMap.security.risk;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.security.Location.GeoLocationService;
+import com.beem.TastyMap.security.device.UserDeviceDTO;
 import com.beem.TastyMap.security.device.UserDeviceEntity;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
 import org.springframework.stereotype.Service;
@@ -8,35 +9,30 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-
 @Service
 public class RiskAnalysisService {
 
     private final UserDeviceRepo userDeviceRepo;
     private final GeoLocationService geoLocationService;
 
-    public RiskAnalysisService(
-            UserDeviceRepo userDeviceRepo,
-            GeoLocationService geoLocationService
-    ) {
+    public RiskAnalysisService(UserDeviceRepo userDeviceRepo, GeoLocationService geoLocationService) {
         this.userDeviceRepo = userDeviceRepo;
         this.geoLocationService = geoLocationService;
     }
 
-    public int calculateRiskScore(UserEntity user, String currentIp, String deviceId, String fingerprintHash) {
+    public RiskResult calculateRiskScore(UserEntity user, String currentIp, String deviceId, String fingerprintHash) {
         UserDeviceEntity device = userDeviceRepo
                 .findByUser_IdAndDeviceId(user.getId(), deviceId)
                 .orElse(null);
 
+        UserDeviceDTO deviceDto = UserDeviceDTO.fromEntity(device);
+
         if (device != null && device.isTrusted()) {
-            return 0;
+            return new RiskResult(0, deviceDto);
         }
 
-        List<UserDeviceEntity> userDevices =
-                userDeviceRepo.findByUser_Id(user.getId());
-
-        if (userDevices.isEmpty()) {
-            return 0;
+        if (!userDeviceRepo.existsByUser_Id(user.getId())) {
+            return new RiskResult(0, deviceDto);
         }
 
         int risk = 0;
@@ -44,44 +40,36 @@ public class RiskAnalysisService {
         if (device == null) {
             risk += 50;
         } else {
-
-            if (!java.util.Objects.equals(
-                    device.getFingerprintHash(),
-                    fingerprintHash)) {
-
+            if (!java.util.Objects.equals(device.getFingerprintHash(), fingerprintHash)) {
                 risk += 60;
             }
-
             if (!device.isTrusted()) {
                 risk += 10;
             }
         }
 
-        String currentCity =
-                geoLocationService.getCity(currentIp);
-
-        boolean isKnownCity = userDevices.stream()
-                .anyMatch(d ->
-                        d.getLastCity() != null &&
-                                d.getLastCity().equalsIgnoreCase(currentCity));
-
-        if (!isKnownCity) {
+        String currentCity = geoLocationService.getCity(currentIp);
+        if (currentCity != null && !currentCity.isBlank()) {
+            boolean isKnownCity = userDeviceRepo.existsByUser_IdAndLastCityIgnoreCase(user.getId(), currentCity);
+            if (!isKnownCity) {
+                risk += 20;
+            }
+        } else {
             risk += 20;
         }
 
-        boolean isKnownNetwork = userDevices.stream()
-                .anyMatch(d ->
-                        d.getLastIpAddress() != null &&
-                                isSameNetwork(d.getLastIpAddress(), currentIp));
-
-        if (!isKnownNetwork) {
+        String subnetPattern = getSubnetPattern(currentIp);
+        if (subnetPattern != null) {
+            boolean isKnownNetwork = userDeviceRepo.existsByUser_IdAndSubnet(user.getId(), subnetPattern);
+            if (!isKnownNetwork) {
+                risk += 20;
+            }
+        } else {
             risk += 20;
         }
 
         if (user.getLastInteractionAt() != null
-                && user.getLastInteractionAt()
-                .isBefore(LocalDateTime.now().minusDays(30))) {
-
+                && user.getLastInteractionAt().isBefore(LocalDateTime.now().minusDays(30))) {
             risk += 10;
         }
 
@@ -89,36 +77,22 @@ public class RiskAnalysisService {
             risk += 5;
         }
 
-        return risk;
+        return new RiskResult(risk, deviceDto);
     }
 
-    private boolean isSameNetwork(String ip1, String ip2) {
 
-        if (ip1 == null || ip2 == null) {
-            return false;
+    private String getSubnetPattern(String ip) {
+        if (ip == null || !ip.contains(".")) {
+            return null;
         }
-
-        if (!ip1.contains(".") || !ip2.contains(".")) {
-            return ip1.equals(ip2);
-        }
-
         try {
-            String subnet1 =
-                    ip1.substring(0, ip1.lastIndexOf('.'));
-
-            String subnet2 =
-                    ip2.substring(0, ip2.lastIndexOf('.'));
-
-            return subnet1.equals(subnet2);
-
+            return ip.substring(0, ip.lastIndexOf('.')) + ".%";
         } catch (Exception e) {
-            return ip1.equals(ip2);
+            return null;
         }
     }
 
     private boolean isUnusualHour(LocalTime time) {
-
-        return time.isAfter(LocalTime.of(2, 0))
-                && time.isBefore(LocalTime.of(6, 0));
+        return time.isAfter(LocalTime.of(2, 0)) && time.isBefore(LocalTime.of(6, 0));
     }
 }

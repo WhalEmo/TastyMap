@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(indexes = {
         @Index(name = "idx_user_device_status", columnList = "user_id, deviceId, status, createdAt"),
-        @Index(name = "idx_device_token", columnList = "deviceId, token")
+        @Index(name = "idx_device_token", columnList = "deviceId, token"),
+        @Index(name = "idx_device_fingerprint_used", columnList = "deviceId, fingerprintHash, isUsed, createdAt DESC")
 })
 public class NotificationEntity {
     @Id
@@ -34,6 +35,8 @@ public class NotificationEntity {
     private String token;
     private boolean isUsed;
     private LocalDateTime updatedAt;
+
+    private String fingerPrintHash;
 
     public LocalDateTime getExpiresAt() {
         return expiresAt;
@@ -139,5 +142,13 @@ public class NotificationEntity {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getFingerPrintHash() {
+        return fingerPrintHash;
+    }
+
+    public void setFingerPrintHash(String fingerPrintHash) {
+        this.fingerPrintHash = fingerPrintHash;
     }
 }

@@ -18,19 +18,36 @@ public class UserDeviceService {
     }
 
     @Transactional
-    public void registerOrUpdateDevice(UserEntity user, String deviceId, String userAgent, String fcmToken, boolean isTrusted, String fingerprintHash) {
-        UserDeviceEntity device = userDeviceRepo.findByUser_IdAndDeviceId(user.getId(), deviceId)
-                .orElse(new UserDeviceEntity());
+    public void registerOrUpdateDevice(UserEntity user,
+                                       String deviceId,
+                                       String userAgent,
+                                       String fcmToken,
+                                       boolean isTrusted,
+                                       String fingerprintHash,
+                                       UserDeviceDTO deviceDto) {
 
         String ip = IpUtils.getClientIp();
+        String city = geoLocationService.getCity(ip);
+        LocalDateTime now = LocalDateTime.now();
 
-        device.setUser(user);
-        device.setDeviceId(deviceId);
+        UserDeviceEntity device;
+
+        if (deviceDto != null && deviceDto.getId() != null) {
+            device = userDeviceRepo.getReferenceById(deviceDto.getId());
+        } else {
+            device = userDeviceRepo.findByUser_IdAndDeviceId(user.getId(), deviceId)
+                    .orElseGet(() -> {
+                        UserDeviceEntity newDevice = new UserDeviceEntity();
+                        newDevice.setUser(user);
+                        newDevice.setDeviceId(deviceId);
+                        return newDevice;
+                    });
+        }
         device.setFingerprintHash(fingerprintHash);
         device.setUserAgent(userAgent);
         device.setLastIpAddress(ip);
-        device.setLastCity(geoLocationService.getCity(ip));
-        device.setLastLoginAt(LocalDateTime.now());
+        device.setLastCity(city);
+        device.setLastLoginAt(now);
         device.setTrusted(isTrusted);
 
         if (fcmToken != null) {

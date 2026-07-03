@@ -1,10 +1,7 @@
 package com.beem.TastyMap.security.verification.pendingRiskVerify;
 import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.notification.NotificationEntity;
-import com.beem.TastyMap.notification.NotificationRepo;
-import com.beem.TastyMap.notification.NotificationResponse;
-import com.beem.TastyMap.notification.Status;
+import com.beem.TastyMap.notification.*;
 import com.beem.TastyMap.security.risk.SecurityValidationService;
 import com.beem.TastyMap.websocket.LoginSecureEventService;
 import jakarta.mail.internet.MimeMessage;
@@ -17,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
@@ -101,11 +99,15 @@ public class PendingService {
     }
 
     @Transactional
-    public String resendSecurityAlertMail(String deviceId) throws Exception {
+    public String resendSecurityAlertMail(String deviceId, String fingerPrintHash) throws Exception {
         LocalDateTime now = LocalDateTime.now();
 
         NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedFalseOrderByCreatedAtDesc(deviceId)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Bekleyen aktif bir giriş onayı bulunamadı."));
+
+        if (!Objects.equals(notification.getFingerPrintHash(), fingerPrintHash)) {
+            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
+        }
 
         if (notification.getStatus() == Status.APPROVED || notification.getStatus() == Status.REJECTED) {
             throw new CustomExceptions.AlreadyVerifiedException("Bu işlem zaten sonuçlandırılmış.");
@@ -116,11 +118,9 @@ public class PendingService {
                     "Aktif bir doğrulama e-postanız zaten bulunmaktadır. Lütfen e-posta kutunuzu kontrol ediniz."
             );
         }
+        SecurityHistorySummary summary = notificationRepo.getSecurityHistorySummary(deviceId, notification.getLastIpAddress(), now.minusHours(24));
 
-        List<NotificationEntity> history24Hours = notificationRepo
-                .findAllByDeviceIdAndCreatedAtAfterOrderByCreatedAtDesc(deviceId, now.minusHours(24));
-
-        securityValidationService.checkThrottlingAndBanRules(notification.getUser(), deviceId, notification.getLastIpAddress(), history24Hours);
+        securityValidationService.checkThrottlingAndBanRules(notification.getUser(), deviceId, notification.getLastIpAddress(), summary);
 
         NotificationEntity newNotification = new NotificationEntity();
         newNotification.setUser(notification.getUser());
@@ -132,6 +132,7 @@ public class PendingService {
         newNotification.setToken(UUID.randomUUID().toString());
         newNotification.setExpiresAt(now.plusMinutes(10));
         newNotification.setStatus(Status.PENDING);
+        newNotification.setFingerPrintHash(notification.getFingerPrintHash());
         newNotification.setCreatedAt(now);
         newNotification.setUsed(false);
 
@@ -144,9 +145,13 @@ public class PendingService {
         return "Email gönderildi!";
     }
 
-    public NotificationResponse isUsedNotification(String deviceId){
-        NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedTrueOrderByCreatedAtDesc(deviceId)
-                .orElseThrow(() -> new CustomExceptions.InvalidException("Cevap verilmemiş"));
+    public NotificationResponse isUsedNotification(String deviceId,String fingerPrintHash){
+        NotificationStatusSummary notification = notificationRepo.findLatestNotificationStatus(deviceId)
+                .orElseThrow(() -> new CustomExceptions.InvalidException("Aktif bir istek bulunamadı"));
+
+        if (!Objects.equals(notification.getFingerPrintHash(), fingerPrintHash)) {
+            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
+        }
 
         return new NotificationResponse(notification.getStatus(),notification.isUsed());
     }

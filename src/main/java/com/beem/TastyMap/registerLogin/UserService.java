@@ -5,11 +5,14 @@ import com.beem.TastyMap.event.model.SecurityAlertEvent;
 import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationEntity;
+import com.beem.TastyMap.notification.SecurityHistorySummary;
 import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
+import com.beem.TastyMap.security.device.UserDeviceDTO;
 import com.beem.TastyMap.security.device.UserDeviceService;
 import com.beem.TastyMap.security.risk.BruteForceService;
 import com.beem.TastyMap.security.risk.RiskAnalysisService;
+import com.beem.TastyMap.security.risk.RiskResult;
 import com.beem.TastyMap.security.risk.SecurityValidationService;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.notification.NotificationRepo;
@@ -136,17 +139,18 @@ public class UserService implements UserDetailsService {
             );
         }
 
-        int riskScore = riskAnalysisService.calculateRiskScore(user, ip, deviceId, dto.getFingerprintHash());
+        RiskResult riskResult = riskAnalysisService.calculateRiskScore(user, ip, deviceId, dto.getFingerPrintHash());
+        UserDeviceDTO cachedDevice = riskResult.getDeviceDto();
 
-        if (riskScore != 0){//riskScore >= 70) {
+        if (riskResult.getScore() != 0){//riskScore >= 70) {
             System.out.println("USerservıce ife gırdı");
-            return handleHighRiskLogin(user, dto, userAgent, ip);
+            return handleHighRiskLogin(user, dto, userAgent, ip, cachedDevice);
         }
         RefreshTokenEntity existingToken = refreshTokenRepo
                 .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId())
                 .orElse(null);
 
-        return createTokensAndLogin(user, dto, userAgent,existingToken);
+        return createTokensAndLogin(user, dto, userAgent,existingToken,cachedDevice);
     }
 
     @Transactional
@@ -164,7 +168,7 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent,RefreshTokenEntity existingToken) {
+    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent,RefreshTokenEntity existingToken,UserDeviceDTO cachedDevice) {
         String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtUtill.generateRefreshToken(user.getId(), dto.getDeviceId());
         RefreshTokenEntity refresh = (existingToken != null) ? existingToken : new RefreshTokenEntity();
@@ -175,27 +179,30 @@ public class UserService implements UserDetailsService {
         refresh.setExpiryDate(LocalDateTime.now().plusDays(30));
         refresh.setRevoked(false);
 
-        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,dto.getFingerprintHash());
+
+        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,dto.getFingerPrintHash(),cachedDevice);
         refreshTokenRepo.save(refresh);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }
 
 
 
-    private LoginResponseDTO handleHighRiskLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip) {
+    private LoginResponseDTO handleHighRiskLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip,UserDeviceDTO cachedDevice) {
         String deviceId = dto.getDeviceId();
         LocalDateTime now = LocalDateTime.now();
 
-        List<NotificationEntity> history24Hours = notificationRepo
-                .findAllByDeviceIdAndCreatedAtAfterOrderByCreatedAtDesc(deviceId, now.minusHours(24));
+        SecurityHistorySummary summary = notificationRepo.getSecurityHistorySummary(deviceId, ip,now.minusHours(24));
 
-        securityValidationService.checkThrottlingAndBanRules(user, deviceId, ip, history24Hours);
+        securityValidationService.checkThrottlingAndBanRules(user, deviceId, ip, summary);
 
-        boolean hasActivePending = notificationRepo.existsActiveNotification(user.getId(), deviceId, Status.PENDING);
+        boolean hasActivePending = notificationRepo.existsActiveNotificationForUser(user.getId(), Status.PENDING);
 
         if (!hasActivePending) {
             String token = UUID.randomUUID().toString();
-            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token));
+
+            boolean isTrusted = cachedDevice != null && cachedDevice.isTrusted();
+
+            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token,isTrusted));
         }
 
         return LoginResponseDTO.pendingSecurity();

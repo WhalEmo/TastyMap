@@ -12,7 +12,7 @@ public class LoginRequestDTO {
     private String password;
     private String deviceId;
     private String fcmToken;
-    private String fingerprintHash;
+    private String fingerPrintHash;
 
     public String getFcmToken() {
         return fcmToken;
@@ -46,11 +46,11 @@ public class LoginRequestDTO {
         this.deviceId = deviceId;
     }
 
-    public String getFingerprintHash() {
-        return fingerprintHash;
+    public String getFingerPrintHash() {
+        return fingerPrintHash;
     }
 
-    public void setFingerprintHash(String fingerprintHash) {
-        this.fingerprintHash = fingerprintHash;
+    public void setFingerPrintHash(String fingerPrintHash) {
+        this.fingerPrintHash = fingerPrintHash;
     }
 }

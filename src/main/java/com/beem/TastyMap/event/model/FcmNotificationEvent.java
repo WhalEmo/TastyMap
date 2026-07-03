@@ -6,10 +6,12 @@ import java.util.UUID;
 public class FcmNotificationEvent {
     private final Long userId;
     private final Long notificationId;
+    private final String city;
 
-    public FcmNotificationEvent(Long userId, Long notificationId) {
+    public FcmNotificationEvent(Long userId, Long notificationId, String city) {
         this.userId = userId;
         this.notificationId = notificationId;
+        this.city = city;
     }
 
     public Long getUserId() {
@@ -18,5 +20,9 @@ public class FcmNotificationEvent {
 
     public Long getNotificationId() {
         return notificationId;
+    }
+
+    public String getCity() {
+        return city;
     }
 }

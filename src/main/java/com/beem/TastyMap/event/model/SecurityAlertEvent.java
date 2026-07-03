@@ -9,13 +9,15 @@ public class SecurityAlertEvent {
     private final String userAgent;
     private final String ip;
     private final String token;
+    private final boolean isTrusted;
 
-    public SecurityAlertEvent(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, String token) {
+    public SecurityAlertEvent(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, String token, boolean isTrusted) {
         this.user = user;
         this.dto = dto;
         this.userAgent = userAgent;
         this.ip = ip;
         this.token = token;
+        this.isTrusted = isTrusted;
     }
 
     public UserEntity getUser() {
@@ -36,5 +38,10 @@ public class SecurityAlertEvent {
 
     public String getToken() {
         return token;
+    }
+
+
+    public boolean isTrusted() {
+        return isTrusted;
     }
 }

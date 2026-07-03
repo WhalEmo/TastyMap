@@ -2,12 +2,9 @@ package com.beem.TastyMap.event.listener;
 
 import com.beem.TastyMap.event.model.FcmNotificationEvent;
 import com.beem.TastyMap.notification.FcmService;
-import com.beem.TastyMap.notification.NotificationRepo;
-import com.beem.TastyMap.security.device.UserDeviceEntity;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-
 import java.util.List;
 
 @Component
@@ -22,25 +19,24 @@ public class FcmListener {
 
     @EventListener
     public void handleFcm(FcmNotificationEvent event) {
-        List<UserDeviceEntity> devices = userDeviceRepo.findByUser_Id(event.getUserId());
+        List<String> fcmTokens = userDeviceRepo.findActiveFcmTokensByUserId(event.getUserId());
 
-        for (UserDeviceEntity device : devices) {
+        if (fcmTokens.isEmpty()) {
+            System.out.println("⚠️ Kullanıcı ID " + event.getUserId() + " için aktif FCM token bulunamadı, bildirim atlanıyor.");
+            return;
+        }
+
+        for (String token : fcmTokens) {
             try {
-                if (device.getFcmToken() != null) {
-                    fcmService.sendSecurityNotification(
-                            device.getFcmToken(),
-                            "Güvenlik Uyarısı!",
-                            device.getLastCity()+" konumundan hesabınıza yeni bir cihazdan giriş denemesi yapıldı. Siz misiniz?",
-                            event.getNotificationId()
-                    );
-                    System.out.println("✅ Bildirim başarıyla gönderildi: Cihaz ID -> " + device.getId());
-                } else {
-                    System.out.println("⚠️ Cihaz ID " + device.getId() + " için FCM token bulunamadı, atlanıyor.");
-                }
+                fcmService.sendSecurityNotification(
+                        token,
+                        "Güvenlik Uyarısı!",
+                        event.getCity() + " konumundan hesabınıza yeni bir cihazdan giriş denemesi yapıldı. Siz misiniz?",
+                        event.getNotificationId()
+                );
+                System.out.println("✅ Bildirim bir cihaza başarıyla gönderildi.");
             } catch (Exception e) {
-                //System.err.println("Cihaz " + device.getId() + " için bildirim gönderilirken hata oluştu:");
-                //e.printStackTrace();
-                System.err.println("Cihaz " + device.getId() + " için bildirim gönderilemedi, atlanıyor: " + e.getMessage());
+                System.err.println("Bir cihaza bildirim gönderilemedi, sonraki cihaza geçiliyor: " + e.getMessage());
             }
         }
     }

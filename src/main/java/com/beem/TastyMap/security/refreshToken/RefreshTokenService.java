@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -98,6 +99,11 @@ public class RefreshTokenService {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");
         }
         NotificationEntity notification = notificationOpt.get();
+
+        if (!Objects.equals(notification.getFingerPrintHash(), dto.getFingerprintHash())) {
+            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
+        }
+
         if (notification.getStatus() != Status.APPROVED) {
             throw new CustomExceptions.AuthorizationException("Cihaz henüz onaylanmadı, önce e-posta onayını yap!");
         }
@@ -107,7 +113,8 @@ public class RefreshTokenService {
         if (alreadyHasToken) {
             throw new CustomExceptions.InvalidException("Bu cihaz zaten yetkilendirilmiş");
         }
-        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true, dto.getFingerprintHash());
+
+        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true, dto.getFingerprintHash(),null);
 
         String refreshToken = jwtUtill.generateRefreshToken(notification.getUser().getId(),dto.getDeviceId());
 
