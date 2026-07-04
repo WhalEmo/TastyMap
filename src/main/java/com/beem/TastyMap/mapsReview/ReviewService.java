@@ -1,6 +1,5 @@
 package com.beem.TastyMap.mapsReview;
 
-import com.beem.TastyMap.MapsReview.ReviewUpdateEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.service.PlacesService;
