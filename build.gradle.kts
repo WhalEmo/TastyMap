@@ -38,6 +38,9 @@ dependencies {
     implementation("org.hibernate.search:hibernate-search-mapper-orm:7.1.0.Final")
     implementation("org.hibernate.search:hibernate-search-backend-lucene:7.1.0.Final")
 
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+    implementation("com.bucket4j:bucket4j-redis:8.10.1")
+
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
     runtimeOnly("com.mysql:mysql-connector-j")

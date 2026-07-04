@@ -35,6 +35,24 @@ services:
       retries: 10
     networks:
       - app-network
+  
+  ollama:
+    image: ollama/ollama:latest
+    container_name: tasty_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - app-network
+   
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   app:
     build: .
@@ -55,6 +73,7 @@ services:
 volumes:
   mysql-data:
   redis_data:
+  ollama_data:
 
 networks:
   app-network:
