@@ -2,9 +2,9 @@ package com.beem.TastyMap;
 
 import com.beem.TastyMap.redis.RedisRateLimitService;
 import com.beem.TastyMap.registerLogin.UserService;
-import com.beem.TastyMap.security.verification.servletFilter.JWTUtill;
-import com.beem.TastyMap.security.verification.servletFilter.JwtAuthenticationFilter;
-import com.beem.TastyMap.security.verification.servletFilter.RateLimitingFilter;
+import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
+import com.beem.TastyMap.security.servletFilter.JWTUtill;
+import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**","/places/**","/place-review/**").permitAll()
+                        .requestMatchers("/ws/auth/**").permitAll()
+                        .requestMatchers( "/api/users/**","/auth/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -62,7 +64,7 @@ public class SecurityConfig {
                 .addFilterBefore(rateLimitingFilter, jwtAuthenticationFilter.getClass())
                 .headers(headers -> {
                             headers.contentSecurityPolicy(csp ->
-                                    csp.policyDirectives("default-src 'self'")
+                                    csp.policyDirectives("default-src 'self'; connect-src 'self' wss://coleman-nonethic-marinda.ngrok-free.dev http://localhost:8081;")
 
                             );
                             headers.httpStrictTransportSecurity(hsts ->
@@ -70,6 +72,7 @@ public class SecurityConfig {
                             );
                         }
                 );
+
         return http.build();
     }
 
@@ -84,7 +87,12 @@ public class SecurityConfig {
                 "Accept",
                 "X-Requested-With",
                 "X-Client-Type",
-                "ngrok-skip-browser-warning"
+                "ngrok-skip-browser-warning",
+                "Origin",
+                "Upgrade",
+                "Connection",
+                "Sec-WebSocket-Key",
+                "Sec-WebSocket-Version"
         ));
 
         configuration.setAllowCredentials(true);

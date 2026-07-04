@@ -1,5 +1,6 @@
-package com.beem.TastyMap.security;
+package com.beem.TastyMap.security.refreshToken;
 
+import com.beem.TastyMap.registerLogin.UserEntity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.ColumnDefault;
 
@@ -11,19 +12,18 @@ public class RefreshTokenEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity user;
 
     @Column(unique = true, length = 512)
     private String token;
-
     private String deviceId;
 
-    private String userAgent;
-
     private LocalDateTime expiryDate;
-    private String fcmToken;
-    private LocalDateTime lastUsedAt;
+
     private boolean revoked = false;
+
     @Column(nullable = false)
     @ColumnDefault("CURRENT_TIMESTAMP(6)")
     private LocalDateTime createdAt;
@@ -34,39 +34,12 @@ public class RefreshTokenEntity {
     }
 
     public RefreshTokenEntity(){}
-    public RefreshTokenEntity(Long userId, String token, String deviceId, String userAgent, LocalDateTime expiryDate, boolean revoked,String fcmToken,LocalDateTime lastUsedAt) {
-        this.userId = userId;
+    public RefreshTokenEntity(UserEntity user, String token, String deviceId, LocalDateTime expiryDate, boolean revoked) {
+        this.user = user;
         this.token = token;
         this.deviceId = deviceId;
-        this.userAgent = userAgent;
         this.expiryDate = expiryDate;
         this.revoked = revoked;
-        this.fcmToken=fcmToken;
-        this.lastUsedAt=lastUsedAt;
-    }
-
-    public String getFcmToken() {
-        return fcmToken;
-    }
-
-    public void setFcmToken(String fcmToken) {
-        this.fcmToken = fcmToken;
-    }
-
-    public LocalDateTime getLastUsedAt() {
-        return lastUsedAt;
-    }
-
-    public void setLastUsedAt(LocalDateTime lastUsedAt) {
-        this.lastUsedAt = lastUsedAt;
-    }
-
-    public String getUserAgent() {
-        return userAgent;
-    }
-
-    public void setUserAgent(String userAgent) {
-        this.userAgent = userAgent;
     }
 
     public Long getId() {
@@ -77,12 +50,12 @@ public class RefreshTokenEntity {
         this.id = id;
     }
 
-    public Long getUserId() {
-        return userId;
+    public UserEntity getUser() {
+        return user;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUser(UserEntity user) {
+        this.user = user;
     }
 
     public String getToken() {

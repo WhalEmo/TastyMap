@@ -16,12 +16,14 @@ public class NotificationService {
 
     @Transactional
     public void approve(Long notificationId,Long userId) {
-        NotificationEntity notification = notificationRepo.findById(notificationId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Notification bulunamadı"));
+        Long ownerId = notificationRepo.findUserIdById(notificationId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Bulunamadı"));
 
-        if (!notification.getUserId().equals(userId)) {
+        if (!ownerId.equals(userId)) {
             throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.Bu bildirim sana ait değil");
         }
+        NotificationEntity notification = notificationRepo.findById(notificationId).get();
+
         if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
             notification.setStatus(Status.EXPIRED);
             notificationRepo.save(notification);
@@ -36,13 +38,14 @@ public class NotificationService {
     }
     @Transactional
     public void reject(Long notificationId,Long userId) {
+        Long ownerId = notificationRepo.findUserIdById(notificationId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Bulunamadı"));
 
-        NotificationEntity notification = notificationRepo.findById(notificationId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Notification bulunamadı"));
-
-        if (!notification.getUserId().equals(userId)) {
+        if (!ownerId.equals(userId)) {
             throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.Bu bildirim sana ait değil");
         }
+        NotificationEntity notification = notificationRepo.findById(notificationId).get();
+
         if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
             notification.setStatus(Status.EXPIRED);
             notificationRepo.save(notification);

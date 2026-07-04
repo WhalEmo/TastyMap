@@ -4,9 +4,10 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.registerLogin.UserResponseDTO;
-import com.beem.TastyMap.security.RefreshTokenEntity;
-import com.beem.TastyMap.security.RefreshTokenRepo;
-import com.beem.TastyMap.security.RefreshTokenRequestDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
+import com.beem.TastyMap.security.device.UserDeviceRepo;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,12 +17,14 @@ import java.util.List;
 @Service
 public class ProfileService {
     private final UserRepo userRepo;
+    private final UserDeviceRepo userDeviceRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
     private final BlockRepo blockRepo;
 
-    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo) {
+    public ProfileService(UserRepo userRepo, UserDeviceRepo userDeviceRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo) {
         this.userRepo = userRepo;
+        this.userDeviceRepo = userDeviceRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
         this.blockRepo = blockRepo;
@@ -48,30 +51,19 @@ public class ProfileService {
                 .findByTokenAndRevokedFalse(dto.getRefreshToken())
                 .orElseThrow(() ->
                         new CustomExceptions.NotFoundException("Refresh token bulunamadı"));
-
-        if (!rf.getUserId().equals(userId)) {
-            throw new CustomExceptions.AuthorizationException("Yetkisiz erişim.");
-        }
-        if (!rf.getDeviceId().equals(dto.getDeviceId())) {
-            throw new CustomExceptions.InvalidException("Cihaz uyuşmuyor");
+        if (!rf.getUser().getId().equals(userId) || !rf.getDeviceId().equals(dto.getDeviceId())) {
+            throw new CustomExceptions.AuthorizationException("Yetkisiz veya geçersiz cihaz");
         }
         rf.setRevoked(true);
         refreshTokenRepo.save(rf);
     }
 
     public List<ActiveDeviceDTO> getActiveDevices(Long userId){
-        List<RefreshTokenEntity>tokens=refreshTokenRepo
-                .findAllByUserIdAndRevokedFalse(userId);
-
-        return tokens.stream().map(rt->new ActiveDeviceDTO(
-                rt.getDeviceId(),
-                rt.getUserAgent(),
-                rt.getLastUsedAt()
-        )).toList();
+        return refreshTokenRepo.findActiveDevices(userId);
     }
 
     public long getActiveDeviceCount(Long userId) {
-        return refreshTokenRepo.countByUserIdAndRevokedFalse(userId);
+        return refreshTokenRepo.countByUser_IdAndRevokedFalse(userId);
     }
 
     public void changePassword(ChangePasswordDTO dto, Long userId){
@@ -126,5 +118,4 @@ public class ProfileService {
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
         return new UserResponseDTO(user);
     }
-
 }

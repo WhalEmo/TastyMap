@@ -34,6 +34,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("com.maxmind.geoip2:geoip2:4.2.1")
+    implementation("com.google.firebase:firebase-admin:9.4.3")
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
 
     implementation("org.hibernate.search:hibernate-search-mapper-orm:7.1.0.Final")
     implementation("org.hibernate.search:hibernate-search-backend-lucene:7.1.0.Final")
@@ -55,6 +58,8 @@ dependencies {
 
     annotationProcessor("jakarta.persistence:jakarta.persistence-api")
     annotationProcessor("jakarta.annotation:jakarta.annotation-api")
+    compileOnly("org.projectlombok:lombok:1.18.32")
+    annotationProcessor("org.projectlombok:lombok:1.18.32")
     implementation(kotlin("stdlib-jdk8"))
 }
 

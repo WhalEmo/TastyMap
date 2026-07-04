@@ -3,7 +3,7 @@ package com.beem.TastyMap.security.verification.forgotPassword;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
-import com.beem.TastyMap.security.RefreshTokenRepo;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;

@@ -1,16 +1,29 @@
 package com.beem.TastyMap.registerLogin;
 
+import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
+import com.beem.TastyMap.event.model.SecurityAlertEvent;
+import com.beem.TastyMap.event.model.SecurityEmailModel;
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.security.CustomUserDetails;
-import com.beem.TastyMap.security.verification.servletFilter.JWTUtill;
 import com.beem.TastyMap.notification.NotificationEntity;
+import com.beem.TastyMap.notification.SecurityHistorySummary;
+import com.beem.TastyMap.security.banned.BannedDeviceEntity;
+import com.beem.TastyMap.security.banned.BannedDeviceRepo;
+import com.beem.TastyMap.security.device.UserDeviceDTO;
+import com.beem.TastyMap.security.device.UserDeviceService;
+import com.beem.TastyMap.security.risk.BruteForceService;
+import com.beem.TastyMap.security.risk.RiskAnalysisService;
+import com.beem.TastyMap.security.risk.RiskResult;
+import com.beem.TastyMap.security.risk.SecurityValidationService;
+import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.security.RefreshTokenEntity;
-import com.beem.TastyMap.security.RefreshTokenRepo;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
+import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
-import com.beem.TastyMap.security.verification.emailVerify.EmailService;
+import lombok.extern.java.Log;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,33 +32,43 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 @Service
 public class UserService implements UserDetailsService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final NotificationRepo notificationRepo;
+    private final BruteForceService bruteForceService;
+    private final RiskAnalysisService riskAnalysisService;
+    private final UserDeviceService userDeviceService;
     private final EmailRepo emailRepo;
-    private final EmailService emailService;
+    private final BannedDeviceRepo bannedDeviceRepo;
+    private final SecurityValidationService securityValidationService;
     private final PasswordEncoder passwordEncoder;
     private final JWTUtill jwtUtill;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, EmailRepo emailRepo, EmailService emailService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
+    public UserService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo, BruteForceService bruteForceService, RiskAnalysisService riskAnalysisService, UserDeviceService userDeviceService, EmailRepo emailRepo, BannedDeviceRepo bannedDeviceRepo, SecurityValidationService securityValidationService, PasswordEncoder passwordEncoder, JWTUtill jwtUtill, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
+        this.bruteForceService = bruteForceService;
+        this.riskAnalysisService = riskAnalysisService;
+        this.userDeviceService = userDeviceService;
         this.emailRepo = emailRepo;
-        this.emailService = emailService;
+        this.bannedDeviceRepo = bannedDeviceRepo;
+        this.securityValidationService = securityValidationService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtill = jwtUtill;
         this.eventPublisher = eventPublisher;
     }
+    @Value("${app.lockout-minutes}")
+    private int lockoutMinutes;
+
 
     @Transactional
     public UserResponseDTO register(UserRequestDTO user){
@@ -82,31 +105,54 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
+
+        String username = dto.getUsername().trim();
+        String deviceId = dto.getDeviceId();
+        String ip = IpUtils.getClientIp();
+
+        if (bruteForceService.isBlocked(username)) {
+            throw new CustomExceptions.AuthenticationException(
+                    "Çok fazla hatalı giriş. 30 dakika bekleyiniz."
+            );
+        }
         UserEntity user = userRepo.findByUsername(dto.getUsername().trim())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı adı veya Şifre yanlış!"));
+
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new CustomExceptions.InvalidCredentialsException("Kullanıcı adı veya Şifre yanlış!");
+            bruteForceService.registerFailedAttempt(username);
+            throw new CustomExceptions.InvalidCredentialsException(
+                    "Kullanıcı adı veya Şifre yanlış!"
+            );
         }
+
+        bruteForceService.resetAttempts(username);
+
         if (!user.isEmailVerified()) {
-            throw new CustomExceptions.AuthenticationException("Email adresiniz doğrulanmamış");
+            throw new CustomExceptions.AuthenticationException(
+                    "Email adresiniz doğrulanmamış"
+            );
         }
-        Optional<RefreshTokenEntity> existingDevice = refreshTokenRepo
-                .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());
-
-        if (existingDevice.isPresent()) {
-            return createTokensAndLogin(user, dto, userAgent, existingDevice.get());
-        }
-
-        boolean hasRecentUserActivity = user.getLastInteractionAt() != null
-                && user.getLastInteractionAt().isAfter(LocalDateTime.now().minusDays(30));
-
-        if (hasRecentUserActivity) {
-            createOrUpdatePending(user, dto, userAgent);
-            return LoginResponseDTO.pendingSecurity(new UserResponseDTO(user));
+        if (bannedDeviceRepo.existsByUserIdAndDeviceId(user.getId(), deviceId)) {
+            throw new CustomExceptions.AuthorizationException(
+                    "Bu cihazdan yapılan şüpheli istekler nedeniyle erişiminiz kalıcı olarak engellenmiştir. " +
+                            "Lütfen destek ekibiyle iletişime geçin."
+            );
         }
 
-        return createTokensAndLogin(user, dto, userAgent, null);
+        RiskResult riskResult = riskAnalysisService.calculateRiskScore(user, ip, deviceId, dto.getFingerPrintHash());
+        UserDeviceDTO cachedDevice = riskResult.getDeviceDto();
+
+        if (riskResult.getScore() != 0){//riskScore >= 70) {
+            System.out.println("USerservıce ife gırdı");
+            return handleHighRiskLogin(user, dto, userAgent, ip, cachedDevice);
+        }
+        RefreshTokenEntity existingToken = refreshTokenRepo
+                .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId())
+                .orElse(null);
+
+        return createTokensAndLogin(user, dto, userAgent,existingToken,cachedDevice);
     }
+
     @Transactional
     public void updateLastInteraction(Long userId) {
         UserEntity user = userRepo.findById(userId)
@@ -122,49 +168,46 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent, RefreshTokenEntity existingToken) {
+    private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent,RefreshTokenEntity existingToken,UserDeviceDTO cachedDevice) {
         String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtUtill.generateRefreshToken(user.getId(), dto.getDeviceId());
         RefreshTokenEntity refresh = (existingToken != null) ? existingToken : new RefreshTokenEntity();
 
-        refresh.setUserId(user.getId());
+        refresh.setUser(user);
         refresh.setToken(refreshToken);
         refresh.setDeviceId(dto.getDeviceId());
-        refresh.setUserAgent(userAgent);
         refresh.setExpiryDate(LocalDateTime.now().plusDays(30));
-        refresh.setLastUsedAt(LocalDateTime.now());
         refresh.setRevoked(false);
 
-        if (dto.getFcmToken() != null) {
-            refresh.setFcmToken(dto.getFcmToken());
-        }
+
+        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,dto.getFingerPrintHash(),cachedDevice);
         refreshTokenRepo.save(refresh);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }
 
-    @Transactional
-    private void createOrUpdatePending(
-            UserEntity user,
-            LoginRequestDTO dto,
-            String userAgent
-    ) {
 
-        Optional<NotificationEntity> existingPending =
-                notificationRepo.findByUserIdAndDeviceIdAndStatus(user.getId(), dto.getDeviceId(), Status.PENDING);
-        if (existingPending.isPresent()) {
-            return;
+
+    private LoginResponseDTO handleHighRiskLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip,UserDeviceDTO cachedDevice) {
+        String deviceId = dto.getDeviceId();
+        LocalDateTime now = LocalDateTime.now();
+
+        SecurityHistorySummary summary = notificationRepo.getSecurityHistorySummary(deviceId, ip,now.minusHours(24));
+
+        securityValidationService.checkThrottlingAndBanRules(user, deviceId, ip, summary);
+
+        boolean hasActivePending = notificationRepo.existsActiveNotificationForUser(user.getId(), Status.PENDING);
+
+        if (!hasActivePending) {
+            String token = UUID.randomUUID().toString();
+
+            boolean isTrusted = cachedDevice != null && cachedDevice.isTrusted();
+
+            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token,isTrusted));
         }
-        NotificationEntity n = new NotificationEntity();
-        n.setUserId(user.getId());
-        n.setDeviceId(dto.getDeviceId());
-        n.setUserAgent(userAgent);
-        n.setStatus(Status.PENDING);
-        n.setCreatedAt(LocalDateTime.now());
-        n.setExpiresAt(LocalDateTime.now().plusMinutes(10));//10 dakika gecerli
-        notificationRepo.save(n);
 
-        // 🔔 SADECE BURADA bildirim at
+        return LoginResponseDTO.pendingSecurity();
     }
+
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -175,25 +218,6 @@ public class UserService implements UserDetailsService {
         return new CustomUserDetails(user);
     }
 
-    @Transactional
-    public void resendVerification(String email) {
-        UserEntity user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
-
-        if (user.isEmailVerified()) {
-            throw new CustomExceptions.NotFoundException("Bu hesap zaten doğrulanmış.");
-        }
-
-        emailRepo.deleteByUser(user);
-        String newToken = UUID.randomUUID().toString();
-        EmailEntitiy verification = new EmailEntitiy();
-        verification.setUser(user);
-        verification.setToken(newToken);
-        verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
-        emailRepo.save(verification);
-
-        emailService.sendVerificationMail(newToken, user.getEmail());
-    }
     protected ResponseCookie createCookie(String name, String value, long maxAge, String path) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)

@@ -1,4 +1,4 @@
-package com.beem.TastyMap.security.verification.servletFilter;
+package com.beem.TastyMap.security.servletFilter;
 
 import com.beem.TastyMap.redis.RedisRateLimitService;
 import jakarta.servlet.FilterChain;

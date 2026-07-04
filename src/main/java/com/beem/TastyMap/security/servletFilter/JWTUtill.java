@@ -1,4 +1,4 @@
-package com.beem.TastyMap.security.verification.servletFilter;
+package com.beem.TastyMap.security.servletFilter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.SignatureAlgorithm;

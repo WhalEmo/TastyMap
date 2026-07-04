@@ -21,4 +21,11 @@ public class EmailController {
         response.put("message",result);
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/resendMail")
+    public ResponseEntity<String> resendMail(
+            @RequestParam String email
+    ) {
+        emailService.resendVerification(email);
+        return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
+    }
 }

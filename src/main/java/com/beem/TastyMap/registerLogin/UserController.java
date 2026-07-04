@@ -1,9 +1,9 @@
 package com.beem.TastyMap.registerLogin;
 
-import com.beem.TastyMap.security.ApprovedRefreshRequestDTO;
-import com.beem.TastyMap.security.RefreshTokenRequestDTO;
-import com.beem.TastyMap.security.RefreshTokenResponseDTO;
-import com.beem.TastyMap.security.RefreshTokenService;
+import com.beem.TastyMap.security.refreshToken.ApprovedRefreshRequestDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenResponseDTO;
+import com.beem.TastyMap.security.refreshToken.RefreshTokenService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -41,11 +41,12 @@ public class UserController {
         } else {
             ResponseCookie accessCookie = userService.createCookie("access_token", loginResponse.getAccessToken(), 900, "/");
             ResponseCookie refreshCookie = userService.createCookie("refresh_token", loginResponse.getRefreshToken(), 2592000, "/api/users/refresh");
-
             return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
-                    .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new LoginResponseDTO("Giriş başarılı"));
+                    .headers(headers -> {
+                        headers.add(HttpHeaders.SET_COOKIE, accessCookie.toString());
+                        headers.add(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+                    })
+                    .body(new LoginResponseDTO(loginResponse.getMessage(),loginResponse.getUserResponseDTO(), loginResponse.getStatus()));
         }
 
     }
@@ -88,30 +89,23 @@ public class UserController {
     }
 
     @PostMapping("/refresh/approved")
-    public ResponseEntity<RefreshTokenResponseDTO> refreshApproved(
+    public ResponseEntity<LoginResponseDTO> refreshApproved(
             @RequestBody ApprovedRefreshRequestDTO dto,
             @RequestHeader(value = "X-Client-Type", defaultValue = "WEB") String clientType
     ) {
-        RefreshTokenResponseDTO response = refreshTokenService.refreshApproved(dto);
+        LoginResponseDTO response = refreshTokenService.refreshApproved(dto);
 
         if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
             return ResponseEntity.ok().body(response);
         } else {
             ResponseCookie accessCookie = userService.createCookie("access_token", response.getAccessToken(), 900, "/");
-            ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshtoken(), 2592000, "/api/users/refresh/approved");
+            ResponseCookie refreshCookie = userService.createCookie("refresh_token", response.getRefreshToken(), 2592000, "/api/users/refresh/approved");
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                     .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                    .body(new RefreshTokenResponseDTO("Giriş başarılı"));
+                    .body(new LoginResponseDTO(response.getMessage(),response.getUserResponseDTO(), response.getStatus()));
         }
-    }
-    @PostMapping("/resendMail")
-    public ResponseEntity<String> resendMail(
-            @RequestParam String email
-    ) {
-         userService.resendVerification(email);
-        return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
     }
 
 

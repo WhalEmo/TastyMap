@@ -5,11 +5,13 @@ import java.time.LocalDateTime;
 public class ActiveDeviceDTO {
     private String deviceId;
     private String userAgent;
+    private String city;
     private LocalDateTime lastUsedAt;
 
-    public ActiveDeviceDTO(String deviceId,String userAgent, LocalDateTime lastUsedAt) {
+    public ActiveDeviceDTO(String deviceId,String userAgent, String city,LocalDateTime lastUsedAt) {
         this.deviceId = deviceId;
         this.userAgent = userAgent;
+        this.city= city;
         this.lastUsedAt = lastUsedAt;
     }
 
@@ -36,5 +38,13 @@ public class ActiveDeviceDTO {
 
     public void setLastUsedAt(LocalDateTime lastUsedAt) {
         this.lastUsedAt = lastUsedAt;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
     }
 }

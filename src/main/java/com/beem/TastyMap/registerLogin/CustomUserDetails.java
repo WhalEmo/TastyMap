@@ -1,6 +1,5 @@
-package com.beem.TastyMap.security;
+package com.beem.TastyMap.registerLogin;
 
-import com.beem.TastyMap.registerLogin.UserEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

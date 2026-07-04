@@ -12,7 +12,6 @@ public interface EmailRepo extends JpaRepository<EmailEntitiy,Long> {
     Optional<EmailEntitiy> findByToken(String token);
 
     @Modifying
-    @Transactional
     @Query("DELETE FROM EmailEntitiy e WHERE e.user = :user")
     void deleteByUser(UserEntity user);
 }

@@ -1,40 +1,47 @@
-package com.beem.TastyMap.security;
+package com.beem.TastyMap.security.refreshToken;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.registerLogin.LoginResponseDTO;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.security.verification.servletFilter.JWTUtill;
+import com.beem.TastyMap.registerLogin.UserResponseDTO;
+import com.beem.TastyMap.security.device.UserDeviceService;
+import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class RefreshTokenService {
-    private final UserRepo userRepo;
+    private final UserDeviceService userDeviceService;
     private final JWTUtill jwtUtill;
     private final RefreshTokenRepo refreshTokenRepo;
     private final NotificationRepo notificationRepo;
 
-    public RefreshTokenService(UserRepo userRepo, JWTUtill jwtUtill, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo) {
-        this.userRepo = userRepo;
+
+    public RefreshTokenService(UserDeviceService userDeviceService, JWTUtill jwtUtill, RefreshTokenRepo refreshTokenRepo, NotificationRepo notificationRepo) {
+        this.userDeviceService = userDeviceService;
         this.jwtUtill = jwtUtill;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
     }
+
     @Transactional
     public RefreshTokenResponseDTO refresh(String refreshToken, String deviceId) {
 
         RefreshTokenEntity rf = refreshTokenRepo
-                .findByTokenAndRevokedFalse(refreshToken)
+                .findByTokenWithUser(refreshToken)
                 .orElseThrow(() ->
                         new CustomExceptions.AuthorizationException("Refresh token geçersiz")
                 );
+        UserEntity user = rf.getUser();
 
         if (!jwtUtill.validateRefreshToken(refreshToken)) {
             throw new CustomExceptions.InvalidException("Refresh token geçersiz");
@@ -47,9 +54,6 @@ public class RefreshTokenService {
         if (!rf.getDeviceId().equals(deviceId)) {
             throw new CustomExceptions.AuthorizationException("Bu token farklı cihaza ait");
         }
-
-        UserEntity user = userRepo.findById(rf.getUserId())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
         String newAccessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
 
@@ -67,15 +71,13 @@ public class RefreshTokenService {
         rf.setRevoked(true);
         refreshTokenRepo.save(rf);
         String newRefreshToken = jwtUtill.generateRefreshToken(user.getId(), rf.getDeviceId());
+
         RefreshTokenEntity newRf = new RefreshTokenEntity(
-                user.getId(),
+                user,
                 newRefreshToken,
                 rf.getDeviceId(),
-                rf.getUserAgent(),
                 LocalDateTime.now().plusDays(30),
-                false,
-                rf.getFcmToken(),
-                LocalDateTime.now()
+                false
         );
 
         refreshTokenRepo.save(newRf);
@@ -89,54 +91,44 @@ public class RefreshTokenService {
 
 
     @Transactional
-    public RefreshTokenResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
-        Optional<NotificationEntity> notificationOpt = notificationRepo.findByUserIdAndDeviceId(dto.getUserId(), dto.getDeviceId());
+    public LoginResponseDTO refreshApproved(ApprovedRefreshRequestDTO dto) {
+        Optional<NotificationEntity> notificationOpt = notificationRepo
+                .findFirstByDeviceIdAndIsUsedTrueOrderByCreatedAtDesc(dto.getDeviceId());
+
         if (notificationOpt.isEmpty()) {
             throw new CustomExceptions.NotFoundException("Cihaz için onay isteği bulunamadı");
         }
         NotificationEntity notification = notificationOpt.get();
 
-        if (notification.getExpiresAt().isBefore(LocalDateTime.now())) {
-            notification.setStatus(Status.EXPIRED);
-            notificationRepo.save(notification);
-            throw new CustomExceptions.InvalidException("Onay süresi dolmuş");
+        if (!Objects.equals(notification.getFingerPrintHash(), dto.getFingerprintHash())) {
+            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
         }
 
-        if (notification.getStatus() == Status.REJECTED) {
-            throw new CustomExceptions.AuthorizationException("Cihaz için onay verilmedi");
+        if (notification.getStatus() != Status.APPROVED) {
+            throw new CustomExceptions.AuthorizationException("Cihaz henüz onaylanmadı, önce e-posta onayını yap!");
         }
 
-        if (notification.getStatus() == Status.PENDING) {
-            throw new CustomExceptions.InvalidException("Cihaz için onay bekleniyor");
-        }
-        UserEntity user = userRepo.findById(dto.getUserId())
-                .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Kullanıcı bulunamadı")
-                );
-
-        boolean alreadyHasToken = refreshTokenRepo.existsByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId());
+        boolean alreadyHasToken = refreshTokenRepo.existsByUser_IdAndDeviceIdAndRevokedFalse(notification.getUser().getId(), dto.getDeviceId());
 
         if (alreadyHasToken) {
             throw new CustomExceptions.InvalidException("Bu cihaz zaten yetkilendirilmiş");
         }
 
-        String refreshToken = jwtUtill.generateRefreshToken(user.getId(),dto.getDeviceId());
+        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true, dto.getFingerprintHash(),null);
+
+        String refreshToken = jwtUtill.generateRefreshToken(notification.getUser().getId(),dto.getDeviceId());
 
         RefreshTokenEntity rf = new RefreshTokenEntity(
-                user.getId(),
+                notification.getUser(),
                 refreshToken,
                 dto.getDeviceId(),
-                dto.getUserAgent(),
                 LocalDateTime.now().plusDays(30),
-                false,
-                dto.getFcmToken(),
-                LocalDateTime.now()
+                false
         );
+
         refreshTokenRepo.save(rf);
-        String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
+        String accessToken = jwtUtill.generateAccessToken(notification.getUser().getId(), notification.getUser().getRole());
         notificationRepo.delete(notification);
-
-        return new RefreshTokenResponseDTO(accessToken, refreshToken, "basarili");
+        return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(notification.getUser()));
     }
-
 }
