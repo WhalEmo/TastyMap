@@ -50,5 +50,16 @@ public class CustomExceptions {
     public static class AlreadyVerifiedException extends RuntimeException{
         public AlreadyVerifiedException(String message){super(message);}
     }
+    public static class RedisKeyExistsException extends RuntimeException{
+        public RedisKeyExistsException(String message){
+            super(message);
+        }
+    }
+    public static class ServiceException extends RuntimeException {
+        public  ServiceException(String message) {
+            super(message);
+        }
+    }
+
 
 }

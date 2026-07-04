@@ -1,6 +1,6 @@
 package com.beem.TastyMap.maps.geo;
 
-import com.beem.TastyMap.maps.redis.RedisKeyGenerator;
+import com.beem.TastyMap.redis.RedisKeyGenerator;
 
 import java.math.BigDecimal;
 import java.util.List;

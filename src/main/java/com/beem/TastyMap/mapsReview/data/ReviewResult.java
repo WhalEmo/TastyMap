@@ -1,6 +1,6 @@
 package com.beem.TastyMap.mapsReview.data;
 
-import com.beem.TastyMap.mapsReview.Enum.ReviewSource;
+import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 

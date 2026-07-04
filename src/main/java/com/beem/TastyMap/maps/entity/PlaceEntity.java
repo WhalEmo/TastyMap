@@ -4,6 +4,11 @@ import com.beem.TastyMap.maps.data.PlaceDetailsResult;
 import com.beem.TastyMap.maps.data.PlaceResult;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import jakarta.persistence.*;
+import org.hibernate.search.engine.backend.types.Projectable;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.DocumentId;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.GenericField;
+import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,20 +17,25 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
+@Indexed
 @Entity
 @Table(name = "places")
 public class PlaceEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @DocumentId
+    @GenericField(projectable = Projectable.YES)
     private Long id;
 
     @Column(name = "place_id", nullable = false, unique = true)
     private String placeId;
 
+    @FullTextField(projectable = Projectable.YES)
     @Column(nullable = false)
     private String name;
 
+    @FullTextField(projectable = Projectable.YES)
     private String vicinity;
 
     private Double rating;
@@ -110,22 +120,6 @@ public class PlaceEntity {
 
 
         entity.setTypes(new HashSet<>(dto.getTypes()));
-
-        if (dto.getPhotos() != null) {
-            List<PhotoEntity> photos = dto.getPhotos().stream()
-                    .map(p -> {
-                        PhotoEntity photo = new PhotoEntity();
-                        photo.setPhotoReference(p.getPhoto_reference());
-                        photo.setWidth(p.getWidth());
-                        photo.setHeight(p.getHeight());
-                        photo.setPlace(entity);
-                        return photo;
-                    })
-                    .collect(Collectors.toList());
-            entity.setPhotos(photos);
-        }
-
-
         return entity;
     }
 
@@ -152,37 +146,11 @@ public class PlaceEntity {
         entity.setInternationalPhoneNumber(dto.getInternational_phone_number());
         entity.setWebsite(dto.getWebsite());
 
-        if (dto.getPhotos() != null) {
-            List<PhotoEntity> photos = dto.getPhotos().stream()
-                    .map(p -> {
-                        PhotoEntity photo = new PhotoEntity();
-                        photo.setPhotoReference(p.getPhoto_reference());
-                        photo.setWidth(p.getWidth());
-                        photo.setHeight(p.getHeight());
-                        photo.setPlace(entity);
-                        return photo;
-                    })
-                    .collect(Collectors.toList());
-            entity.setPhotos(photos);
-        }
 
         entity.openingHours = new OpeningHoursEmbeddable(
                 dto.getOpening_hours().getOpen_now(),
                 dto.getOpening_hours().getWeekday_text()
         );
-
-        entity.reviews = dto.getReviews()
-                .stream()
-                .map(review -> {
-                    return new ReviewEntity(
-                            review.getAuthor_name(),
-                            review.getRating(),
-                            review.getText(),
-                            review.getTime(),
-                            entity
-                    );
-                })
-                .collect(Collectors.toList());
 
         entity.setFormattedAddress(dto.getFormatted_address());
 
@@ -190,7 +158,6 @@ public class PlaceEntity {
     }
 
     public void updateFromDetailsDto(PlaceDetailsResult dto) {
-
         this.setName(dto.getName());
         this.setRating(dto.getRating());
         this.setPriceLevel(dto.getPrice_level());
@@ -211,39 +178,16 @@ public class PlaceEntity {
         this.setFormattedAddress(dto.getFormatted_address());
 
         if (dto.getOpening_hours() != null) {
-            this.setOpeningHours(
-                    new OpeningHoursEmbeddable(
-                            dto.getOpening_hours().getOpen_now(),
-                            dto.getOpening_hours().getWeekday_text()
-                    )
-            );
+            this.setOpeningHours(new OpeningHoursEmbeddable(
+                    dto.getOpening_hours().getOpen_now(),
+                    dto.getOpening_hours().getWeekday_text()
+            ));
         }
+    }
 
-        if (dto.getPhotos() != null) {
-            this.getPhotos().clear();
-            dto.getPhotos().forEach(p -> {
-                PhotoEntity photo = new PhotoEntity();
-                photo.setPhotoReference(p.getPhoto_reference());
-                photo.setWidth(p.getWidth());
-                photo.setHeight(p.getHeight());
-                photo.setPlace(this);
-                this.getPhotos().add(photo);
-            });
-        }
-
-        if (dto.getReviews() != null) {
-            this.getReviews().clear();
-            dto.getReviews().forEach(r -> {
-                ReviewEntity review = new ReviewEntity(
-                        r.getAuthor_name(),
-                        r.getRating(),
-                        r.getText(),
-                        r.getTime(),
-                        this
-                );
-                this.getReviews().add(review);
-            });
-        }
+    public void addPhoto(PhotoEntity photo) {
+        photos.add(photo);
+        photo.setPlace(this);
     }
 
 
@@ -271,12 +215,6 @@ public class PlaceEntity {
         return photos;
     }
 
-    public void setPhotos(List<PhotoEntity> photos) {
-        this.photos.clear();
-        if (photos != null) {
-            this.photos.addAll(photos);
-        }
-    }
 
     public Long getId() {
         return id;
@@ -403,6 +341,9 @@ public class PlaceEntity {
     }
 
     public void setOpeningHours(OpeningHoursEmbeddable openingHours) {
+        if(this.openingHours.equals(openingHours)){
+            return;
+        }
         this.openingHours = openingHours;
     }
 
@@ -410,9 +351,6 @@ public class PlaceEntity {
         return reviews;
     }
 
-    public void setReviews(List<ReviewEntity> reviews) {
-        this.reviews = reviews;
-    }
 
     public String getFormattedAddress() {
         return formattedAddress;
@@ -420,5 +358,14 @@ public class PlaceEntity {
 
     public void setFormattedAddress(String formattedAddress) {
         this.formattedAddress = formattedAddress;
+    }
+
+
+    public void setPhotos(List<PhotoEntity> photos) {
+        this.photos = photos;
+    }
+
+    public void setReviews(List<ReviewEntity> reviews) {
+        this.reviews = reviews;
     }
 }

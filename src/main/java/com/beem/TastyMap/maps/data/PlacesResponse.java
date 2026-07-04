@@ -1,5 +1,6 @@
 package com.beem.TastyMap.maps.data;
 
+import com.beem.TastyMap.maps.data.geojson.FeatureCollection;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
@@ -8,11 +9,19 @@ import java.util.List;
 public class PlacesResponse {
     private List<PlaceResult> results;
     private String status;
+    private FeatureCollection geoJson;
     private String next_page_token;
 
     public PlacesResponse() {
     }
 
+    public FeatureCollection getGeoJson() {
+        return geoJson;
+    }
+
+    public void setGeoJson(FeatureCollection geoJson) {
+        this.geoJson = geoJson;
+    }
 
     public List<PlaceResult> getResults() {
         return results;

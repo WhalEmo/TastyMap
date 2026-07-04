@@ -26,6 +26,9 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
+# Hibernate Search / Lucene
+lucene/
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

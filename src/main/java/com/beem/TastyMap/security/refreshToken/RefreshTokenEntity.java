@@ -2,6 +2,7 @@ package com.beem.TastyMap.security.refreshToken;
 
 import com.beem.TastyMap.registerLogin.UserEntity;
 import jakarta.persistence.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +25,7 @@ public class RefreshTokenEntity {
     private boolean revoked = false;
 
     @Column(nullable = false)
+    @ColumnDefault("CURRENT_TIMESTAMP(6)")
     private LocalDateTime createdAt;
 
     @PrePersist

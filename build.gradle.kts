@@ -18,6 +18,7 @@ java {
 
 repositories {
 	mavenCentral()
+    maven { url = uri("https://repo.osgeo.org/repository/release/") }
 }
 
 dependencies {
@@ -37,6 +38,12 @@ dependencies {
     implementation("com.google.firebase:firebase-admin:9.4.3")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
 
+    implementation("org.hibernate.search:hibernate-search-mapper-orm:7.1.0.Final")
+    implementation("org.hibernate.search:hibernate-search-backend-lucene:7.1.0.Final")
+
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+    implementation("com.bucket4j:bucket4j-redis:8.10.1")
+
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 
     runtimeOnly("com.mysql:mysql-connector-j")
@@ -44,6 +51,7 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
 
     implementation("com.querydsl:querydsl-jpa:5.1.0:jakarta")
     annotationProcessor("com.querydsl:querydsl-apt:5.1.0:jakarta")

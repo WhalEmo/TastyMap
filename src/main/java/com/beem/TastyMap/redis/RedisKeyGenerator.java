@@ -1,4 +1,6 @@
-package com.beem.TastyMap.maps.redis;
+package com.beem.TastyMap.redis;
+
+import com.beem.TastyMap.maps.geo.GridCell;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -28,6 +30,14 @@ public class RedisKeyGenerator {
 
     public static String createPlaceDetailsKey(String placeId){
         return "place:" + placeId;
+    }
+
+    public static String createPlaceUpdateEventKey(String placeId){
+        return "place:" + placeId + ":UpdateEvent";
+    }
+
+    public static String createGridUpdateEventKey(GridCell cell){
+        return cell.getGridKey() + ":UpdateEvent";
     }
 
 }

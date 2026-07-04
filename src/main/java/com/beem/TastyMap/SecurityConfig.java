@@ -1,6 +1,8 @@
 package com.beem.TastyMap;
 
+import com.beem.TastyMap.redis.RedisRateLimitService;
 import com.beem.TastyMap.registerLogin.UserService;
+import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
@@ -39,8 +41,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, UserService service) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, UserService service, RedisRateLimitService rateLimitService) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service);
+        RateLimitingFilter rateLimitingFilter = new RateLimitingFilter(rateLimitService);
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
@@ -50,14 +53,15 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        //login gerekmeyenler
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers( "/api/users/**","/auth/**","/places/**","/place-review/**").permitAll()
                         .requestMatchers("/ws/auth/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitingFilter, jwtAuthenticationFilter.getClass())
                 .headers(headers -> {
                             headers.contentSecurityPolicy(csp ->
                                     csp.policyDirectives("default-src 'self'; connect-src 'self' wss://coleman-nonethic-marinda.ngrok-free.dev http://localhost:8081;")
