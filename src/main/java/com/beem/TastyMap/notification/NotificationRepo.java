@@ -23,6 +23,8 @@ public interface NotificationRepo extends JpaRepository<NotificationEntity,Long>
             "ORDER BY n.createdAt DESC LIMIT 1")
     Optional<NotificationStatusSummary> findLatestNotificationStatus(@Param("deviceId") String deviceId);
 
+
+
     @Query("SELECT n FROM NotificationEntity n JOIN FETCH n.user WHERE n.token = :token")
     Optional<NotificationEntity> findByTokenWithUser(@Param("token") String token);
 

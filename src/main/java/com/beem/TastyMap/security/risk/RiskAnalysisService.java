@@ -5,94 +5,58 @@ import com.beem.TastyMap.security.device.UserDeviceDTO;
 import com.beem.TastyMap.security.device.UserDeviceEntity;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
+
+
 @Service
 public class RiskAnalysisService {
 
     private final UserDeviceRepo userDeviceRepo;
     private final GeoLocationService geoLocationService;
+    private final List<RiskRule> rules;
 
-    public RiskAnalysisService(UserDeviceRepo userDeviceRepo, GeoLocationService geoLocationService) {
+    public RiskAnalysisService(UserDeviceRepo userDeviceRepo, GeoLocationService geoLocationService, List<RiskRule> rules) {
         this.userDeviceRepo = userDeviceRepo;
         this.geoLocationService = geoLocationService;
+        this.rules = rules;
     }
 
-    public RiskResult calculateRiskScore(UserEntity user, String currentIp, String deviceId, String fingerprintHash) {
-        UserDeviceEntity device = userDeviceRepo
-                .findByUser_IdAndDeviceId(user.getId(), deviceId)
-                .orElse(null);
+    public RiskResult calculateRiskScore(UserEntity user,
+                                         String ip,
+                                         String deviceId,
+                                         String fingerprintHash) {
 
-        UserDeviceDTO deviceDto = UserDeviceDTO.fromEntity(device);
+        UserDeviceEntity device =
+                userDeviceRepo.findByUser_IdAndDeviceId(user.getId(), deviceId)
+                        .orElse(null);
 
         if (device != null && device.isTrusted()) {
-            return new RiskResult(0, deviceDto);
+            return new RiskResult(0, null);
         }
 
         if (!userDeviceRepo.existsByUser_Id(user.getId())) {
-            return new RiskResult(0, deviceDto);
+            return new RiskResult(0, null);
         }
 
-        int risk = 0;
+        String city = geoLocationService.getCity(ip);
 
-        if (device == null) {
-            risk += 50;
-        } else {
-            if (!java.util.Objects.equals(device.getFingerprintHash(), fingerprintHash)) {
-                risk += 60;
-            }
-            if (!device.isTrusted()) {
-                risk += 10;
-            }
+        RiskContext context =
+                new RiskContext(
+                        user,
+                        device,
+                        ip,
+                        city,
+                        fingerprintHash
+                );
+
+        int score = 0;
+
+        for (RiskRule rule : rules) {
+            score += rule.calculate(context);
         }
 
-        String currentCity = geoLocationService.getCity(currentIp);
-        if (currentCity != null && !currentCity.isBlank()) {
-            boolean isKnownCity = userDeviceRepo.existsByUser_IdAndLastCityIgnoreCase(user.getId(), currentCity);
-            if (!isKnownCity) {
-                risk += 20;
-            }
-        } else {
-            risk += 20;
-        }
-
-        String subnetPattern = getSubnetPattern(currentIp);
-        if (subnetPattern != null) {
-            boolean isKnownNetwork = userDeviceRepo.existsByUser_IdAndSubnet(user.getId(), subnetPattern);
-            if (!isKnownNetwork) {
-                risk += 20;
-            }
-        } else {
-            risk += 20;
-        }
-
-        if (user.getLastInteractionAt() != null
-                && user.getLastInteractionAt().isBefore(LocalDateTime.now().minusDays(30))) {
-            risk += 10;
-        }
-
-        if (isUnusualHour(LocalTime.now())) {
-            risk += 5;
-        }
-
-        return new RiskResult(risk, deviceDto);
+        return new RiskResult(score, null);
     }
 
 
-    private String getSubnetPattern(String ip) {
-        if (ip == null || !ip.contains(".")) {
-            return null;
-        }
-        try {
-            return ip.substring(0, ip.lastIndexOf('.')) + ".%";
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private boolean isUnusualHour(LocalTime time) {
-        return time.isAfter(LocalTime.of(2, 0)) && time.isBefore(LocalTime.of(6, 0));
-    }
 }

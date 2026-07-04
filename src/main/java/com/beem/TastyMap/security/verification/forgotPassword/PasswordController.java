@@ -22,7 +22,7 @@ public class PasswordController {
 
     @GetMapping("/resetPassword/validate")
     public void validateToken(@RequestParam String token){
-        passwordService.validateToken(token);
+        passwordService.validateAndGetToken(token);
     }
 
     @PostMapping("/resetPassword")

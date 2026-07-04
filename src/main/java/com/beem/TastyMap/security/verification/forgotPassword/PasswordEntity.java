@@ -13,8 +13,9 @@ public class PasswordEntity {
 
     private String token;
     private LocalDateTime expiryDate;
+    private boolean used = false;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private UserEntity user;
 
     public UserEntity getUser() {
@@ -47,5 +48,13 @@ public class PasswordEntity {
 
     public void setExpiryDate(LocalDateTime expiryDate) {
         this.expiryDate = expiryDate;
+    }
+
+    public boolean isUsed() {
+        return used;
+    }
+
+    public void setUsed(boolean used) {
+        this.used = used;
     }
 }

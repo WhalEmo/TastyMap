@@ -96,7 +96,7 @@ public class UserService implements UserDetailsService {
         EmailEntitiy verification=new EmailEntitiy();
         verification.setUser(userEntity);
         verification.setToken(token);
-        verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        verification.setExpiryDate(LocalDateTime.now().plusMinutes(10));
         emailRepo.save(verification);
 
         eventPublisher.publishEvent(new OnUserRegistrationEvent(userEntity, token));

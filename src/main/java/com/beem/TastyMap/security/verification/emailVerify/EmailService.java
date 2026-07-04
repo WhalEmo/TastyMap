@@ -36,7 +36,7 @@ public class EmailService {
                 "Merhaba,\n\n" +
                         "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
                         verificationLinkW +
-                        "\n\nBu link 5 dakika geçerlidir.";
+                        "\n\nBu link 10 dakika geçerlidir.";
 
         SimpleMailMessage simpleMailMessage=new SimpleMailMessage();
         simpleMailMessage.setFrom("beemdevops@gmail.com");
@@ -80,7 +80,7 @@ public class EmailService {
         EmailEntitiy verification = new EmailEntitiy();
         verification.setUser(user);
         verification.setToken(newToken);
-        verification.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        verification.setExpiryDate(LocalDateTime.now().plusMinutes(10));
         emailRepo.save(verification);
 
         sendVerificationMail(newToken, user.getEmail());
