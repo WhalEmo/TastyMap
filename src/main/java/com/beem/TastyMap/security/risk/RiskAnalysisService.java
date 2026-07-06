@@ -23,8 +23,7 @@ public class RiskAnalysisService {
 
     public RiskResult calculateRiskScore(UserEntity user,
                                          String ip,
-                                         String deviceId,
-                                         String fingerprintHash) {
+                                         String deviceId) {
 
         UserDeviceEntity device =
                 userDeviceRepo.findByUser_IdAndDeviceId(user.getId(), deviceId)
@@ -45,8 +44,7 @@ public class RiskAnalysisService {
                         user,
                         device,
                         ip,
-                        city,
-                        fingerprintHash
+                        city
                 );
 
         int score = 0;

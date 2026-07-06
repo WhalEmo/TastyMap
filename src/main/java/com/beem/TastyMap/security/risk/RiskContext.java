@@ -9,19 +9,17 @@ public class RiskContext {
     private final UserDeviceEntity device;
     private final String currentIp;
     private final String currentCity;
-    private final String fingerprintHash;
 
     public RiskContext(UserEntity user,
                        UserDeviceEntity device,
                        String currentIp,
-                       String currentCity,
-                       String fingerprintHash) {
+                       String currentCity) {
 
         this.user = user;
         this.device = device;
         this.currentIp = currentIp;
         this.currentCity = currentCity;
-        this.fingerprintHash = fingerprintHash;
+
     }
 
     public UserEntity getUser() {
@@ -40,7 +38,4 @@ public class RiskContext {
         return currentCity;
     }
 
-    public String getFingerprintHash() {
-        return fingerprintHash;
-    }
 }

@@ -72,12 +72,11 @@ public class PendingController {
 
     @PostMapping("/resend-security-mail")
     public ResponseEntity<String> resendSecurityMail(
-            @RequestParam String deviceId,
-            @RequestParam String fingerPrintHash
+            @RequestParam String deviceId
 
     ) {
         try {
-            String result = pendingService.resendSecurityAlertMail(deviceId,fingerPrintHash);
+            String result = pendingService.resendSecurityAlertMail(deviceId);
             return ResponseEntity.ok(result);
 
         } catch (CustomExceptions.AlreadyVerifiedException e) {
@@ -94,11 +93,10 @@ public class PendingController {
 
     @GetMapping("/is-used")
     public ResponseEntity<NotificationResponse> isUsedNotification(
-            @RequestParam String deviceId,
-            @RequestParam String fingerPrintHash
+            @RequestParam String deviceId
     ) {
         return ResponseEntity.ok(
-                pendingService.isUsedNotification(deviceId,fingerPrintHash)
+                pendingService.isUsedNotification(deviceId)
         );
     }
 }

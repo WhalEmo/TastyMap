@@ -18,6 +18,17 @@ public class PasswordEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private UserEntity user;
 
+    private String ipAddress;
+    private String deviceId;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
+
     public UserEntity getUser() {
         return user;
     }
@@ -56,5 +67,29 @@ public class PasswordEntity {
 
     public void setUsed(boolean used) {
         this.used = used;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

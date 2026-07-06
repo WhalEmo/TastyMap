@@ -1,13 +1,12 @@
 package com.beem.TastyMap.security.refreshToken;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.registerLogin.LoginResponseDTO;
+import com.beem.TastyMap.registerLogin.dto.LoginResponseDTO;
 import com.beem.TastyMap.registerLogin.UserEntity;
-import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.Status;
-import com.beem.TastyMap.registerLogin.UserResponseDTO;
+import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.device.UserDeviceService;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import org.springframework.stereotype.Service;
@@ -100,9 +99,6 @@ public class RefreshTokenService {
         }
         NotificationEntity notification = notificationOpt.get();
 
-        if (!Objects.equals(notification.getFingerPrintHash(), dto.getFingerprintHash())) {
-            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
-        }
 
         if (notification.getStatus() != Status.APPROVED) {
             throw new CustomExceptions.AuthorizationException("Cihaz henüz onaylanmadı, önce e-posta onayını yap!");
@@ -114,7 +110,7 @@ public class RefreshTokenService {
             throw new CustomExceptions.InvalidException("Bu cihaz zaten yetkilendirilmiş");
         }
 
-        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true, dto.getFingerprintHash(),null);
+        userDeviceService.registerOrUpdateDevice(notification.getUser(), dto.getDeviceId(), dto.getUserAgent(), dto.getFcmToken(), true,null);
 
         String refreshToken = jwtUtill.generateRefreshToken(notification.getUser().getId(),dto.getDeviceId());
 

@@ -1,5 +1,9 @@
 package com.beem.TastyMap.registerLogin;
 
+import com.beem.TastyMap.registerLogin.dto.LoginRequestDTO;
+import com.beem.TastyMap.registerLogin.dto.LoginResponseDTO;
+import com.beem.TastyMap.registerLogin.dto.UserRequestDTO;
+import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.refreshToken.ApprovedRefreshRequestDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenResponseDTO;
@@ -24,7 +28,7 @@ public class UserController {
         this.refreshTokenService = refreshTokenService;
     }
     @PostMapping("/register")
-    public UserResponseDTO register( @Valid @RequestBody UserRequestDTO dto){
+    public UserResponseDTO register(@Valid @RequestBody UserRequestDTO dto){
         return userService.register(dto);
     }
 

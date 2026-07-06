@@ -1,6 +1,7 @@
 package com.beem.TastyMap.event.listener;
-import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
-import com.beem.TastyMap.security.verification.emailVerify.EmailService;
+
+import com.beem.TastyMap.event.model.SecurityEmailEvent;
+import com.beem.TastyMap.security.verification.forgotPassword.PasswordService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -10,28 +11,27 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
-public class RegistrationListener {
+public class PasswordMailListener {
     private final JavaMailSender javaMailSender;
 
-    public RegistrationListener(JavaMailSender javaMailSender) {
-        this.javaMailSender = javaMailSender;
-    }
     @Value("${app.base-url}")
     private String baseURL;
 
+    public PasswordMailListener(JavaMailSender javaMailSender) {
+        this.javaMailSender = javaMailSender;
+    }
+
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleRegistrationEvent(OnUserRegistrationEvent event) {
-        String subject="Email Doğrulama";
-        String body;
-
-        String verificationLinkW = "http://localhost:8081/#verify?token=" + event.getToken(); //web
-        //String verificationLinkA=baseURL+"/auth/verify?token="+token;     //androıd
-        body =
+    public void passwordEvent(SecurityEmailEvent event){
+        String subject="Şifre Sıfırlama Talebi";
+        String resetLink= baseURL + "/auth/resetPassword/validate?token=" + event.getToken();
+        String body =
                 "Merhaba,\n\n" +
-                        "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
-                        verificationLinkW +
-                        "\n\nBu link 10 dakika geçerlidir.";
+                        "Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:\n\n" +
+                        resetLink +
+                        "\n\nBu bağlantı 10 dakika boyunca geçerlidir.\n" +
+                        "Eğer bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.";
 
         SimpleMailMessage simpleMailMessage=new SimpleMailMessage();
         simpleMailMessage.setFrom("beemdevops@gmail.com");

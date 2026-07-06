@@ -11,5 +11,7 @@ import java.util.Optional;
 public interface PasswordRepo extends JpaRepository<PasswordEntity,Long> {
     Optional<PasswordEntity>findByToken(String token);
     boolean existsByUser_IdAndUsedFalseAndExpiryDateAfter(Long userId, LocalDateTime now);
-    long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime time);
+    long countByUserIdAndDeviceIdAndCreatedAtAfter(Long userId, String deviceId, LocalDateTime dateTime);
+    long countByIpAddressAndCreatedAtAfter(String ipAddress, LocalDateTime dateTime);
+
 }

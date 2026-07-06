@@ -1,12 +1,13 @@
 package com.beem.TastyMap.registerLogin;
-
 import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
-import com.beem.TastyMap.event.model.SecurityEmailModel;
+import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.SecurityHistorySummary;
-import com.beem.TastyMap.security.banned.BannedDeviceEntity;
+import com.beem.TastyMap.registerLogin.dto.LoginRequestDTO;
+import com.beem.TastyMap.registerLogin.dto.LoginResponseDTO;
+import com.beem.TastyMap.registerLogin.dto.UserRequestDTO;
+import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
 import com.beem.TastyMap.security.device.UserDeviceDTO;
 import com.beem.TastyMap.security.device.UserDeviceService;
@@ -22,7 +23,6 @@ import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
-import lombok.extern.java.Log;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseCookie;
@@ -34,8 +34,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 @Service
 public class UserService implements UserDetailsService {
@@ -93,13 +91,17 @@ public class UserService implements UserDetailsService {
          userRepo.save(userEntity);
 
         String token= UUID.randomUUID().toString();
+        String ip = IpUtils.getClientIp();
+
         EmailEntitiy verification=new EmailEntitiy();
         verification.setUser(userEntity);
         verification.setToken(token);
+        verification.setDeviceId(user.getDeviceId());
+        verification.setIpAddress(ip);
         verification.setExpiryDate(LocalDateTime.now().plusMinutes(10));
         emailRepo.save(verification);
 
-        eventPublisher.publishEvent(new OnUserRegistrationEvent(userEntity, token));
+        eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), token));
         return new UserResponseDTO(userEntity);
     }
 
@@ -139,7 +141,7 @@ public class UserService implements UserDetailsService {
             );
         }
 
-        RiskResult riskResult = riskAnalysisService.calculateRiskScore(user, ip, deviceId, dto.getFingerPrintHash());
+        RiskResult riskResult = riskAnalysisService.calculateRiskScore(user, ip, deviceId);
         UserDeviceDTO cachedDevice = riskResult.getDeviceDto();
 
         if (riskResult.getScore() != 0){//riskScore >= 70) {
@@ -180,7 +182,7 @@ public class UserService implements UserDetailsService {
         refresh.setRevoked(false);
 
 
-        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,dto.getFingerPrintHash(),cachedDevice);
+        userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,cachedDevice);
         refreshTokenRepo.save(refresh);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
     }
@@ -202,7 +204,7 @@ public class UserService implements UserDetailsService {
 
             boolean isTrusted = cachedDevice != null && cachedDevice.isTrusted();
 
-            eventPublisher.publishEvent(new SecurityAlertEvent(user, dto, userAgent, ip, token,isTrusted));
+            eventPublisher.publishEvent(new SecurityAlertEvent(user.getId(), user.getEmail(), dto.getDeviceId(),userAgent, ip, token,isTrusted));
         }
 
         return LoginResponseDTO.pendingSecurity();

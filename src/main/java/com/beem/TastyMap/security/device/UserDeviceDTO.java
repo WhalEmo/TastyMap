@@ -9,7 +9,6 @@ public class UserDeviceDTO {
     private Long id;
     private Long userId;
     private String deviceId;
-    private String fingerprintHash;
     private String userAgent;
     private String lastIpAddress;
     private String fcmToken;
@@ -20,13 +19,12 @@ public class UserDeviceDTO {
     public UserDeviceDTO() {
     }
 
-    public UserDeviceDTO(Long id, Long userId, String deviceId, String fingerprintHash,
+    public UserDeviceDTO(Long id, Long userId, String deviceId,
                          String userAgent, String lastIpAddress, String fcmToken,
                          String lastCity, boolean isTrusted, LocalDateTime lastLoginAt) {
         this.id = id;
         this.userId = userId;
         this.deviceId = deviceId;
-        this.fingerprintHash = fingerprintHash;
         this.userAgent = userAgent;
         this.lastIpAddress = lastIpAddress;
         this.fcmToken = fcmToken;
@@ -49,7 +47,6 @@ public class UserDeviceDTO {
                 entity.getId(),
                 userId,
                 entity.getDeviceId(),
-                entity.getFingerprintHash(),
                 entity.getUserAgent(),
                 entity.getLastIpAddress(),
                 entity.getFcmToken(),
@@ -83,13 +80,6 @@ public class UserDeviceDTO {
         this.deviceId = deviceId;
     }
 
-    public String getFingerprintHash() {
-        return fingerprintHash;
-    }
-
-    public void setFingerprintHash(String fingerprintHash) {
-        this.fingerprintHash = fingerprintHash;
-    }
 
     public String getUserAgent() {
         return userAgent;

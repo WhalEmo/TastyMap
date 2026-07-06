@@ -1,5 +1,6 @@
 package com.beem.TastyMap.security.verification.forgotPassword;
 
+import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,10 +16,13 @@ public class PasswordController {
         this.passwordService = passwordService;
     }
 
+
     @PostMapping("/forgotPassword")
-    public void requestResetPassword(@RequestParam String email){
-        passwordService.forgotPassword(email);
+    public ResponseEntity<String> requestResetPassword(@RequestBody CommonRequestDTO dto) {
+        passwordService.forgotPassword(dto);
+        return ResponseEntity.ok("Eğer e-posta adresi sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderilecektir.");
     }
+
 
     @GetMapping("/resetPassword/validate")
     public void validateToken(@RequestParam String token){

@@ -3,7 +3,7 @@ package com.beem.TastyMap.userRelated.profile;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
-import com.beem.TastyMap.registerLogin.UserResponseDTO;
+import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;

@@ -6,12 +6,14 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface EmailRepo extends JpaRepository<EmailEntitiy,Long> {
     Optional<EmailEntitiy> findByToken(String token);
 
-    @Modifying
-    @Query("DELETE FROM EmailEntitiy e WHERE e.user = :user")
-    void deleteByUser(UserEntity user);
+    boolean existsByUser_IdAndUsedFalseAndExpiryDateAfter(Long userId, LocalDateTime date);
+
+    long countByUserIdAndDeviceIdAndCreatedAtAfter(Long userId, String deviceId, LocalDateTime dateTime);
+    long countByIpAddressAndCreatedAtAfter(String ipAddress, LocalDateTime dateTime);
 }

@@ -1,9 +1,14 @@
 package com.beem.TastyMap.security.verification.emailVerify;
-
+import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
+import com.beem.TastyMap.security.util.IpUtils;
+import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
+import com.beem.TastyMap.security.verification.common.SecurityVerificationChecker;
+import com.beem.TastyMap.security.verification.forgotPassword.PasswordEntity;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -17,15 +22,27 @@ public class EmailService {
     private final EmailRepo emailRepo;
     private final UserRepo userRepo;
     private final JavaMailSender javaMailSender;
+    private final ApplicationEventPublisher eventPublisher;
+    private final SecurityVerificationChecker securityVerificationChecker;
 
-    public EmailService(EmailRepo emailRepo, UserRepo userRepo, JavaMailSender javaMailSender) {
+    public EmailService(EmailRepo emailRepo, UserRepo userRepo, JavaMailSender javaMailSender, ApplicationEventPublisher eventPublisher, SecurityVerificationChecker securityVerificationChecker) {
         this.emailRepo = emailRepo;
         this.userRepo = userRepo;
         this.javaMailSender = javaMailSender;
+        this.eventPublisher = eventPublisher;
+        this.securityVerificationChecker = securityVerificationChecker;
     }
+
+    private static final int DEVICE_LIMIT = 5;
+
+    private static final int IP_LIMIT = 10;
+
+    private static final int TOKEN_EXPIRY = 10;
+
     @Value("${app.base-url}")
     private String baseURL;
 
+    /*
     public void sendVerificationMail(String token,String email){
         String subject="Email Doğrulama";
         String body;
@@ -45,6 +62,8 @@ public class EmailService {
         simpleMailMessage.setText(body);
         javaMailSender.send(simpleMailMessage);
     }
+
+     */
 
     @Transactional
     public String verifyEmail(String token){
@@ -67,22 +86,57 @@ public class EmailService {
         return "Email doğrulandı!";
     }
     @Transactional
-    public void resendVerification(String email) {
-        UserEntity user = userRepo.findByEmail(email)
+    public void resendVerification(CommonRequestDTO dto) {
+        UserEntity user = userRepo.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
 
         if (user.isEmailVerified()) {
             throw new CustomExceptions.NotFoundException("Bu hesap zaten doğrulanmış.");
         }
+        String ip = IpUtils.getClientIp();
 
-        emailRepo.deleteByUser(user);
+        securityVerificationChecker.checkIfDeviceIsBanned(user.getId(), dto.getDeviceId());
+
+        checkActiveTokenExistence(user.getId());
+
+        if (isRateLimitExceeded(user.getId(), ip, dto.getDeviceId())) {
+            securityVerificationChecker.applyProgressiveBan(user, dto,ip);
+        }
+
         String newToken = UUID.randomUUID().toString();
         EmailEntitiy verification = new EmailEntitiy();
         verification.setUser(user);
         verification.setToken(newToken);
-        verification.setExpiryDate(LocalDateTime.now().plusMinutes(10));
+        verification.setDeviceId(dto.getDeviceId());
+        verification.setIpAddress(ip);
+        verification.setExpiryDate(LocalDateTime.now().plusMinutes(TOKEN_EXPIRY));
         emailRepo.save(verification);
 
-        sendVerificationMail(newToken, user.getEmail());
+        eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), newToken));
     }
+
+    private void checkActiveTokenExistence(Long userId) {
+        boolean hasActiveToken = emailRepo.existsByUser_IdAndUsedFalseAndExpiryDateAfter(userId, LocalDateTime.now());
+        if (hasActiveToken) {
+            throw new CustomExceptions.InvalidException("Zaten yakın zamanda bir şifre sıfırlama linki talep ettiniz.");
+        }
+    }
+
+    private boolean isRateLimitExceeded(Long userId, String ipAddress,String deviceId) {
+        LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusDays(1);
+
+        long deviceRequestCount = emailRepo.countByUserIdAndDeviceIdAndCreatedAtAfter(userId, deviceId, twentyFourHoursAgo);
+        if (deviceRequestCount >= DEVICE_LIMIT) {
+            return true;
+        }
+
+        long ipRequestCount = emailRepo.countByIpAddressAndCreatedAtAfter(ipAddress, twentyFourHoursAgo);
+        if (ipRequestCount >= IP_LIMIT) {
+            return true;
+        }
+
+        return false;
+    }
+
+
 }

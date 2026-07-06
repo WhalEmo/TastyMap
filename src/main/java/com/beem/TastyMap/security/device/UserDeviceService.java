@@ -23,7 +23,6 @@ public class UserDeviceService {
                                        String userAgent,
                                        String fcmToken,
                                        boolean isTrusted,
-                                       String fingerprintHash,
                                        UserDeviceDTO deviceDto) {
 
         String ip = IpUtils.getClientIp();
@@ -43,7 +42,6 @@ public class UserDeviceService {
                         return newDevice;
                     });
         }
-        device.setFingerprintHash(fingerprintHash);
         device.setUserAgent(userAgent);
         device.setLastIpAddress(ip);
         device.setLastCity(city);

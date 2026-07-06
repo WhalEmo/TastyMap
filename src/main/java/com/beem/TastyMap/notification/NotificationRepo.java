@@ -17,7 +17,7 @@ public interface NotificationRepo extends JpaRepository<NotificationEntity,Long>
     Optional<NotificationEntity> findFirstByDeviceIdAndIsUsedTrueOrderByCreatedAtDesc(String deviceId);
 
 
-    @Query("SELECT n.fingerPrintHash as fingerPrintHash, n.status as status, n.isUsed as isUsed " +
+    @Query("SELECT n.status as status, n.isUsed as isUsed " +
             "FROM NotificationEntity n " +
             "WHERE n.deviceId = :deviceId AND n.isUsed = true " +
             "ORDER BY n.createdAt DESC LIMIT 1")

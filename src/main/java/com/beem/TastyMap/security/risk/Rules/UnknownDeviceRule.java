@@ -10,7 +10,7 @@ public class UnknownDeviceRule implements RiskRule {
     public int calculate(RiskContext context) {
 
         if (context.getDevice() == null) {
-            return 50;
+            return 60;
         }
 
         return 0;

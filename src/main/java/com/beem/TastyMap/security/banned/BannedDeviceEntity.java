@@ -24,6 +24,8 @@ public class BannedDeviceEntity {
     private String lastIpAddress;
     private LocalDateTime bannedAt;
     private String reason;
+    private LocalDateTime bannedUntil;
+    private int violationCount;   //Saldırgan kuralalrı kac kere ust uste cıgnedı cezayı katlamak icin
 
     public Long getId() {
         return id;
@@ -71,5 +73,21 @@ public class BannedDeviceEntity {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public LocalDateTime getBannedUntil() {
+        return bannedUntil;
+    }
+
+    public void setBannedUntil(LocalDateTime bannedUntil) {
+        this.bannedUntil = bannedUntil;
+    }
+
+    public int getViolationCount() {
+        return violationCount;
+    }
+
+    public void setViolationCount(int violationCount) {
+        this.violationCount = violationCount;
     }
 }

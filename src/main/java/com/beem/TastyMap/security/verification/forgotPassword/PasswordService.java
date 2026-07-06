@@ -1,5 +1,6 @@
 package com.beem.TastyMap.security.verification.forgotPassword;
 
+import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
@@ -7,17 +8,17 @@ import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
 import com.beem.TastyMap.security.banned.ProgressiveBanPolicy;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
-import com.beem.TastyMap.security.risk.RiskAnalysisService;
-import com.beem.TastyMap.security.risk.RiskResult;
+import com.beem.TastyMap.security.util.IpUtils;
+import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
+import com.beem.TastyMap.security.verification.common.SecurityVerificationChecker;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,43 +31,46 @@ public class PasswordService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepo refreshTokenRepo;
     private final BannedDeviceRepo bannedDeviceRepo;
+    private final SecurityVerificationChecker securityVerificationChecker;
     private final ProgressiveBanPolicy banPolicy;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public PasswordService(UserRepo userRepo, PasswordRepo passwordRepo, JavaMailSender javaMailSender, PasswordEncoder passwordEncoder, RefreshTokenRepo refreshTokenRepo, BannedDeviceRepo bannedDeviceRepo, ProgressiveBanPolicy banPolicy) {
+    private static final int DEVICE_LIMIT = 5;
+
+    private static final int IP_LIMIT = 10;
+
+    private static final int TOKEN_EXPIRY = 10;
+
+    public PasswordService(UserRepo userRepo, PasswordRepo passwordRepo, JavaMailSender javaMailSender, PasswordEncoder passwordEncoder, RefreshTokenRepo refreshTokenRepo, BannedDeviceRepo bannedDeviceRepo, SecurityVerificationChecker securityVerificationChecker, ProgressiveBanPolicy banPolicy, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.passwordRepo = passwordRepo;
         this.javaMailSender = javaMailSender;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenRepo = refreshTokenRepo;
         this.bannedDeviceRepo = bannedDeviceRepo;
+        this.securityVerificationChecker = securityVerificationChecker;
         this.banPolicy = banPolicy;
+        this.eventPublisher = eventPublisher;
     }
     @Value("${app.base-url}")
     private String baseURL;
 
     @Transactional
-    public void forgotPassword(PasswordRequestDTO dto) {
+    public void forgotPassword(CommonRequestDTO dto) {
         UserEntity user = userRepo.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kayıtlı email adresi bulunamadı."));
 
-        checkIfDeviceIsBanned(user.getId(), dto.getDeviceId());
+        String ip = IpUtils.getClientIp();
+
+        securityVerificationChecker.checkIfDeviceIsBanned(user.getId(), dto.getDeviceId());
 
         checkActiveTokenExistence(user.getId());
 
-        if (isRateLimitExceeded(user.getId())) {
-            applyProgressiveBan(user, dto);
+        if (isRateLimitExceeded(user.getId(), ip, dto.getDeviceId())) {
+            securityVerificationChecker.applyProgressiveBan(user, dto , ip);
         }
 
-        generateTokenAndSendMail(user, dto.getEmail());
-    }
-
-    private void checkIfDeviceIsBanned(Long userId, String deviceId) {
-        bannedDeviceRepo.findByUser_IdAndDeviceId(userId, deviceId)
-                .ifPresent(ban -> {
-                    if (ban.getBannedUntil() != null && ban.getBannedUntil().isAfter(LocalDateTime.now())) {
-                        throw new CustomExceptions.AuthorizationException("Bu cihaz geçici olarak engellenmiştir.");
-                    }
-                });
+        generateTokenAndSendMail(user,ip,dto.getDeviceId());
     }
 
     private void checkActiveTokenExistence(Long userId) {
@@ -76,49 +80,36 @@ public class PasswordService {
         }
     }
 
-    private boolean isRateLimitExceeded(Long userId) {
+    private boolean isRateLimitExceeded(Long userId, String ipAddress,String deviceId) {
         LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusDays(1);
-        long requestCount = passwordRepo.countByUserIdAndCreatedAtAfter(userId, twentyFourHoursAgo);
-        return requestCount >= 5;
+
+        long deviceRequestCount = passwordRepo.countByUserIdAndDeviceIdAndCreatedAtAfter(userId, deviceId, twentyFourHoursAgo);
+        if (deviceRequestCount >= DEVICE_LIMIT) {
+            return true;
+        }
+
+        long ipRequestCount = passwordRepo.countByIpAddressAndCreatedAtAfter(ipAddress, twentyFourHoursAgo);
+        if (ipRequestCount >= IP_LIMIT) {
+            return true;
+        }
+
+        return false;
     }
 
-    private void applyProgressiveBan(UserEntity user, PasswordRequestDTO dto) {
-        BannedDeviceEntity bannedDevice = bannedDeviceRepo
-                .findByUser_IdAndDeviceId(user.getId(), dto.getDeviceId())
-                .orElse(new BannedDeviceEntity());
-
-        bannedDevice.setUser(user);
-        bannedDevice.setDeviceId(dto.getDeviceId());
-        bannedDevice.setLastIpAddress(dto.getCurrentIp());
-
-        int previousViolations = bannedDevice.getViolationCount();
-        bannedDevice.setViolationCount(previousViolations + 1);
-
-        // Temiz Mimari: Hesaplamayı Policy sınıfına devrettik
-        bannedDevice.setBannedUntil(banPolicy.calculateBanReleaseTime(previousViolations));
-        bannedDevice.setReason("Excessive password reset requests");
-
-        bannedDeviceRepo.save(bannedDevice);
-
-        throw new CustomExceptions.InvalidException("Bu cihaz geçici olarak güvenlik nedeniyle engellendi.");
-    }
-
-    private void generateTokenAndSendMail(UserEntity user, String email) {
+    private void generateTokenAndSendMail(UserEntity user,String ip, String deviceId) {
         String token = UUID.randomUUID().toString();
         PasswordEntity passwordEntity = new PasswordEntity();
         passwordEntity.setToken(token);
         passwordEntity.setUser(user);
         passwordEntity.setUsed(false);
-        passwordEntity.setExpiryDate(LocalDateTime.now().plusMinutes(10));
+        passwordEntity.setIpAddress(ip);
+        passwordEntity.setDeviceId(deviceId);
+        passwordEntity.setExpiryDate(LocalDateTime.now().plusMinutes(TOKEN_EXPIRY));
         passwordRepo.save(passwordEntity);
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                sendMail(token, email);
-            }
-        });
+       eventPublisher.publishEvent(new SecurityEmailEvent(user.getEmail(),token));
     }
+    /*
     @Async
     public void sendMail(String token,String email){
         String subject="Şifre Sıfırlama Talebi";
@@ -137,6 +128,8 @@ public class PasswordService {
         simpleMailMessage.setText(body);
         javaMailSender.send(simpleMailMessage);
     }
+
+     */
 
     @Transactional
     public String newPassword(String token,ResetPasswordDTO resetDTO){
