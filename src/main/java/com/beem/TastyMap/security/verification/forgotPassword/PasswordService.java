@@ -1,5 +1,6 @@
 package com.beem.TastyMap.security.verification.forgotPassword;
 
+import com.beem.TastyMap.event.model.PasswordMailEvent;
 import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
@@ -27,12 +28,9 @@ import java.util.UUID;
 public class PasswordService {
     private final UserRepo userRepo;
     private final PasswordRepo passwordRepo;
-    private final JavaMailSender javaMailSender;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepo refreshTokenRepo;
-    private final BannedDeviceRepo bannedDeviceRepo;
     private final SecurityVerificationChecker securityVerificationChecker;
-    private final ProgressiveBanPolicy banPolicy;
     private final ApplicationEventPublisher eventPublisher;
 
     private static final int DEVICE_LIMIT = 5;
@@ -41,17 +39,15 @@ public class PasswordService {
 
     private static final int TOKEN_EXPIRY = 10;
 
-    public PasswordService(UserRepo userRepo, PasswordRepo passwordRepo, JavaMailSender javaMailSender, PasswordEncoder passwordEncoder, RefreshTokenRepo refreshTokenRepo, BannedDeviceRepo bannedDeviceRepo, SecurityVerificationChecker securityVerificationChecker, ProgressiveBanPolicy banPolicy, ApplicationEventPublisher eventPublisher) {
+    public PasswordService(UserRepo userRepo, PasswordRepo passwordRepo, PasswordEncoder passwordEncoder, RefreshTokenRepo refreshTokenRepo, SecurityVerificationChecker securityVerificationChecker, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.passwordRepo = passwordRepo;
-        this.javaMailSender = javaMailSender;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenRepo = refreshTokenRepo;
-        this.bannedDeviceRepo = bannedDeviceRepo;
         this.securityVerificationChecker = securityVerificationChecker;
-        this.banPolicy = banPolicy;
         this.eventPublisher = eventPublisher;
     }
+
     @Value("${app.base-url}")
     private String baseURL;
 
@@ -107,7 +103,7 @@ public class PasswordService {
         passwordEntity.setExpiryDate(LocalDateTime.now().plusMinutes(TOKEN_EXPIRY));
         passwordRepo.save(passwordEntity);
 
-       eventPublisher.publishEvent(new SecurityEmailEvent(user.getEmail(),token));
+       eventPublisher.publishEvent(new PasswordMailEvent(user.getEmail(),token));
     }
     /*
     @Async
@@ -132,8 +128,8 @@ public class PasswordService {
      */
 
     @Transactional
-    public String newPassword(String token,ResetPasswordDTO resetDTO){
-        PasswordEntity passwordEntity = validateAndGetToken(token);
+    public String newPassword(ResetPasswordDTO resetDTO){
+        PasswordEntity passwordEntity = validateAndGetToken(resetDTO.getToken());
 
         UserEntity user=passwordEntity.getUser();
         user.setPassword(passwordEncoder.encode(resetDTO.getNewPassword()));
@@ -144,7 +140,7 @@ public class PasswordService {
         passwordRepo.save(passwordEntity);
 
         refreshTokenRepo.revokeAllByUser(user.getId());
-        return ("Şifre değiştirildi.");
+        return "Şifreniz başarıyla değiştirilmiştir.";
     }
 
     public PasswordEntity validateAndGetToken(String token) {

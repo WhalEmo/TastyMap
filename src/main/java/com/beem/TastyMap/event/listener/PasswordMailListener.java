@@ -1,5 +1,6 @@
 package com.beem.TastyMap.event.listener;
 
+import com.beem.TastyMap.event.model.PasswordMailEvent;
 import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.security.verification.forgotPassword.PasswordService;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +24,7 @@ public class PasswordMailListener {
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void passwordEvent(SecurityEmailEvent event){
+    public void passwordEvent(PasswordMailEvent event){
         String subject="Şifre Sıfırlama Talebi";
         String resetLink= baseURL + "/auth/resetPassword/validate?token=" + event.getToken();
         String body =

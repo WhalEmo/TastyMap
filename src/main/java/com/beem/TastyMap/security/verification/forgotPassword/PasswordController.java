@@ -20,7 +20,7 @@ public class PasswordController {
     @PostMapping("/forgotPassword")
     public ResponseEntity<String> requestResetPassword(@RequestBody CommonRequestDTO dto) {
         passwordService.forgotPassword(dto);
-        return ResponseEntity.ok("Eğer e-posta adresi sistemimizde kayıtlıysa, şifre sıfırlama bağlantısı gönderilecektir.");
+        return ResponseEntity.ok("Şifre sıfırlama bağlantısı e-posta adresinize iletilmiştir. Bağlantı güvenliğiniz için 5 dakika geçerlidir, lütfen e-posta kutunuzu kontrol ediniz.");
     }
 
 
@@ -30,16 +30,11 @@ public class PasswordController {
     }
 
     @PostMapping("/resetPassword")
-    public ResponseEntity<Map<String, String>> resetPassword(
-            @RequestParam String token,
+    public ResponseEntity<String> resetPassword(
             @RequestBody ResetPasswordDTO request
     ) {
-        String mesaj=passwordService.newPassword(token,request);
-
-        Map<String,String>response=new HashMap<>();
-        response.put("message",mesaj);
-
-        return ResponseEntity.ok(response);
+        String message=passwordService.newPassword(request);
+        return ResponseEntity.ok(message);
     }
 
 }
