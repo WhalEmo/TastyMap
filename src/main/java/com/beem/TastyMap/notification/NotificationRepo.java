@@ -17,11 +17,13 @@ public interface NotificationRepo extends JpaRepository<NotificationEntity,Long>
     Optional<NotificationEntity> findFirstByDeviceIdAndIsUsedTrueOrderByCreatedAtDesc(String deviceId);
 
 
-    @Query("SELECT n.fingerPrintHash as fingerPrintHash, n.status as status, n.isUsed as isUsed " +
+    @Query("SELECT n.status as status, n.isUsed as isUsed " +
             "FROM NotificationEntity n " +
             "WHERE n.deviceId = :deviceId AND n.isUsed = true " +
             "ORDER BY n.createdAt DESC LIMIT 1")
     Optional<NotificationStatusSummary> findLatestNotificationStatus(@Param("deviceId") String deviceId);
+
+
 
     @Query("SELECT n FROM NotificationEntity n JOIN FETCH n.user WHERE n.token = :token")
     Optional<NotificationEntity> findByTokenWithUser(@Param("token") String token);

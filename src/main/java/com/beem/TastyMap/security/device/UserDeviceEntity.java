@@ -25,8 +25,6 @@ public class UserDeviceEntity {
     @Column(nullable = false)
     private String deviceId;
 
-    private String fingerprintHash;
-
     private String userAgent;
     private String lastIpAddress;
     private String fcmToken;
@@ -109,11 +107,4 @@ public class UserDeviceEntity {
         this.lastCity = lastCity;
     }
 
-    public String getFingerprintHash() {
-        return fingerprintHash;
-    }
-
-    public void setFingerprintHash(String fingerprintHash) {
-        this.fingerprintHash = fingerprintHash;
-    }
 }

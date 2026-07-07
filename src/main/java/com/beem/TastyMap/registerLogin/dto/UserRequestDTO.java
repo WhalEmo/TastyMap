@@ -1,4 +1,4 @@
-package com.beem.TastyMap.registerLogin;
+package com.beem.TastyMap.registerLogin.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -44,6 +44,8 @@ public class UserRequestDTO {
 
     private String role;
     private boolean privateProfile;
+
+    private String deviceId;
 
 
     public boolean isPrivateProfile() {
@@ -116,5 +118,13 @@ public class UserRequestDTO {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 }

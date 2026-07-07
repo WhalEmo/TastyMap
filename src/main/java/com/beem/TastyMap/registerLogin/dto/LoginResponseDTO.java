@@ -1,5 +1,6 @@
-package com.beem.TastyMap.registerLogin;
+package com.beem.TastyMap.registerLogin.dto;
 
+import com.beem.TastyMap.registerLogin.LoginStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

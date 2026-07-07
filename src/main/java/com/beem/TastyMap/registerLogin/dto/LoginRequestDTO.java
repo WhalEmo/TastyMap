@@ -1,4 +1,4 @@
-package com.beem.TastyMap.registerLogin;
+package com.beem.TastyMap.registerLogin.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -12,7 +12,7 @@ public class LoginRequestDTO {
     private String password;
     private String deviceId;
     private String fcmToken;
-    private String fingerPrintHash;
+
 
     public String getFcmToken() {
         return fcmToken;
@@ -46,11 +46,4 @@ public class LoginRequestDTO {
         this.deviceId = deviceId;
     }
 
-    public String getFingerPrintHash() {
-        return fingerPrintHash;
-    }
-
-    public void setFingerPrintHash(String fingerPrintHash) {
-        this.fingerPrintHash = fingerPrintHash;
-    }
 }

@@ -1,6 +1,6 @@
 package com.beem.TastyMap.userRelated.profile;
 
-import com.beem.TastyMap.registerLogin.UserResponseDTO;
+import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;

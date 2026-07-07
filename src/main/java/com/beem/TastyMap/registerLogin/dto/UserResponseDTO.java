@@ -1,4 +1,6 @@
-package com.beem.TastyMap.registerLogin;
+package com.beem.TastyMap.registerLogin.dto;
+
+import com.beem.TastyMap.registerLogin.UserEntity;
 
 import java.time.LocalDateTime;
 

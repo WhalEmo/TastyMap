@@ -6,11 +6,31 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(indexes = {
-        @Index(name = "idx_user_device_status", columnList = "user_id, deviceId, status, createdAt"),
-        @Index(name = "idx_device_token", columnList = "deviceId, token"),
-        @Index(name = "idx_device_fingerprint_used", columnList = "deviceId, fingerprintHash, isUsed, createdAt DESC")
-})
+@Table(
+        indexes = {
+
+                @Index(
+                        name="idx_device_used_created",
+                        columnList="deviceId,isUsed,createdAt"
+                ),
+
+                @Index(
+                        name="idx_token",
+                        columnList="token"
+                ),
+
+                @Index(
+                        name="idx_user_status_expiry",
+                        columnList="user_id,status,expiresAt"
+                ),
+
+                @Index(
+                        name="idx_device_created",
+                        columnList="deviceId,createdAt"
+                )
+
+        }
+)
 public class NotificationEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +56,27 @@ public class NotificationEntity {
     private boolean isUsed;
     private LocalDateTime updatedAt;
 
-    private String fingerPrintHash;
+
+
+
+    public NotificationEntity createResendNotification(String newToken, LocalDateTime expiresAt) {
+        NotificationEntity notification = new NotificationEntity();
+
+        notification.setUser(this.user);
+        notification.setDeviceId(this.deviceId);
+        notification.setUserAgent(this.userAgent);
+        notification.setLastIpAddress(this.lastIpAddress);
+        notification.setLastCity(this.lastCity);
+        notification.setTrusted(this.isTrusted);
+
+        notification.setToken(newToken);
+        notification.setExpiresAt(expiresAt);
+        notification.setStatus(Status.PENDING);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setUsed(false);
+
+        return notification;
+    }
 
     public LocalDateTime getExpiresAt() {
         return expiresAt;
@@ -144,11 +184,5 @@ public class NotificationEntity {
         this.updatedAt = updatedAt;
     }
 
-    public String getFingerPrintHash() {
-        return fingerPrintHash;
-    }
 
-    public void setFingerPrintHash(String fingerPrintHash) {
-        this.fingerPrintHash = fingerPrintHash;
-    }
 }

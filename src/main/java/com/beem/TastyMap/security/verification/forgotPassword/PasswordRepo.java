@@ -5,14 +5,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface PasswordRepo extends JpaRepository<PasswordEntity,Long> {
     Optional<PasswordEntity>findByToken(String token);
-    @Modifying
-    @Query("""
-        DELETE FROM PasswordEntity p
-        WHERE p.user.id = :userId
-    """)
-    void deleteAllByUserId(@Param("userId") Long userId);
+    boolean existsByUser_IdAndUsedFalseAndExpiryDateAfter(Long userId, LocalDateTime now);
+    long countByUserIdAndDeviceIdAndCreatedAtAfter(Long userId, String deviceId, LocalDateTime dateTime);
+    long countByIpAddressAndCreatedAtAfter(String ipAddress, LocalDateTime dateTime);
+
 }

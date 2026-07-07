@@ -1,5 +1,6 @@
 package com.beem.TastyMap.security.verification.emailVerify;
 
+import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,9 +24,9 @@ public class EmailController {
     }
     @PostMapping("/resendMail")
     public ResponseEntity<String> resendMail(
-            @RequestParam String email
+            @RequestBody CommonRequestDTO dto
     ) {
-        emailService.resendVerification(email);
+        emailService.resendVerification(dto);
         return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
     }
 }

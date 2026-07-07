@@ -1,5 +1,5 @@
 package com.beem.TastyMap.security.verification.pendingRiskVerify;
-import com.beem.TastyMap.event.model.SecurityEmailModel;
+import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.*;
 import com.beem.TastyMap.security.risk.SecurityValidationService;
@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -35,9 +34,11 @@ public class PendingService {
         this.eventPublisher = eventPublisher;
         this.securityValidationService = securityValidationService;
     }
+    private static final int TOKEN_EXPIRY = 10;
     @Value("${app.base-url}")
     private String baseURL;
 
+    /*
     public void sendSecurityAlertMail(String token, String email) throws Exception {
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -70,6 +71,8 @@ public class PendingService {
         javaMailSender.send(mimeMessage);
     }
 
+     */
+
     @Transactional
     public void verifyToken(String token, String action) throws IOException {
         NotificationEntity notification = notificationRepo.findByTokenWithUser(token)
@@ -99,15 +102,12 @@ public class PendingService {
     }
 
     @Transactional
-    public String resendSecurityAlertMail(String deviceId, String fingerPrintHash) throws Exception {
+    public String resendSecurityAlertMail(String deviceId) throws Exception {
         LocalDateTime now = LocalDateTime.now();
 
         NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedFalseOrderByCreatedAtDesc(deviceId)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Bekleyen aktif bir giriş onayı bulunamadı."));
 
-        if (!Objects.equals(notification.getFingerPrintHash(), fingerPrintHash)) {
-            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
-        }
 
         if (notification.getStatus() == Status.APPROVED || notification.getStatus() == Status.REJECTED) {
             throw new CustomExceptions.AlreadyVerifiedException("Bu işlem zaten sonuçlandırılmış.");
@@ -122,37 +122,28 @@ public class PendingService {
 
         securityValidationService.checkThrottlingAndBanRules(notification.getUser(), deviceId, notification.getLastIpAddress(), summary);
 
-        NotificationEntity newNotification = new NotificationEntity();
-        newNotification.setUser(notification.getUser());
-        newNotification.setDeviceId(deviceId);
-        newNotification.setUserAgent(notification.getUserAgent());
-        newNotification.setLastIpAddress(notification.getLastIpAddress());
-        newNotification.setLastCity(notification.getLastCity());
-        newNotification.setTrusted(notification.isTrusted());
-        newNotification.setToken(UUID.randomUUID().toString());
-        newNotification.setExpiresAt(now.plusMinutes(10));
-        newNotification.setStatus(Status.PENDING);
-        newNotification.setFingerPrintHash(notification.getFingerPrintHash());
-        newNotification.setCreatedAt(now);
-        newNotification.setUsed(false);
+        NotificationEntity newNotification =
+                notification.createResendNotification(
+                        UUID.randomUUID().toString(),
+                        now.plusMinutes(TOKEN_EXPIRY)
+                );
 
         notification.setUsed(true);
         notificationRepo.save(notification);
 
         notificationRepo.save(newNotification);
 
-        eventPublisher.publishEvent(new SecurityEmailModel(newNotification.getUser(), newNotification.getToken()));
+        eventPublisher.publishEvent(new SecurityEmailEvent(newNotification.getUser().getEmail(), newNotification.getToken()));
         return "Email gönderildi!";
     }
 
-    public NotificationResponse isUsedNotification(String deviceId,String fingerPrintHash){
+    public NotificationResponse isUsedNotification(String deviceId){
         NotificationStatusSummary notification = notificationRepo.findLatestNotificationStatus(deviceId)
                 .orElseThrow(() -> new CustomExceptions.InvalidException("Aktif bir istek bulunamadı"));
 
-        if (!Objects.equals(notification.getFingerPrintHash(), fingerPrintHash)) {
-            throw new CustomExceptions.InvalidException("Cihazlar uyuşmuyor");
-        }
 
         return new NotificationResponse(notification.getStatus(),notification.isUsed());
     }
+
+
 }

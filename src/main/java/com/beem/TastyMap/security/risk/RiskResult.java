@@ -4,7 +4,7 @@ import com.beem.TastyMap.security.device.UserDeviceDTO;
 
 public class RiskResult {
     private final int score;
-    private final UserDeviceDTO deviceDto; // 👈 Entity yerine DTO oldu
+    private final UserDeviceDTO deviceDto;
 
     public RiskResult(int score, UserDeviceDTO deviceDto) {
         this.score = score;
