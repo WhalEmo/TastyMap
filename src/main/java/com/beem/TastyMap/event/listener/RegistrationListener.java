@@ -26,7 +26,7 @@ public class RegistrationListener {
         String body;
 
         String verificationLinkW = "http://localhost:8081/#verify?token=" + event.getToken(); //web
-        //String verificationLinkA=baseURL+"/auth/verify?token="+token;     //androıd
+        //String verificationLinkA=baseURL+"/auth/verify?token="+event.getToken();     //androıd
         body =
                 "Merhaba,\n\n" +
                         "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +

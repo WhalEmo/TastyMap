@@ -1,26 +1,24 @@
 package com.beem.TastyMap.security.verification.forgotPassword;
 
 import com.beem.TastyMap.event.model.PasswordMailEvent;
-import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
-import com.beem.TastyMap.security.banned.BannedDeviceEntity;
-import com.beem.TastyMap.security.banned.BannedDeviceRepo;
-import com.beem.TastyMap.security.banned.ProgressiveBanPolicy;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
 import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import com.beem.TastyMap.security.verification.common.SecurityVerificationChecker;
+import com.beem.TastyMap.websocket.PasswordEventService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -31,6 +29,7 @@ public class PasswordService {
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenRepo refreshTokenRepo;
     private final SecurityVerificationChecker securityVerificationChecker;
+    private final PasswordEventService passwordEventService;
     private final ApplicationEventPublisher eventPublisher;
 
     private static final int DEVICE_LIMIT = 5;
@@ -39,12 +38,13 @@ public class PasswordService {
 
     private static final int TOKEN_EXPIRY = 10;
 
-    public PasswordService(UserRepo userRepo, PasswordRepo passwordRepo, PasswordEncoder passwordEncoder, RefreshTokenRepo refreshTokenRepo, SecurityVerificationChecker securityVerificationChecker, ApplicationEventPublisher eventPublisher) {
+    public PasswordService(UserRepo userRepo, PasswordRepo passwordRepo, PasswordEncoder passwordEncoder, RefreshTokenRepo refreshTokenRepo, SecurityVerificationChecker securityVerificationChecker, PasswordEventService passwordEventService, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.passwordRepo = passwordRepo;
         this.passwordEncoder = passwordEncoder;
         this.refreshTokenRepo = refreshTokenRepo;
         this.securityVerificationChecker = securityVerificationChecker;
+        this.passwordEventService = passwordEventService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -52,10 +52,10 @@ public class PasswordService {
     private String baseURL;
 
     @Transactional
-    public void forgotPassword(CommonRequestDTO dto) {
+    public PasswordResetResponse forgotPassword(CommonRequestDTO dto) {
         UserEntity user = userRepo.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kayıtlı email adresi bulunamadı."));
-
+        //epoastaısnı dogrulamıs mı dıye bakmamız da lazım
         String ip = IpUtils.getClientIp();
 
         securityVerificationChecker.checkIfDeviceIsBanned(user.getId(), dto.getDeviceId());
@@ -67,6 +67,11 @@ public class PasswordService {
         }
 
         generateTokenAndSendMail(user,ip,dto.getDeviceId());
+        return new PasswordResetResponse(
+                user.getId(),
+                dto.getDeviceId(),
+                "Şifre sıfırlama bağlantısı e-posta adresinize iletilmiştir. Bağlantı güvenliğiniz için 5 dakika geçerlidir, lütfen e-posta kutunuzu kontrol ediniz."
+        );
     }
 
     private void checkActiveTokenExistence(Long userId) {
@@ -128,20 +133,34 @@ public class PasswordService {
      */
 
     @Transactional
-    public String newPassword(ResetPasswordDTO resetDTO){
+    public String newPassword(ResetPasswordDTO resetDTO) throws IOException {
         PasswordEntity passwordEntity = validateAndGetToken(resetDTO.getToken());
-
-        UserEntity user=passwordEntity.getUser();
+        UserEntity user = passwordEntity.getUser();
         user.setPassword(passwordEncoder.encode(resetDTO.getNewPassword()));
 
         userRepo.save(user);
 
         passwordEntity.setUsed(true);
-        passwordRepo.save(passwordEntity);
+        passwordRepo.saveAndFlush(passwordEntity);
 
         refreshTokenRepo.revokeAllByUser(user.getId());
+
+        String deviceId = passwordEntity.getDeviceId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    passwordEventService.PasswordChange(deviceId);
+                } catch (Exception e) {
+                    System.err.println("DEBUG_LOG: WS uyarısı gönderilirken hata oluştu (Muhtemelen soket kapalı): " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        });
+
         return "Şifreniz başarıyla değiştirilmiştir.";
     }
+
 
     public PasswordEntity validateAndGetToken(String token) {
         PasswordEntity passwordEntity = passwordRepo.findByToken(token)
@@ -151,5 +170,9 @@ public class PasswordService {
             throw new CustomExceptions.InvalidException("Token geçersiz veya süresi dolmuş");
         }
         return passwordEntity;
+    }
+
+    public boolean isUsedPassword(Long userId) {
+        return passwordRepo.existsByUser_IdAndUsedTrue(userId);
     }
 }

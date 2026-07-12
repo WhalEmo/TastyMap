@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-public class EmailEntitiy {
+public class EmailEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -14,7 +14,7 @@ public class EmailEntitiy {
     private String token;
     private boolean used = false;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private UserEntity user;
     private LocalDateTime expiryDate;
 

@@ -13,5 +13,6 @@ public interface PasswordRepo extends JpaRepository<PasswordEntity,Long> {
     boolean existsByUser_IdAndUsedFalseAndExpiryDateAfter(Long userId, LocalDateTime now);
     long countByUserIdAndDeviceIdAndCreatedAtAfter(Long userId, String deviceId, LocalDateTime dateTime);
     long countByIpAddressAndCreatedAtAfter(String ipAddress, LocalDateTime dateTime);
+    boolean existsByUser_IdAndUsedTrue(Long userId);
 
 }

@@ -37,4 +37,6 @@ public interface UserRepo extends JpaRepository<UserEntity,Long> {
     @Modifying
     @Query("UPDATE UserEntity u SET u.subscribedCount = u.subscribedCount + :amount WHERE u.id = :userId")
     void updateSubscribedCount(@Param("userId") Long userId, @Param("amount") int amount);
+
+    boolean existsByIdAndEmailVerifiedTrue(Long userId);
 }

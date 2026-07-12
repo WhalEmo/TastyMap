@@ -4,6 +4,7 @@ import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,7 +17,9 @@ public class EmailController {
         this.emailService = emailService;
     }
     @GetMapping("/verify")
-    public ResponseEntity<Map<String,String>>verify(@RequestParam String token){
+    public ResponseEntity<Map<String,String>>verify(@RequestParam String token) throws IOException {
+        System.out.println("VERIFY ENDPOINT ÇALIŞTI");
+        System.out.println("Token = " + token);
         String result=emailService.verifyEmail(token);
         Map<String,String>response=new HashMap<>();
         response.put("message",result);
@@ -28,5 +31,11 @@ public class EmailController {
     ) {
         emailService.resendVerification(dto);
         return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
+    }
+
+    @GetMapping("/check-used")
+    public ResponseEntity<Boolean> isEmailUsedByDevice(@RequestParam Long userId) {
+        boolean isUsed = emailService.isUsedEmail(userId);
+        return ResponseEntity.ok(isUsed);
     }
 }

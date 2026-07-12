@@ -26,11 +26,13 @@ public class PasswordMailListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void passwordEvent(PasswordMailEvent event){
         String subject="Şifre Sıfırlama Talebi";
-        String resetLink= baseURL + "/auth/resetPassword/validate?token=" + event.getToken();
+        String resetLinkA= baseURL + "/auth/resetPassword/validate?token=" + event.getToken();
+        //String resetLinkB = "http://localhost:8081/#reset?token=" + event.getToken();
         String body =
+
                 "Merhaba,\n\n" +
                         "Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:\n\n" +
-                        resetLink +
+                        resetLinkA +
                         "\n\nBu bağlantı 10 dakika boyunca geçerlidir.\n" +
                         "Eğer bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.";
 

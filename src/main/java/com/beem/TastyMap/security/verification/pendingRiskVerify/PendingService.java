@@ -17,20 +17,20 @@ import java.util.Objects;
 import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
 public class PendingService {
     private final NotificationRepo notificationRepo;
     private final LoginSecureEventService loginSecureEventService;
-    private final JavaMailSender javaMailSender;
     private final ApplicationEventPublisher eventPublisher;
     private final SecurityValidationService securityValidationService;
 
-    public PendingService(NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, JavaMailSender javaMailSender, ApplicationEventPublisher eventPublisher, SecurityValidationService securityValidationService) {
+    public PendingService(NotificationRepo notificationRepo, LoginSecureEventService loginSecureEventService, ApplicationEventPublisher eventPublisher, SecurityValidationService securityValidationService) {
         this.notificationRepo = notificationRepo;
         this.loginSecureEventService = loginSecureEventService;
-        this.javaMailSender = javaMailSender;
         this.eventPublisher = eventPublisher;
         this.securityValidationService = securityValidationService;
     }
@@ -90,11 +90,32 @@ public class PendingService {
 
         if ("approve".equals(action)) {
             notification.setStatus(Status.APPROVED);
-            loginSecureEventService.loginApproved(notification.getDeviceId());
-        } else {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        loginSecureEventService.loginApproved(notification.getDeviceId());
+                    } catch (Exception e) {
+                        System.err.println("DEBUG_LOG: WS uyarısı gönderilirken hata oluştu (Muhtemelen soket kapalı): " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+        }  else {
             notification.setStatus(Status.REJECTED);
             notification.setUpdatedAt(LocalDateTime.now());
-            loginSecureEventService.loginRejected(notification.getDeviceId());
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        loginSecureEventService.loginRejected(notification.getDeviceId());
+                    } catch (Exception e) {
+                        System.err.println("DEBUG_LOG: WS uyarısı gönderilirken hata oluştu (Muhtemelen soket kapalı): " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
 
         notification.setUsed(true);

@@ -1,7 +1,6 @@
 package com.beem.TastyMap.registerLogin;
 import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
-import com.beem.TastyMap.event.model.SecurityEmailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.SecurityHistorySummary;
 import com.beem.TastyMap.registerLogin.dto.LoginRequestDTO;
@@ -21,7 +20,7 @@ import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
-import com.beem.TastyMap.security.verification.emailVerify.EmailEntitiy;
+import com.beem.TastyMap.security.verification.emailVerify.EmailEntity;
 import com.beem.TastyMap.security.verification.emailVerify.EmailRepo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -93,7 +92,7 @@ public class UserService implements UserDetailsService {
         String token= UUID.randomUUID().toString();
         String ip = IpUtils.getClientIp();
 
-        EmailEntitiy verification=new EmailEntitiy();
+        EmailEntity verification=new EmailEntity();
         verification.setUser(userEntity);
         verification.setToken(token);
         verification.setDeviceId(user.getDeviceId());
