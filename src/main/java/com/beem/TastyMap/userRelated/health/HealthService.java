@@ -34,7 +34,6 @@ public class HealthService {
         this.userAllergiesRepo = userAllergiesRepo;
         this.entityManager = entityManager;
     }
-
     @Transactional
     public HealthResponseDTO addHealthInfo(HealthRequestDTO dto, Long userId) {
         UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
@@ -44,29 +43,35 @@ public class HealthService {
         userHealthEntity.setEatType(dto.getEatType());
         userHealthEntity.setHasDiabetes(dto.isHasDiabetes());
         userHealthRepo.save(userHealthEntity);
+
+        List<AllergiesEntity> allergies = allergiesRepo.findAllById(dto.getAllergyIds());
+
+        if (allergies.size() != dto.getAllergyIds().size()) {
+            throw new CustomExceptions.NotFoundException("Seçilen bazı alerjiler sistemde bulunamadı.");
+        }
+
         List<UserAllergiesEntity> mappingsToSave = new ArrayList<>();
         List<AllergyInfoDTO> responseAllergyList = new ArrayList<>();
 
-        for (Long allergyId : dto.getAllergyIds()) {
-            AllergiesEntity allergy = allergiesRepo.findById(allergyId)
-                    .orElseThrow(() -> new RuntimeException("Alerji bulunamadı: " + allergyId));
-
+        for (AllergiesEntity allergy : allergies) {
             UserAllergiesEntity mapping = new UserAllergiesEntity();
             mapping.setUser(userRef);
             mapping.setAllergies(allergy);
             mappingsToSave.add(mapping);
+
             responseAllergyList.add(new AllergyInfoDTO(allergy.getId(), allergy.getAllergyName()));
         }
+
         if (!mappingsToSave.isEmpty()) {
             userAllergiesRepo.saveAll(mappingsToSave);
         }
+
         return new HealthResponseDTO(
                 userHealthEntity.isHasDiabetes(),
                 userHealthEntity.getEatType().name(),
                 responseAllergyList
         );
     }
-
     @Transactional
     public HealthResponseDTO updateHealth(HealthRequestDTO dto, Long userId) {
         UserHealthEntity healthData = userHealthRepo.findByUserId(userId)

@@ -15,11 +15,11 @@ public class UserHealthEntity {
     @JoinColumn(name = "user_id",nullable = false)
     private UserEntity user;
 
-    @Column(name = "diabetes",nullable = false)
+    @Column(name = "diabetes")
     private boolean hasDiabetes=false;
 
-    @Column(name = "eat_type",nullable = false)
-    private HealthEnum eatType;
+    @Column(name = "eat_type")
+    private HealthEnum eatType = HealthEnum.NORMAL;
 
     public Long getId() {
         return id;

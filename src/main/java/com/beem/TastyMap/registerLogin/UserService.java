@@ -2,6 +2,7 @@ package com.beem.TastyMap.registerLogin;
 import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.exceptions.EmailNotVerifiedException;
 import com.beem.TastyMap.notification.SecurityHistorySummary;
 import com.beem.TastyMap.registerLogin.dto.LoginRequestDTO;
 import com.beem.TastyMap.registerLogin.dto.LoginResponseDTO;
@@ -129,9 +130,7 @@ public class UserService implements UserDetailsService {
         bruteForceService.resetAttempts(username);
 
         if (!user.isEmailVerified()) {
-            throw new CustomExceptions.AuthenticationException(
-                    "Email adresiniz doğrulanmamış"
-            );
+            throw new EmailNotVerifiedException("Email adresiniz doğrulanmamış.", user.getEmail());
         }
         if (bannedDeviceRepo.existsByUserIdAndDeviceId(user.getId(), deviceId)) {
             throw new CustomExceptions.AuthorizationException(

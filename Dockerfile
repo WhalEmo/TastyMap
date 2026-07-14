@@ -3,9 +3,13 @@ FROM gradle:8.10.2-jdk17 AS build
 WORKDIR /workspace
 COPY build.gradle.kts settings.gradle.kts gradlew* ./
 COPY gradle ./gradle
-RUN ./gradlew dependencies --no-daemon || true
+#RUN ./gradlew dependencies --no-daemon || true
+#COPY . .
+#RUN ./gradlew clean bootJar -x test --no-daemon
+
+RUN gradle dependencies --no-daemon || true
 COPY . .
-RUN ./gradlew clean bootJar -x test --no-daemon
+RUN gradle clean bootJar -x test --no-daemon
 
 # -------- Runtime stage --------
 FROM eclipse-temurin:17-jdk-jammy

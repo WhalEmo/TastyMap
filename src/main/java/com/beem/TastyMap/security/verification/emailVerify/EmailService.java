@@ -73,7 +73,7 @@ public class EmailService {
         try {
             System.out.println("verifyEmail() çalıştı");
             EmailEntity emailtoken = emailRepo.findByToken(token)
-                    .orElseThrow(() -> new CustomExceptions.InvalidException("Token geçersiz"));
+                    .orElseThrow(() -> new CustomExceptions.InvalidException("Doğrulama bağlantısı geçersiz veya daha önce kullanılmış."));
 
 
             if (emailtoken.getExpiryDate().isBefore(LocalDateTime.now())) {
@@ -108,9 +108,9 @@ public class EmailService {
         }
     }
     @Transactional
-    public void resendVerification(CommonRequestDTO dto) {
+    public Long resendVerification(CommonRequestDTO dto) {
         UserEntity user = userRepo.findByEmail(dto.getEmail())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Eğer e-posta adresi sistemimizde kayıtlıysa, yeni bir doğrulama bağlantısı gönderilmiştir."));
 
         if (user.isEmailVerified()) {
             throw new CustomExceptions.NotFoundException("Bu hesap zaten doğrulanmış.");
@@ -122,7 +122,7 @@ public class EmailService {
         checkActiveTokenExistence(user.getId());
 
         if (isRateLimitExceeded(user.getId(), ip, dto.getDeviceId())) {
-            securityVerificationChecker.applyProgressiveBan(user, dto,ip);
+            securityVerificationChecker.applyProgressiveBan(user, dto, ip);
         }
 
         String newToken = UUID.randomUUID().toString();
@@ -135,12 +135,13 @@ public class EmailService {
         emailRepo.save(verification);
 
         eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), newToken));
-    }
 
+        return user.getId();
+    }
     private void checkActiveTokenExistence(Long userId) {
         boolean hasActiveToken = emailRepo.existsByUser_IdAndUsedFalseAndExpiryDateAfter(userId, LocalDateTime.now());
         if (hasActiveToken) {
-            throw new CustomExceptions.InvalidException("Zaten yakın zamanda bir şifre sıfırlama linki talep ettiniz.");
+            throw new CustomExceptions.InvalidException("Zaten yakın zamanda bir email doğrulama linki talep ettiniz.");
         }
     }
 

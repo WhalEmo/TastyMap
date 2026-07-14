@@ -54,8 +54,13 @@ public class PasswordService {
     @Transactional
     public PasswordResetResponse forgotPassword(CommonRequestDTO dto) {
         UserEntity user = userRepo.findByEmail(dto.getEmail())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kayıtlı email adresi bulunamadı."));
-        //epoastaısnı dogrulamıs mı dıye bakmamız da lazım
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Eğer e-posta sistemimizde kayıtlı ise şifre sıfırlama bağlantısı gönderilmiştir."));
+        /*
+        if(!user.isEmailVerified()){
+            throw new CustomExceptions.AuthenticationException("E postanız henüz doğrulanmamış.");
+        }
+
+         */
         String ip = IpUtils.getClientIp();
 
         securityVerificationChecker.checkIfDeviceIsBanned(user.getId(), dto.getDeviceId());

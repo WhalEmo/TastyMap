@@ -26,11 +26,11 @@ public class EmailController {
         return ResponseEntity.ok(response);
     }
     @PostMapping("/resendMail")
-    public ResponseEntity<String> resendMail(
+    public ResponseEntity<Long> resendMail(
             @RequestBody CommonRequestDTO dto
     ) {
-        emailService.resendVerification(dto);
-        return ResponseEntity.ok("Yeni doğrulama linki e-posta adresinize gönderildi.");
+        long userId = emailService.resendVerification(dto);
+        return ResponseEntity.ok(userId);
     }
 
     @GetMapping("/check-used")

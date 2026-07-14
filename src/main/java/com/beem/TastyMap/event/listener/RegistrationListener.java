@@ -25,12 +25,12 @@ public class RegistrationListener {
         String subject="Email Doğrulama";
         String body;
 
-        String verificationLinkW = "http://localhost:8081/#verify?token=" + event.getToken(); //web
-        //String verificationLinkA=baseURL+"/auth/verify?token="+event.getToken();     //androıd
+        //String verificationLinkW = "http://localhost:8081/#verify?token=" + event.getToken(); //web
+        String verificationLinkA=baseURL+"/auth/verify?token="+event.getToken();     //androıd
         body =
                 "Merhaba,\n\n" +
                         "Hesabınızı doğrulamak için aşağıdaki linke tıklayın:\n" +
-                        verificationLinkW +
+                        verificationLinkA +
                         "\n\nBu link 10 dakika geçerlidir.";
 
         SimpleMailMessage simpleMailMessage=new SimpleMailMessage();

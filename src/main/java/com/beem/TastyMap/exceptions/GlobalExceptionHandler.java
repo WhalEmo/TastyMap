@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.lang.Exception;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -80,6 +82,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGeneralExceptions(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("Beklenmedik bir sunucu hatası oluştu."+ ex));
+    }
+
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailNotVerified(EmailNotVerifiedException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "EMAIL_NOT_VERIFIED");
+        body.put("message", ex.getMessage());
+        body.put("email", ex.getEmail());
+
+        return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
     }
 
 }

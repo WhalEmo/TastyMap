@@ -17,14 +17,12 @@ import java.util.List;
 @Service
 public class ProfileService {
     private final UserRepo userRepo;
-    private final UserDeviceRepo userDeviceRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
     private final BlockRepo blockRepo;
 
-    public ProfileService(UserRepo userRepo, UserDeviceRepo userDeviceRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo) {
+    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo) {
         this.userRepo = userRepo;
-        this.userDeviceRepo = userDeviceRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
         this.blockRepo = blockRepo;
