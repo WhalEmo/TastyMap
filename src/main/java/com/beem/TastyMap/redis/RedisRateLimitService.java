@@ -13,9 +13,14 @@ import java.util.function.Supplier;
 public class RedisRateLimitService {
 
     private final ProxyManager<String> proxyManager;
+    private final RedisCacheService redisCacheService;
 
-    public RedisRateLimitService(ProxyManager<String> proxyManager) {
+    public RedisRateLimitService(
+            ProxyManager<String> proxyManager,
+            RedisCacheService redisCacheService
+    ) {
         this.proxyManager = proxyManager;
+        this.redisCacheService = redisCacheService;
     }
 
     public boolean tryConsume(String key, boolean isAuthenticated) {
@@ -31,7 +36,10 @@ public class RedisRateLimitService {
             }
         };
         String redisKey = "RATE_LIMIT:" + key;
+        boolean allowed = proxyManager.builder().build(redisKey, configSupplier).tryConsume(1);
 
-        return proxyManager.builder().build(redisKey, configSupplier).tryConsume(1);
+        redisCacheService.expire(redisKey, 120);
+
+        return allowed;
     }
 }
