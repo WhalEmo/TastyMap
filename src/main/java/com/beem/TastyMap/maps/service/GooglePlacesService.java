@@ -45,7 +45,9 @@ public class GooglePlacesService {
                 .bodyToMono(PlacesResponse.class)
                 .block();
 
-        redisCacheService.set(originalKey, null, 180);
+        if (response != null) {
+            redisCacheService.set(originalKey, "SUCCESS_LOCK", 180);
+        }
 
         return response;
     }
@@ -56,9 +58,7 @@ public class GooglePlacesService {
             throw new CustomExceptions.RedisKeyExistsException("API not calling");
         }
 
-        redisCacheService.set(originalKey, null, 180);
-
-        return webClient.get()
+        PlaceDetailsResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("https")
                         .host("maps.googleapis.com")
@@ -78,7 +78,6 @@ public class GooglePlacesService {
                                         "website",
                                         "opening_hours",
                                         "geometry",
-                                        "photos",
                                         "reviews",
                                         "formatted_address"
                                 )
@@ -89,5 +88,11 @@ public class GooglePlacesService {
                 .retrieve()
                 .bodyToMono(PlaceDetailsResponse.class)
                 .block();
+
+        if (response != null) {
+            redisCacheService.set(originalKey, "SUCCESS_LOCK", 180);
+        }
+
+        return response;
     }
 }
