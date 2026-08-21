@@ -6,12 +6,10 @@ import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.util.IpUtils;
-import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import com.beem.TastyMap.security.verification.common.SecurityVerificationChecker;
 import com.beem.TastyMap.websocket.PasswordEventService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,9 +50,13 @@ public class PasswordService {
     private String baseURL;
 
     @Transactional
-    public PasswordResetResponse forgotPassword(CommonRequestDTO dto) {
-        UserEntity user = userRepo.findByEmail(dto.getEmail())
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Eğer e-posta sistemimizde kayıtlı ise şifre sıfırlama bağlantısı gönderilmiştir."));
+    public PasswordResetResponse forgotPassword(PasswordRequestDTO dto) {
+        String input = dto.getIdentifier();
+
+        UserEntity user = userRepo.findByEmailOrUsername(input, input)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(
+                        "Eğer girdiğiniz bilgiler sistemimizde kayıtlı ise şifre sıfırlama bağlantısı gönderilmiştir."
+                ));
         /*
         if(!user.isEmailVerified()){
             throw new CustomExceptions.AuthenticationException("E postanız henüz doğrulanmamış.");

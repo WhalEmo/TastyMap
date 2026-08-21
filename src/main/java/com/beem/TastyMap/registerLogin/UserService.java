@@ -78,6 +78,7 @@ public class UserService implements UserDetailsService {
          }
          UserEntity userEntity=new UserEntity();
          userEntity.setBiography(user.getBiography());
+         userEntity.setOnboardingCompleted(false);
          userEntity.setDate(LocalDateTime.now());
          userEntity.setUsername(user.getUsername().trim());
          userEntity.setEmail(user.getEmail().trim());
@@ -149,6 +150,8 @@ public class UserService implements UserDetailsService {
         RefreshTokenEntity existingToken = refreshTokenRepo
                 .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId())
                 .orElse(null);
+
+
 
         return createTokensAndLogin(user, dto, userAgent,existingToken,cachedDevice);
     }

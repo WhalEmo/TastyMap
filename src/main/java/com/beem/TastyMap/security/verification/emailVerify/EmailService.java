@@ -1,16 +1,13 @@
 package com.beem.TastyMap.security.verification.emailVerify;
 import com.beem.TastyMap.event.model.OnUserRegistrationEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.security.util.IpUtils;
-import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import com.beem.TastyMap.security.verification.common.SecurityVerificationChecker;
 import com.beem.TastyMap.websocket.EmailVerifyEventService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -108,7 +105,7 @@ public class EmailService {
         }
     }
     @Transactional
-    public Long resendVerification(CommonRequestDTO dto) {
+    public Long resendVerification(EmailRequestDTO dto) {
         UserEntity user = userRepo.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Eğer e-posta adresi sistemimizde kayıtlıysa, yeni bir doğrulama bağlantısı gönderilmiştir."));
 

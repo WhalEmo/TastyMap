@@ -1,12 +1,10 @@
 package com.beem.TastyMap.security.verification.forgotPassword;
 
-import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
+import com.beem.TastyMap.security.verification.emailVerify.EmailRequestDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -19,7 +17,7 @@ public class PasswordController {
 
 
     @PostMapping("/forgotPassword")
-    public ResponseEntity<PasswordResetResponse>requestResetPassword(@RequestBody CommonRequestDTO dto) {
+    public ResponseEntity<PasswordResetResponse>requestResetPassword(@RequestBody PasswordRequestDTO dto) {
         PasswordResetResponse response= passwordService.forgotPassword(dto);
         return ResponseEntity.ok(response);
     }
@@ -45,5 +43,4 @@ public class PasswordController {
         boolean isUsed = passwordService.isUsedPassword(userId);
         return ResponseEntity.ok(isUsed);
     }
-
 }

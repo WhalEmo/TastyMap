@@ -1,6 +1,6 @@
-package com.beem.TastyMap.security.verification.common;
+package com.beem.TastyMap.security.verification.emailVerify;
 
-public class CommonRequestDTO {
+public class EmailRequestDTO {
     private String deviceId;
     private String email;
 

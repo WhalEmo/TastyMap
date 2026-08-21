@@ -6,6 +6,7 @@ import com.beem.TastyMap.security.banned.BanDurationFormatter;
 import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
 import com.beem.TastyMap.security.banned.ProgressiveBanPolicy;
+import com.beem.TastyMap.security.verification.emailVerify.EmailRequestDTO;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -39,7 +40,7 @@ public class SecurityVerificationChecker {
     }
 
 
-    public void applyProgressiveBan(UserEntity user, CommonRequestDTO dto ,String ip) {
+    public void applyProgressiveBan(UserEntity user, EmailRequestDTO dto , String ip) {
         BannedDeviceEntity bannedDevice = bannedDeviceRepo
                 .findByUser_IdAndDeviceId(user.getId(), dto.getDeviceId())
                 .orElse(new BannedDeviceEntity());
