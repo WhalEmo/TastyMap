@@ -3,6 +3,7 @@ package com.beem.TastyMap.mapsReview.entity;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
+import com.beem.TastyMap.mapsReview.enums.ScoreType;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import jakarta.persistence.*;
 
@@ -80,11 +81,15 @@ public class ReviewEntity {
 
     private double calculateTotalRating(){
         if(scores == null || scores.isEmpty()) return 0;
-        return scores
-                .stream()
+        return scores.stream()
+                .filter(s -> s.getType() == ScoreType.OVERALL)
                 .mapToDouble(ScoreEntity::getScore)
-                .average()
-                .orElse(0);
+                .findFirst()
+                .orElseGet(() -> scores.stream()
+                        .mapToDouble(ScoreEntity::getScore)
+                        .average()
+                        .orElse(0.0)
+                );
     }
 
 

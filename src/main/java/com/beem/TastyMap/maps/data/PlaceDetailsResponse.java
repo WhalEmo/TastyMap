@@ -1,6 +1,8 @@
 package com.beem.TastyMap.maps.data;
 
 
+import com.beem.TastyMap.mapsReview.data.response.UserReviewSummaryDto;
+
 public class PlaceDetailsResponse {
     private String status;
     private PlaceDetailsResult result;
@@ -23,4 +25,5 @@ public class PlaceDetailsResponse {
     public void setResult(PlaceDetailsResult result) {
         this.result = result;
     }
+
 }

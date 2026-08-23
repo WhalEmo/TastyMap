@@ -11,14 +11,19 @@ import com.beem.TastyMap.mapsReview.data.response.CreatedReviewRes;
 import com.beem.TastyMap.mapsReview.data.response.ReviewResponse;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.data.response.UpdatedReviewRes;
+import com.beem.TastyMap.mapsReview.entity.QReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ScoreEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
 import com.beem.TastyMap.mapsReview.enums.ScoreType;
+import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
 import com.beem.TastyMap.redis.RedisKeyGenerator;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -46,16 +51,18 @@ public class ReviewService {
     private final UserRepo userRepo;
     private final ReviewMapper reviewMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final JPAQueryFactory queryFactory;
 
     public ReviewService(ReviewRepo reviewRepo, PlacesService placesService,
                          EntityManager entityManager, UserRepo userRepo, ReviewMapper reviewMapper,
-                         ApplicationEventPublisher eventPublisher) {
+                         ApplicationEventPublisher eventPublisher, JPAQueryFactory queryFactory) {
         this.reviewRepo = reviewRepo;
         this.placesService = placesService;
         this.entityManager = entityManager;
         this.userRepo = userRepo;
         this.reviewMapper = reviewMapper;
         this.eventPublisher = eventPublisher;
+        this.queryFactory = queryFactory;
     }
 
     @Transactional
@@ -124,8 +131,21 @@ public class ReviewService {
 
     @Transactional
     public CreatedReviewRes sendPlaceReview(SentReviewReq request, Long userId){
-        createReviewRequestDtoControl(request);
+
+        if (request.getParentId() == null) {
+            boolean alreadyReviewed = reviewRepo.existsByPlace_PlaceIdAndUserIdAndParentIsNullAndStatus(
+                    request.getPlaceId(),
+                    userId,
+                    ReviewStatus.APPROVED
+            );
+            if (alreadyReviewed) {
+                throw new CustomExceptions.InvalidException("Bu mekana zaten bir değerlendirme yaptınız. Mevcut yorumunuzu güncelleyebilirsiniz.");
+            }
+        }
+
         PlaceEntity place = placesService.getReferenceIfExists(request.getPlaceId());
+
+        createReviewRequestDtoControl(request, place.getId());
 
         UserEntity user = userRepo.findById(userId)
                 .orElseThrow(()-> new CustomExceptions.NotFoundException("User not found"));
@@ -146,6 +166,10 @@ public class ReviewService {
         applyScoreListCreate(request, entity);
 
         reviewRepo.saveAndFlush(entity);
+
+        if (request.getParentId() == null) {
+            updateTastyMapPlaceStats(place);
+        }
 
         return new CreatedReviewRes(
                 entity.getId(),
@@ -263,11 +287,44 @@ public class ReviewService {
         }
     }
 
-    private void createReviewRequestDtoControl(SentReviewReq request){
+    private void updateTastyMapPlaceStats(PlaceEntity place) {
+        QReviewEntity review = QReviewEntity.reviewEntity;
+
+        NumberExpression<Double> avgScoreExpr = review.rating.avg();
+        NumberExpression<Long> countExpr = review.count();
+
+        Tuple stats = queryFactory
+                .select(avgScoreExpr, countExpr)
+                .from(review)
+                .where(
+                        review.place.id.eq(place.getId()),
+                        review.source.eq(ReviewSource.INTERNAL),
+                        review.parent.isNull(),
+                        review.status.eq(ReviewStatus.APPROVED),
+                        review.deleted.isFalse()
+                )
+                .fetchOne();
+
+        Double avgScore = stats != null ? stats.get(avgScoreExpr) : null;
+        Long reviewCount = stats != null ? stats.get(countExpr) : 0L;
+
+        if (avgScore != null) {
+            place.setTastyMapRating(Math.round(avgScore * 10.0) / 10.0);
+        } else {
+            place.setTastyMapRating(0.0);
+        }
+
+        place.setTastyMapReviewCount(reviewCount != null ? reviewCount.intValue() : 0);
+
+        placesService.save(place);
+        placesService.evictPlaceCache(place.getPlaceId());
+    }
+
+    private void createReviewRequestDtoControl(SentReviewReq request, Long placeId){
         if(request.getParentId() != null){
             if(
                     !reviewRepo.existsByIdAndPlaceIdAndSourceAndStatus(request.getParentId(),
-                            request.getPlaceId(),
+                            placeId,
                             ReviewSource.INTERNAL,
                             ReviewStatus.APPROVED
                     )

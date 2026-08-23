@@ -1,4 +1,4 @@
-package com.beem.TastyMap.mapsReview;
+package com.beem.TastyMap.mapsReview.repository;
 
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
@@ -37,6 +37,18 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
     Optional<ReviewEntity> findByIdAndUserId(
             Long id,
             Long userId
+    );
+
+    Optional<ReviewEntity> findFirstByPlace_PlaceIdAndUserIdAndParentIsNullAndStatusOrderByCreatedAtDesc(
+            String placeId,
+            Long userId,
+            ReviewStatus status
+    );
+
+    boolean existsByPlace_PlaceIdAndUserIdAndParentIsNullAndStatus(
+            String placeId,
+            Long userId,
+            ReviewStatus status
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

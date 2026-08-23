@@ -39,14 +39,13 @@ public class ReviewController {
     @PostMapping("/send-review")
     public BaseApiResponse<CreatedReviewRes> sendPlaceReview(
             @RequestBody SentReviewReq request,
-            @RequestParam Long userId,
             Authentication authentication
     ){
         return BaseApiResponse
                 .success(
                         service.sendPlaceReview(
                                 request,
-                                userId
+                                (Long) authentication.getPrincipal()
                         )
                 );
     }

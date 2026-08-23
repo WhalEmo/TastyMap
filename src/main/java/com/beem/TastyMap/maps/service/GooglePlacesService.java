@@ -3,6 +3,7 @@ package com.beem.TastyMap.maps.service;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.maps.data.PlaceDetailsResponse;
 import com.beem.TastyMap.maps.data.PlacesResponse;
+import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsResponse;
 import com.beem.TastyMap.maps.geo.GridCell;
 import com.beem.TastyMap.redis.RedisCacheService;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,13 +53,13 @@ public class GooglePlacesService {
         return response;
     }
 
-    public PlaceDetailsResponse getDetailPlaceInfo(String placeId, String key){
+    public GooglePlaceDetailsResponse getDetailPlaceInfo(String placeId, String key){
         String originalKey = key + ":getDetailPlaceInfo";
         if(redisCacheService.exists(originalKey)){
             throw new CustomExceptions.RedisKeyExistsException("API not calling");
         }
 
-        PlaceDetailsResponse response = webClient.get()
+        GooglePlaceDetailsResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .scheme("https")
                         .host("maps.googleapis.com")
@@ -86,7 +87,7 @@ public class GooglePlacesService {
                         .queryParam("key", apiKey)
                         .build())
                 .retrieve()
-                .bodyToMono(PlaceDetailsResponse.class)
+                .bodyToMono(GooglePlaceDetailsResponse.class)
                 .block();
 
         if (response != null) {

@@ -2,6 +2,7 @@ package com.beem.TastyMap.mapsReview;
 
 import com.beem.TastyMap.maps.service.PlacesService;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
+import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
 import com.beem.TastyMap.redis.RedisKeyGenerator;
 import com.beem.TastyMap.redis.RedisCacheService;
 import org.springframework.context.event.EventListener;

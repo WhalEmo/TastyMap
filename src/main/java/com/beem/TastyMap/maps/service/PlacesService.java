@@ -1,15 +1,20 @@
 package com.beem.TastyMap.maps.service;
 
 
+import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.maps.GridUpdateEvent;
 import com.beem.TastyMap.maps.data.*;
 import com.beem.TastyMap.maps.data.geojson.FeatureCollection;
+import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsDto;
+import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsResponse;
 import com.beem.TastyMap.maps.entity.GridEntity;
 import com.beem.TastyMap.maps.entity.GridStatus;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.geo.GeoUtils;
 import com.beem.TastyMap.maps.geo.GridCell;
-import com.beem.TastyMap.mapsReview.ReviewRepo;
+import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
+import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
+import com.beem.TastyMap.mapsReview.data.response.UserReviewSummaryDto;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.redis.RedisCacheService;
 import com.beem.TastyMap.redis.RedisKeyGenerator;
@@ -40,6 +45,7 @@ public class PlacesService {
     private final ReviewRepo reviewRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final PlaceMapper placeMapper;
+    private final ReviewQueryRepository reviewQueryRepository;
 
     public PlacesService(
             RedisCacheService service,
@@ -49,7 +55,7 @@ public class PlacesService {
             GridRepo gridRepo,
             ReviewRepo reviewRepo,
             ApplicationEventPublisher eventPublisher,
-            PlaceMapper placeMapper
+            PlaceMapper placeMapper, ReviewQueryRepository reviewQueryRepository
     ) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
@@ -59,6 +65,7 @@ public class PlacesService {
         this.reviewRepo = reviewRepo;
         this.eventPublisher = eventPublisher;
         this.placeMapper = placeMapper;
+        this.reviewQueryRepository = reviewQueryRepository;
     }
 
     @Cacheable(
@@ -71,12 +78,14 @@ public class PlacesService {
                 .orElseThrow(()-> new RuntimeException("Place not found"));
     }
 
-    @Transactional
-    public PlaceEntity getReferenceIfExists(Long id) {
-        if (!placeRepo.existsById(id)) {
-            throw new RuntimeException("Place not found");
+    @Transactional(readOnly = true)
+    public PlaceEntity getReferenceIfExists(String placeId) {
+        if (placeId == null || placeId.trim().isEmpty()) {
+            throw new CustomExceptions.NotFoundException("Place identifier cannot be empty");
         }
-        return entityManager.getReference(PlaceEntity.class, id);
+
+        return placeRepo.findByPlaceId(placeId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Place not found with placeId: " + placeId));
     }
 
     public PlacesResponse getPlaces(ScanRequest request){
@@ -123,23 +132,20 @@ public class PlacesService {
     }
 
     @Transactional
-    public PlaceDetailsResponse getPlaceDetails(String placeID){
+    public PlaceDetailsResponse getPlaceDetails(String placeID, Long userId){
         String key = RedisKeyGenerator.createPlaceDetailsKey(placeID);
 
         PlaceDetailsResult detailsList = searchCacheToPlaceDetails(key);
 
-        if(detailsList != null){
-            return mapToDetailsResult(detailsList);
+        if(detailsList == null){
+            detailsList = searchPlaceDetailsDataBase(placeID, key);
         }
 
-        detailsList = searchPlaceDetailsDataBase(placeID, key);
-
-        if(detailsList != null){
-            return mapToDetailsResult(detailsList);
+        if(detailsList == null){
+            detailsList = searchPlaceDetailsGoogleAPI(placeID, key);
         }
 
-        detailsList = searchPlaceDetailsGoogleAPI(placeID, key);
-
+        attachUserReviewIfExists(userId, detailsList);
 
         return mapToDetailsResult(detailsList);
     }
@@ -186,6 +192,21 @@ public class PlacesService {
         return placeResults;
     }
 
+    public PlaceEntity save(PlaceEntity place) {
+        return placeRepo.save(place);
+    }
+
+
+    public void evictPlaceCache(String placeId) {
+        if (placeId == null || placeId.trim().isEmpty()) {
+            return;
+        }
+
+        String detailKey = RedisKeyGenerator.createPlaceDetailsKey(placeId);
+
+        redisService.delete(detailKey);
+    }
+
     private PlaceDetailsResult searchPlaceDetailsDataBase(String placeId, String key){
         Optional<PlaceEntity> placeEntity = placeRepo.findByPlaceId(placeId);
 
@@ -199,6 +220,9 @@ public class PlacesService {
         }
 
         PlaceDetailsResult detailsResult = PlaceDetailsResult.fromEntity(entity);
+
+        List<Review> reviews = reviewQueryRepository.findReviewsWithScoresByPlaceId(entity.getId());
+        detailsResult.setReviews(reviews);
 
         cachePlaceDetailsResults(key, detailsResult);
 
@@ -230,7 +254,7 @@ public class PlacesService {
     }
 
     public PlaceDetailsResult searchPlaceDetailsGoogleAPI(String placeId, String key){
-        PlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId, key);
+        GooglePlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId, key);
 
         if (!"OK".equals(response.getStatus())) {
             throw new ResponseStatusException(
@@ -238,9 +262,14 @@ public class PlacesService {
                     "Google Places error: " + response.getStatus()
             );
         }
-        PlaceDetailsResult details = response.getResult();
+        GooglePlaceDetailsDto dto = response.getResult();
 
-        PlaceEntity place = getOrCreatedOrUpdatePlace(details);
+        PlaceEntity place = getOrCreatedOrUpdatePlace(dto);
+
+        PlaceDetailsResult details = PlaceDetailsResult.fromEntity(place);
+
+        List<Review> reviews = reviewQueryRepository.findReviewsWithScoresByPlaceId(place.getId());
+        details.setReviews(reviews);
 
         cachePlaceDetailsResults(key, details);
 
@@ -279,7 +308,7 @@ public class PlacesService {
                     return gridRepo.save(entity);
                 });
     }
-    private PlaceEntity getOrCreatedOrUpdatePlace(PlaceDetailsResult details){
+    private PlaceEntity getOrCreatedOrUpdatePlace(GooglePlaceDetailsDto details){
 
         Optional<PlaceEntity> existingPlaceEntity = placeRepo.findByPlaceId(details.getPlace_id());
 
@@ -306,7 +335,7 @@ public class PlacesService {
     }
 
     @Transactional
-    private void syncPlaceContent(PlaceEntity place, PlaceDetailsResult details){
+    private void syncPlaceContent(PlaceEntity place, GooglePlaceDetailsDto details){
         place.updateFromDetailsDto(details);
 
         if(details.getReviews() != null){
@@ -320,14 +349,14 @@ public class PlacesService {
 
         List<ReviewEntity> newReviews = reviews.stream()
                 .filter(review -> {
-                    return !existingReviewsCreated.contains(review.getTime());
+                    return !existingReviewsCreated.contains(review.time());
                 })
                 .map(review -> {
                     return new ReviewEntity(
-                            review.getAuthor_name(),
-                            review.getRating(),
-                            review.getText(),
-                            review.getTime(),
+                            review.authorName(),
+                            review.rating(),
+                            review.text(),
+                            review.time(),
                             place
                     );
                 })
@@ -357,6 +386,25 @@ public class PlacesService {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         placeRepo.saveAll(entities);
+    }
+
+
+    private void attachUserReviewIfExists(Long userId, PlaceDetailsResult details) {
+        if (userId == null || details == null) {
+            if (details != null) {
+                details.setUserReview(null);
+            }
+            return;
+        }
+
+        reviewRepo.findFirstByPlace_PlaceIdAndUserIdAndParentIsNullAndStatusOrderByCreatedAtDesc(
+                details.getPlace_id(),
+                userId,
+                com.beem.TastyMap.mapsReview.enums.ReviewStatus.APPROVED
+        ).ifPresentOrElse(
+                reviewEntity -> details.setUserReview(UserReviewSummaryDto.fromEntity(reviewEntity)),
+                () -> details.setUserReview(null)
+        );
     }
 
 

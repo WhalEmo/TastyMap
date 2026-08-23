@@ -29,9 +29,9 @@ public class PlaceResult {
         PlaceResult result = new PlaceResult();
         result.setName(entity.getName());
         result.setVicinity(entity.getVicinity());
-        result.setRating(entity.getRating());
+        result.setRating(entity.getGoogleRating());
         result.setPrice_level(entity.getPriceLevel());
-        result.setUser_ratings_total(entity.getUserRatingsTotal());
+        result.setUser_ratings_total(entity.getGoogleReviewCount());
         result.setBusiness_status(entity.getBusinessStatus());
         result.setPlace_id(entity.getPlaceId());
 

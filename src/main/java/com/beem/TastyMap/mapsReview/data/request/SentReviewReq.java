@@ -7,7 +7,7 @@ import java.util.List;
 public class SentReviewReq {
     private Long parentId;
     private String content;
-    private Long placeId;
+    private String placeId;
 
     private List<ScoreDto> scores;
 
@@ -33,11 +33,11 @@ public class SentReviewReq {
     }
 
 
-    public Long getPlaceId() {
+    public String getPlaceId() {
         return placeId;
     }
 
-    public void setPlaceId(Long placeId) {
+    public void setPlaceId(String placeId) {
         this.placeId = placeId;
     }
 

@@ -2,6 +2,7 @@ package com.beem.TastyMap.maps.entity;
 
 import com.beem.TastyMap.maps.data.PlaceDetailsResult;
 import com.beem.TastyMap.maps.data.PlaceResult;
+import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsDto;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import jakarta.persistence.*;
 import org.hibernate.search.engine.backend.types.Projectable;
@@ -15,7 +16,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Indexed
 @Entity
@@ -38,11 +38,19 @@ public class PlaceEntity {
     @FullTextField(projectable = Projectable.YES)
     private String vicinity;
 
-    private Double rating;
+    @Column(name = "google_rating")
+    private Double googleRating = 0.0;
+
+    @Column(name = "google_review_count")
+    private Integer googleReviewCount = 0;
+
+    @Column(name = "tastymap_rating")
+    private Double tastyMapRating = 0.0;
+
+    @Column(name = "tastymap_review_count")
+    private Integer tastyMapReviewCount = 0;
 
     private Integer priceLevel;
-
-    private Integer userRatingsTotal;
 
     private String businessStatus;
 
@@ -101,9 +109,9 @@ public class PlaceEntity {
         entity.setPlaceId(dto.getPlace_id());
         entity.setName(dto.getName());
         entity.setVicinity(dto.getVicinity());
-        entity.setRating(dto.getRating());
+        entity.setGoogleRating(dto.getRating());
         entity.setPriceLevel(dto.getPrice_level());
-        entity.setUserRatingsTotal(dto.getUser_ratings_total());
+        entity.setGoogleReviewCount(dto.getUser_ratings_total());
         entity.setBusinessStatus(dto.getBusiness_status());
 
         if (dto.getGeometry() != null) {
@@ -116,17 +124,16 @@ public class PlaceEntity {
         return entity;
     }
 
-    public static PlaceEntity fromDetailsDto(PlaceDetailsResult dto){
+    public static PlaceEntity fromDetailsDto(GooglePlaceDetailsDto dto){
         PlaceEntity entity = new PlaceEntity();
 
         entity.setPlaceId(dto.getPlace_id());
         entity.setName(dto.getName());
 
-        entity.setRating(dto.getRating());
-        entity.setPriceLevel(dto.getPrice_level());
-        entity.setUserRatingsTotal(dto.getUser_ratings_total());
+        entity.setGoogleRating(dto.getRating() != null ? dto.getRating() : 0.0);
+        entity.setGoogleReviewCount(dto.getUserRatingsTotal() != null ? dto.getUserRatingsTotal() : 0);
 
-
+        entity.setPriceLevel(dto.getPriceLevel());
 
         if (dto.getGeometry() != null) {
             entity.setLatitude(dto.getGeometry().getLocation().getLat());
@@ -135,26 +142,26 @@ public class PlaceEntity {
 
         entity.setTypes(new HashSet<>(dto.getTypes()));
 
-        entity.setFormattedPhoneNumber(dto.getFormatted_phone_number());
-        entity.setInternationalPhoneNumber(dto.getInternational_phone_number());
+        entity.setFormattedPhoneNumber(dto.getFormattedPhoneNumber());
+        entity.setInternationalPhoneNumber(dto.getInternationalPhoneNumber());
         entity.setWebsite(dto.getWebsite());
 
 
         entity.openingHours = new OpeningHoursEmbeddable(
-                dto.getOpening_hours().getOpen_now(),
-                dto.getOpening_hours().getWeekday_text()
+                dto.getOpeningHours().getOpen_now(),
+                dto.getOpeningHours().getWeekday_text()
         );
 
-        entity.setFormattedAddress(dto.getFormatted_address());
+        entity.setFormattedAddress(dto.getFormattedAddress());
 
         return entity;
     }
 
-    public void updateFromDetailsDto(PlaceDetailsResult dto) {
+    public void updateFromDetailsDto(GooglePlaceDetailsDto dto) {
         this.setName(dto.getName());
-        this.setRating(dto.getRating());
-        this.setPriceLevel(dto.getPrice_level());
-        this.setUserRatingsTotal(dto.getUser_ratings_total());
+        this.setGoogleRating(dto.getRating() != null ? dto.getRating() : 0);
+        this.setPriceLevel(dto.getPriceLevel());
+        this.setGoogleReviewCount(dto.getUserRatingsTotal() != null ? dto.getUserRatingsTotal() : 0);
 
         if (dto.getGeometry() != null) {
             this.setLatitude(dto.getGeometry().getLocation().getLat());
@@ -165,15 +172,15 @@ public class PlaceEntity {
             this.setTypes(new HashSet<>(dto.getTypes()));
         }
 
-        this.setFormattedPhoneNumber(dto.getFormatted_phone_number());
-        this.setInternationalPhoneNumber(dto.getInternational_phone_number());
+        this.setFormattedPhoneNumber(dto.getFormattedPhoneNumber());
+        this.setInternationalPhoneNumber(dto.getInternationalPhoneNumber());
         this.setWebsite(dto.getWebsite());
-        this.setFormattedAddress(dto.getFormatted_address());
+        this.setFormattedAddress(dto.getFormattedAddress());
 
-        if (dto.getOpening_hours() != null) {
+        if (dto.getOpeningHours() != null) {
             this.setOpeningHours(new OpeningHoursEmbeddable(
-                    dto.getOpening_hours().getOpen_now(),
-                    dto.getOpening_hours().getWeekday_text()
+                    dto.getOpeningHours().getOpen_now(),
+                    dto.getOpeningHours().getWeekday_text()
             ));
         }
     }
@@ -234,28 +241,12 @@ public class PlaceEntity {
         this.vicinity = vicinity;
     }
 
-    public Double getRating() {
-        return rating;
-    }
-
-    public void setRating(Double rating) {
-        this.rating = rating;
-    }
-
     public Integer getPriceLevel() {
         return priceLevel;
     }
 
     public void setPriceLevel(Integer priceLevel) {
         this.priceLevel = priceLevel;
-    }
-
-    public Integer getUserRatingsTotal() {
-        return userRatingsTotal;
-    }
-
-    public void setUserRatingsTotal(Integer userRatingsTotal) {
-        this.userRatingsTotal = userRatingsTotal;
     }
 
     public String getBusinessStatus() {
@@ -348,5 +339,37 @@ public class PlaceEntity {
 
     public void setReviews(List<ReviewEntity> reviews) {
         this.reviews = reviews;
+    }
+
+    public Double getGoogleRating() {
+        return googleRating;
+    }
+
+    public void setGoogleRating(Double googleRating) {
+        this.googleRating = googleRating;
+    }
+
+    public Integer getGoogleReviewCount() {
+        return googleReviewCount;
+    }
+
+    public void setGoogleReviewCount(Integer googleReviewCount) {
+        this.googleReviewCount = googleReviewCount;
+    }
+
+    public Double getTastyMapRating() {
+        return tastyMapRating;
+    }
+
+    public void setTastyMapRating(Double tastymapRating) {
+        this.tastyMapRating = tastymapRating;
+    }
+
+    public Integer getTastyMapReviewCount() {
+        return tastyMapReviewCount;
+    }
+
+    public void setTastyMapReviewCount(Integer tastymapReviewCount) {
+        this.tastyMapReviewCount = tastymapReviewCount;
     }
 }
