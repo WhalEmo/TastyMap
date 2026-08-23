@@ -7,6 +7,7 @@ import com.beem.TastyMap.rag.service.BulkIndexingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,19 +20,22 @@ public class RecommendationController {
 
     @PostMapping("/recommend")
     public ResponseEntity<String> askRecommendation(
-            @RequestHeader("X-User-Id") Long userId,
-            @RequestBody RecommendationReq request) {
+            @RequestBody RecommendationReq request,
+            Authentication authentication
+    ) {
 
+        Long myId=(Long) authentication.getPrincipal();
         UserQueryEvent event = new UserQueryEvent(
-                userId,
+                myId,
                 request.getQuery(),
                 request.isIgnoreAllergies(),
                 request.getLatitude(),
                 request.getLongitude(),
-                request.getRadiusKm()
+                request.getRadiusKm(),
+                request.isMoreRequest()
         );
 
-        kafkaTemplate.send(KafkaConfig.RESTAURANT_AI_REQUESTS_TOPIC, userId.toString(), event);
+        kafkaTemplate.send(KafkaConfig.RESTAURANT_AI_REQUESTS_TOPIC, myId.toString(), event);
 
         return ResponseEntity.accepted()
                 .body("İsteğiniz alındı! Yapay zeka restoranları sizin için inceliyor...");

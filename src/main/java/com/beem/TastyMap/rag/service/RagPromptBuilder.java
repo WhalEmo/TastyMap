@@ -1,13 +1,16 @@
 package com.beem.TastyMap.rag.service;
 
 import com.beem.TastyMap.userRelated.health.entitys.UserAllergiesEntity;
+import com.beem.TastyMap.userRelated.health.entitys.UserHealthEntity;
 import com.beem.TastyMap.userRelated.health.repos.UserAllergiesRepo;
+import com.beem.TastyMap.userRelated.health.repos.UserHealthRepo;
 import com.beem.TastyMap.userRelated.visit.VisitResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -15,6 +18,30 @@ import java.util.stream.Collectors;
 public class RagPromptBuilder {
 
     private final UserAllergiesRepo userAllergiesRepo;
+    private final UserHealthRepo userHealthRepo;
+
+
+    public String buildHealthAndDietInstruction(UserHealthEntity health) {
+        if (health == null) {
+            return "Kullanıcının özel bir beslenme tercihi veya diyabet durumu bulunmamaktadır.";
+        }
+
+        StringBuilder sb = new StringBuilder("BESLENME VE SAĞLIK FİLTRELERİ:\n");
+
+        if (health.getEatType() != null) {
+            switch (health.getEatType()) {
+                case VEGAN -> sb.append("- KESİN KURAL: Kullanıcı VEGAN beslenmektedir. Et, tavuk, balık, süt ürünleri, yumurta vb. içeren mekanları/menüleri KESİNLİKLE önerme!\n");
+                case VEGETARIAN -> sb.append("- KESİN KURAL: Kullanıcı VEJETARYEN beslenmektedir. Et, tavuk, balık içeren yemekleri önerme!\n");
+                default -> sb.append("- Beslenme Tipi: Normal.\n");
+            }
+        }
+
+        if (health.isHasDiabetes()) {
+            sb.append("- ÖNEMLİ SAĞLIK UYARISI: Kullanıcının DİYABETİ bulunmaktadır. Yüksek şekerli/karbonhidratlı menüleri önerme veya uyar.\n");
+        }
+
+        return sb.toString();
+    }
 
     public String buildUserVisitsInstruction(List<VisitResponseDTO> recentVisits) {
         if (recentVisits == null || recentVisits.isEmpty()) {
@@ -22,7 +49,7 @@ public class RagPromptBuilder {
         }
 
         String visitsText = recentVisits.stream()
-                .map(v -> String.format("- %s (Mutfak/Kategori: %s)", v.getPlaceName(), v.getCategories()))
+                .map(v -> String.format("- %s (Mutfak: %s)", v.getPlaceName(), v.getCategories()))
                 .collect(Collectors.joining("\n"));
 
         return String.format("""
@@ -35,26 +62,22 @@ public class RagPromptBuilder {
                 """, visitsText);
     }
 
-    public String buildAllergyInstruction(Long userId, boolean ignoreAllergies) {
+    public String buildAllergyInstruction(List<UserAllergiesEntity> userAllergies, boolean ignoreAllergies) {
         if (ignoreAllergies) {
-            return "Kullanıcı alerji filtrelerini kapatmak istedi. Önerilerde kullanıcının alerjilerini DİKKATE ALMA.";
+            return "Kullanıcı alerji filtrelerini kapatmak istedi. Önerilerde alerjileri DİKKATE ALMA.";
         }
 
-        List<UserAllergiesEntity> userAllergies = userAllergiesRepo.findByUserId(userId);
         if (userAllergies != null && !userAllergies.isEmpty()) {
             String allergiesText = userAllergies.stream()
                     .map(a -> a.getAllergies().getAllergyName())
                     .collect(Collectors.joining(", "));
 
-            return String.format(
-                    "KRİTİK GÜVENLİK KURALI: Kullanıcının şu maddelere alerjisi var: [%s]. " +
-                            "Aşağıdaki mekanlar arasından bu alerjenleri içeren yemekleri/mekanları KESİNLİKLE önerme ve kullanıcıyı uyar!",
-                    allergiesText
-            );
+            return String.format("KRİTİK GÜVENLİK KURALI: Kullanıcının şu maddelere alerjisi var: [%s]. Bunları içeren mekanları KESİNLİKLE önerme ve kullanıcıyı uyar!", allergiesText);
         }
 
         return "Kullanıcının kayıtlı bir alerjisi bulunmamaktadır.";
     }
+
 
     public String buildContextText(List<Document> documents) {
         if (documents == null || documents.isEmpty()) {
@@ -68,16 +91,16 @@ public class RagPromptBuilder {
     /**
      * AI'ya gönderilecek nihai Sistem Prompt'unu hazırlar (Pagination desteği eklendi).
      */
-    public String buildSystemPrompt(Long userId,
+    public String buildSystemPrompt(UserDataCollectorService.UserContextData userData,
                                     boolean ignoreAllergies,
                                     List<Document> documents,
                                     String userQuery,
-                                    List<VisitResponseDTO> recentVisits,
                                     boolean isExhausted,
                                     int remainingCount) {
 
-        String allergyInstruction = buildAllergyInstruction(userId, ignoreAllergies);
-        String visitsInstruction = buildUserVisitsInstruction(recentVisits);
+        String allergyInstruction = buildAllergyInstruction(userData.getAllergies(), ignoreAllergies);
+        String healthAndDietInstruction = buildHealthAndDietInstruction(userData.getHealthInfo().orElse(null));
+        String visitsInstruction = buildUserVisitsInstruction(userData.getRecentVisits());
         String context = buildContextText(documents);
 
         String paginationInstruction = isExhausted
@@ -93,6 +116,9 @@ public class RagPromptBuilder {
         3. Konu dışı bir soru geldiğinde nazikçe şu cevabı ver: "Ben TastyMap'in lezzet asistanıyım! Yalnızca restoran, yemek ve mekan önerileri konusunda size yardımcı olabilirim. Bugün ne yemek istersiniz?"
         4. SADECE verilen Context içerisindeki gerçek mekanları kullan, asla haritadan veya hafızandan olmayan restoran uydurma.
 
+        SAĞLIK VE BESLENME TERCİHLERİ:
+        %s
+        
         ALERJİ TALİMATI:
         %s
         
@@ -108,6 +134,6 @@ public class RagPromptBuilder {
         ---
         
         Kullanıcı Sorusu: %s
-        """, allergyInstruction, visitsInstruction, paginationInstruction, context, userQuery);
+        """,healthAndDietInstruction, allergyInstruction, visitsInstruction, paginationInstruction, context, userQuery);
     }
 }
