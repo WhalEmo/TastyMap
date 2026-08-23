@@ -11,5 +11,8 @@ public class UserQueryEvent {
     private Long userId;
     private String userQuery;
     private boolean ignoreAllergies;
-    private Boolean isOpenNow;
+    private Double latitude;
+    private Double longitude;
+    private Double radiusKm;
+    private boolean isMoreRequest;
 }

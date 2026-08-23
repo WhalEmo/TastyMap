@@ -20,6 +20,9 @@ public class RestaurantIndexingService {
 
     private final VectorStore vectorStore;
 
+    /**
+     * TEKİL İNDEKSLEME: Tek bir mekan eklendiğinde veya yorum güncellendiğinde çalışır.
+     */
     public void indexPlaceWithReviews(PlaceDetailsResult place, List<ReviewResult> reviews) {
         String placeId = place.getPlace_id();
         if (placeId == null || placeId.isBlank()) {
@@ -27,13 +30,45 @@ public class RestaurantIndexingService {
             return;
         }
 
-        // 1. DÜZELTME: Eski kaydı silerek mükerrer (duplicate) kaydı engelleme
         try {
             vectorStore.delete(List.of(placeId));
         } catch (Exception e) {
-            log.debug("Eski indeks bulunamadı veya silinirken bir uyarı alındı (Normal durum): {}", e.getMessage());
+            log.debug("Eski indeks bulunamadı veya silinirken bir uyarı alındı: {}", e.getMessage());
         }
 
+        Document doc = createDocument(place, reviews);
+        vectorStore.add(List.of(doc));
+
+        log.info("Restoran indeksi başarıyla güncellendi: {}", placeId);
+    }
+
+    /**
+     * TOPLU (BATCH) İNDEKSLEME: 100'erli paketler halinde Qdrant'a toplu veri gönderir.
+     */
+    public void indexPlacesBatch(List<Document> documents) {
+        if (documents == null || documents.isEmpty()) return;
+
+        try {
+            List<String> placeIds = documents.stream().map(Document::getId).toList();
+            try {
+                vectorStore.delete(placeIds);
+            } catch (Exception e) {
+                log.debug("Eski indeksler silinirken uyarı alındı: {}", e.getMessage());
+            }
+
+            // TEK BİR AĞ ISTEGIYLE TOPLU EKLEME
+            vectorStore.add(documents);
+            log.info("{} adet mekan topluca Qdrant'a eklendi.", documents.size());
+        } catch (Exception e) {
+            log.error("Batch indeksleme sırasında hata oluştu: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * YARDIMCI METOD: PlaceDetailsResult nesnesini Qdrant Document nesnesine çevirir.
+     */
+    public Document createDocument(PlaceDetailsResult place, List<ReviewResult> reviews) {
+        String placeId = place.getPlace_id();
         String typesText = (place.getTypes() != null) ? String.join(", ", place.getTypes()) : "";
 
         String reviewsCombined = "";
@@ -68,11 +103,13 @@ public class RestaurantIndexingService {
         metadata.put("rating", place.getRating() != null ? place.getRating() : 0.0);
         metadata.put("is_open_now", isOpenNow);
 
-        // Document ID olarak place_id veriliyor
-        Document doc = new Document(placeId, textContent, metadata);
+        if (place.getGeometry() != null && place.getGeometry().getLocation() != null) {
+            Map<String, Double> locationMap = new HashMap<>();
+            locationMap.put("lat", place.getGeometry().getLocation().getLat());
+            locationMap.put("lon", place.getGeometry().getLocation().getLng());
+            metadata.put("location", locationMap);
+        }
 
-        // Yenilenmiş mekan bilgisini ekleme
-        vectorStore.add(List.of(doc));
-        log.info("Restoran indeksi başarıyla güncellendi: {}", placeId);
+        return new Document(placeId, textContent, metadata);
     }
 }

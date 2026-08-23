@@ -11,4 +11,8 @@ public class RecommendationReq {
     private String query;
     private boolean ignoreAllergies = false;
     private Boolean isOpenNow;
+    private Double latitude;   // Yeni
+    private Double longitude;  // Yeni
+    private Double radiusKm;   // Opsiyonel (Örn: 5.0 km yarıçap)
+    private boolean isMoreRequest;
 }

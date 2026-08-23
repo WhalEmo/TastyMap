@@ -19,8 +19,12 @@ public class ReviewIndexingListener {
     @Async
     @TransactionalEventListener
     public void handleReviewUpdate(ReviewUpdateEvent event) {
+        /*
         log.info("Yeni yorum/güncelleme olayı yakalandı. Qdrant indeksi güncelleniyor. Place ID: {}", event.getPlaceId());
         // Event içindeki mekan bilgisi ve yorum listesi ile Qdrant güncellemesi yapılıyor
         restaurantIndexingService.indexPlaceWithReviews(event.getPlaceDetails(), event.getReviews());
+
+         */
     }
 }
+//BILMEDIIGM ICIN YAPMADIM YENI BI MEKAN EKLENDIYSE VEYA YORU M EKLENDIYSE BU CALISABILIR OPTIMZIE EDILEBILIR indexPlaceWithReviews BU METOD

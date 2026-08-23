@@ -4,12 +4,12 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class RecommendationRes {
-    private String recommendationText;
-    private List<String> matchedPlaceIds;
+    private Long userId;
+    private String aiMessage;    // Yapay zekanın ürettiği metin
+    private boolean hasMore;      // Frontend buton koysun mu? (true/false)
+    private int remainingCount;  // Kalan mekan sayısı
 }

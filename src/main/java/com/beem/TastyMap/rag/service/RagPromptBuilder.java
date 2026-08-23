@@ -2,6 +2,7 @@ package com.beem.TastyMap.rag.service;
 
 import com.beem.TastyMap.userRelated.health.entitys.UserAllergiesEntity;
 import com.beem.TastyMap.userRelated.health.repos.UserAllergiesRepo;
+import com.beem.TastyMap.userRelated.visit.VisitResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
@@ -15,12 +16,28 @@ public class RagPromptBuilder {
 
     private final UserAllergiesRepo userAllergiesRepo;
 
-    /**
-     * Kullanıcının alerji durumuna göre prompt için talimat metni üretir.
-     */
+    public String buildUserVisitsInstruction(List<VisitResponseDTO> recentVisits) {
+        if (recentVisits == null || recentVisits.isEmpty()) {
+            return "Kullanıcının henüz geçmiş ziyaret kaydı bulunmamaktadır.";
+        }
+
+        String visitsText = recentVisits.stream()
+                .map(v -> String.format("- %s (Mutfak/Kategori: %s)", v.getPlaceName(), v.getCategories()))
+                .collect(Collectors.joining("\n"));
+
+        return String.format("""
+                KULLANICININ GEÇMİŞTE GİTTİĞİ MEKANLAR VE SEVDİĞİ MUTFAKLAR:
+                %s
+                
+                DAMAK TADI VE MUTFAK ANALİZİ TALİMATI:
+                - Yukarıdaki geçmiş bilgileri SADECE kullanıcının ne tür yemekler ve mutfaklar (örn: İtalyan, Ev Yemekleri, Burger vb.) sevdiğini anlamak için kullan.
+                - Geçmiş mekanların konumunu veya şehirlerini KESİNLİKLE dikkate alma! Şehir önerilerini yalnızca verilen Context ve Kullanıcı Konumu'na göre yap.
+                """, visitsText);
+    }
+
     public String buildAllergyInstruction(Long userId, boolean ignoreAllergies) {
         if (ignoreAllergies) {
-            return "Kullanıcı alerji filtrelerini kapatmak istedi. Önerilerde kullanıcının alerjilerini DIKKATE ALMA.";
+            return "Kullanıcı alerji filtrelerini kapatmak istedi. Önerilerde kullanıcının alerjilerini DİKKATE ALMA.";
         }
 
         List<UserAllergiesEntity> userAllergies = userAllergiesRepo.findByUserId(userId);
@@ -39,9 +56,6 @@ public class RagPromptBuilder {
         return "Kullanıcının kayıtlı bir alerjisi bulunmamaktadır.";
     }
 
-    /**
-     * VectorStore'dan dönen Document listesini tek bir Context metnine dönüştürür.
-     */
     public String buildContextText(List<Document> documents) {
         if (documents == null || documents.isEmpty()) {
             return "İlgili mekan bilgisi bulunamadı.";
@@ -52,28 +66,48 @@ public class RagPromptBuilder {
     }
 
     /**
-     * AI'ya gönderilecek nihai Sistem Prompt'unu hazırlar.
+     * AI'ya gönderilecek nihai Sistem Prompt'unu hazırlar (Pagination desteği eklendi).
      */
-    public String buildSystemPrompt(Long userId, boolean ignoreAllergies, List<Document> documents, String userQuery) {
+    public String buildSystemPrompt(Long userId,
+                                    boolean ignoreAllergies,
+                                    List<Document> documents,
+                                    String userQuery,
+                                    List<VisitResponseDTO> recentVisits,
+                                    boolean isExhausted,
+                                    int remainingCount) {
+
         String allergyInstruction = buildAllergyInstruction(userId, ignoreAllergies);
+        String visitsInstruction = buildUserVisitsInstruction(recentVisits);
         String context = buildContextText(documents);
 
+        String paginationInstruction = isExhausted
+                ? "ÖNEMLİ DURUM BILGİSİ: Bu aramada konuma yakın gösterilebilecek SON MEKANLARI sunuyorsun. Mekanları tanıttıktan sonra kullanıcıya dürüstçe bu konumdaki ve kriterlerdeki tüm mekanların bittiğini, isterse farklı bir arama veya yemek türü söyleyebileceğini nazikçe belirt."
+                : String.format("ÖNEMLİ DURUM BİLGİSİ: Kullanıcıya mekanları sunduktan sonra, isterse bu konumda %d tane daha alternatif mekan gösterebileceğini hatırlat.", remainingCount);
+
         return String.format("""
-            Sen TastyMap uygulamasının uzman restoran öneri asistanısın.
-            
-            %s
-            
-            EK GÜVENLİK VE ISRAR KURALI:
-            Eğer kullanıcı alerji uyarısına veya riskine rağmen "yine de öner", "fark etmez ver" gibi bir ifadede bulunuyorsa:
-            1. Yanıtına mutlaka kısa ve net bir SAĞLIK VE SORUMLULUK UYARISI ile başla.
-            2. Ardından kullanıcının istediği mekanları listele.
-            
-            Aşağıdaki Mekan Bilgilerini (Context) kullanarak kullanıcıya nazik, iştah açıcı ve öz bir dille yanıt ver:
-            ---
-            %s
-            ---
-            
-            Kullanıcı Sorusu: %s
-            """, allergyInstruction, context, userQuery);
+        Sen SADECE ve SADECE TastyMap uygulamasının uzman restoran ve yemek öneri asistanısın.
+        
+        KESİN KURALLAR:
+        1. Senin tek görevin yemek, restoran, mekan, kafe, mutfak kültürü ve menüler hakkında bilgi vermektir.
+        2. Yemek veya restoranlar dışındaki HER HANGİ BİR KONUDA (Oyun, kodlama, siyaset, genel sohbet, hava durumu vb.) gelen soruları KESİNLİKLE YANITLAMA.
+        3. Konu dışı bir soru geldiğinde nazikçe şu cevabı ver: "Ben TastyMap'in lezzet asistanıyım! Yalnızca restoran, yemek ve mekan önerileri konusunda size yardımcı olabilirim. Bugün ne yemek istersiniz?"
+        4. SADECE verilen Context içerisindeki gerçek mekanları kullan, asla haritadan veya hafızandan olmayan restoran uydurma.
+
+        ALERJİ TALİMATI:
+        %s
+        
+        ZİYARET GEÇMİŞİ TALİMATI:
+        %s
+
+        MEKAN YÖNETİMİ VE SAYFALAMA DURUMU:
+        %s
+        
+        Aşağıda kullanıcının konumuna yakın mekanlar (Context) listelenmiştir. Bu bilgileri kullanarak nazik, iştah açıcı ve öz bir dille yanıt ver:
+        ---
+        %s
+        ---
+        
+        Kullanıcı Sorusu: %s
+        """, allergyInstruction, visitsInstruction, paginationInstruction, context, userQuery);
     }
 }
