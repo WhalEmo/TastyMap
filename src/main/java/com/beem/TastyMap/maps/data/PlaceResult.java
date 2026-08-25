@@ -20,7 +20,6 @@ public class PlaceResult {
 
     private Geometry geometry;
     private OpeningHours opening_hours;
-    private List<Photo> photos;
 
 
     public PlaceResult() {
@@ -49,11 +48,6 @@ public class PlaceResult {
         geo.setLocation(location);
 
         result.setGeometry(geo);
-        /*
-        if(entity.getPhotos() != null){
-            result.setPhotos(entity.getPhotos().stream().map(Photo::fromEntity).toList());
-        }*/
-
         return result;
     }
 
@@ -143,14 +137,6 @@ public class PlaceResult {
 
     public void setOpening_hours(OpeningHours opening_hours) {
         this.opening_hours = opening_hours;
-    }
-
-    public List<Photo> getPhotos() {
-        return photos;
-    }
-
-    public void setPhotos(List<Photo> photos) {
-        this.photos = photos;
     }
 
 }

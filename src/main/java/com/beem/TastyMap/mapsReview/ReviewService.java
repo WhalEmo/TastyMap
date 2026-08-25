@@ -21,6 +21,7 @@ import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -82,11 +83,14 @@ public class ReviewService {
 
     private ReviewResponse getReviewDataBaseToResponse(String placeId, int page, int size){
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        List<ReviewResult> reviewResults = reviewRepo
-                .findAllByPlaceId(placeId, pageable)
+
+        Page<ReviewEntity> reviewPage = reviewRepo.findByPlace_PlaceIdAndStatus(placeId, ReviewStatus.APPROVED, pageable);
+
+        List<ReviewResult> reviewResults = reviewPage.getContent()
                 .stream()
                 .map(ReviewResult::fromEntity)
                 .toList();
+
         return new ReviewResponse(
                 page,
                 size,

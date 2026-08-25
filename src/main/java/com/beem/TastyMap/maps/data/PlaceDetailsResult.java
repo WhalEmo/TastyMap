@@ -19,7 +19,6 @@ public class PlaceDetailsResult {
 
     private OpeningHours opening_hours;
     private Geometry geometry;
-    private List<Photo> photos;
     private List<Review> reviews;
 
     private String formatted_address;
@@ -46,14 +45,6 @@ public class PlaceDetailsResult {
         geo.setLocation(location);
         result.setGeometry(geo);
 
-        if (entity.getPhotos() != null) {
-            result.setPhotos(
-                    entity.getPhotos()
-                            .stream()
-                            .map(Photo::fromEntity)
-                            .toList()
-            );
-        }
 
         result.setFormatted_phone_number(entity.getFormattedPhoneNumber());
         result.setInternational_phone_number(entity.getInternationalPhoneNumber());
@@ -177,13 +168,6 @@ public class PlaceDetailsResult {
         this.geometry = geometry;
     }
 
-    public List<Photo> getPhotos() {
-        return photos;
-    }
-
-    public void setPhotos(List<Photo> photos) {
-        this.photos = photos;
-    }
 
     public List<Review> getReviews() {
         return reviews;

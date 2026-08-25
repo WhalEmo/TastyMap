@@ -6,11 +6,9 @@ import com.beem.TastyMap.maps.data.*;
 import com.beem.TastyMap.maps.data.geojson.FeatureCollection;
 import com.beem.TastyMap.maps.entity.GridEntity;
 import com.beem.TastyMap.maps.entity.GridStatus;
-import com.beem.TastyMap.maps.entity.PhotoEntity;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.geo.GeoUtils;
 import com.beem.TastyMap.maps.geo.GridCell;
-import com.beem.TastyMap.maps.repository.PhotoRepo;
 import com.beem.TastyMap.mapsReview.ReviewRepo;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.redis.RedisCacheService;
@@ -39,7 +37,6 @@ public class PlacesService {
     private final EntityManager entityManager;
     private final PlaceRepo placeRepo;
     private final GridRepo gridRepo;
-    private final PhotoRepo photoRepo;
     private final ReviewRepo reviewRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final PlaceMapper placeMapper;
@@ -50,7 +47,6 @@ public class PlacesService {
             EntityManager entityManager,
             PlaceRepo placeRepo,
             GridRepo gridRepo,
-            PhotoRepo photoRepo,
             ReviewRepo reviewRepo,
             ApplicationEventPublisher eventPublisher,
             PlaceMapper placeMapper
@@ -60,7 +56,6 @@ public class PlacesService {
         this.entityManager = entityManager;
         this.placeRepo = placeRepo;
         this.gridRepo = gridRepo;
-        this.photoRepo = photoRepo;
         this.reviewRepo = reviewRepo;
         this.eventPublisher = eventPublisher;
         this.placeMapper = placeMapper;
@@ -314,42 +309,11 @@ public class PlacesService {
     private void syncPlaceContent(PlaceEntity place, PlaceDetailsResult details){
         place.updateFromDetailsDto(details);
 
-        if(details.getPhotos() != null){
-            syncPlacePhotos(place, details.getPhotos());
-        }
         if(details.getReviews() != null){
             syncPlaceReviews(place, details.getReviews());
         }
     }
 
-    private void syncPlacePhotos(PlaceEntity place, List<Photo> photos){
-        Set<String> existingPhotoRefs = photoRepo
-                .findAllReferencesByPlaceId(place.getPlaceId())
-                .stream()
-                .map(ref -> ref.replaceAll("\\s", ""))
-                .collect(Collectors.toSet());
-
-        List<PhotoEntity> newPhotos = photos.stream()
-                .filter(photo -> photo.getPhoto_reference() != null)
-                .filter(photo -> {
-                    String cleanRef = photo.getPhoto_reference().replaceAll("\\s", "");
-                    return !existingPhotoRefs.contains(cleanRef);
-                })
-                .map(photo -> {
-                    PhotoEntity newPhoto = new PhotoEntity();
-                    newPhoto.setPhotoReference(photo.getPhoto_reference().replaceAll("\\s", ""));
-                    newPhoto.setPlace(place);
-                    newPhoto.setHeight(photo.getHeight());
-                    newPhoto.setWidth(photo.getWidth());
-                    return newPhoto;
-                })
-                .toList();
-        if(!newPhotos.isEmpty()){
-            for(PhotoEntity newPhoto: newPhotos){
-                place.addPhoto(newPhoto);
-            }
-        }
-    }
 
     private void syncPlaceReviews(PlaceEntity place, List<Review> reviews){
         Set<Long> existingReviewsCreated = reviewRepo.findAllCreatedAtsByPlaceId(place.getPlaceId());
@@ -439,9 +403,6 @@ public class PlacesService {
         PlaceEntity entity = PlaceEntity.fromDto(dto);
         entity.setGrid(grid);
 
-        if(dto.getPhotos() != null){
-            syncPlacePhotos(entity, dto.getPhotos());
-        }
 
         Long existingId = existingIds.get(entity.getPlaceId());
         if (existingId != null) {

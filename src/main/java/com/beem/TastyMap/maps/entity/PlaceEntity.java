@@ -75,13 +75,6 @@ public class PlaceEntity {
     @Column(name = "type")
     private Set<String> types = new HashSet<>();
 
-    @OneToMany(
-            mappedBy = "place",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
-    private List<PhotoEntity> photos = new ArrayList<>();
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -185,10 +178,6 @@ public class PlaceEntity {
         }
     }
 
-    public void addPhoto(PhotoEntity photo) {
-        photos.add(photo);
-        photo.setPlace(this);
-    }
 
 
 
@@ -211,9 +200,6 @@ public class PlaceEntity {
         }
     }
 
-    public List<PhotoEntity> getPhotos() {
-        return photos;
-    }
 
 
     public Long getId() {
@@ -358,11 +344,6 @@ public class PlaceEntity {
 
     public void setFormattedAddress(String formattedAddress) {
         this.formattedAddress = formattedAddress;
-    }
-
-
-    public void setPhotos(List<PhotoEntity> photos) {
-        this.photos = photos;
     }
 
     public void setReviews(List<ReviewEntity> reviews) {

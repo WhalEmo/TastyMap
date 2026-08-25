@@ -66,9 +66,10 @@ public class ReviewEntity {
     public void onCreate(){
         if(createdAt == null) createdAt = System.currentTimeMillis();
         if(source == null) source = ReviewSource.GOOGLE;
-        if(source == ReviewSource.GOOGLE) createdAt *= 1000;
         if(status == null) status = ReviewStatus.APPROVED;
-        this.rating = calculateTotalRating();
+        if(source == ReviewSource.INTERNAL) {
+            this.rating = calculateTotalRating();
+        }
     }
 
     @PreUpdate
@@ -96,6 +97,8 @@ public class ReviewEntity {
         this.text = text;
         this.createdAt = createdAt;
         this.place = place;
+        this.source = ReviewSource.GOOGLE;
+        this.status = ReviewStatus.APPROVED;
     }
 
     public ReviewEntity(String authorName, String text, ReviewSource source,

@@ -54,6 +54,14 @@ public class RedisCacheService {
         }
     }
 
+    public Boolean expire(String key, long TTL) {
+        try {
+            return redis.expire(key, Duration.ofSeconds(TTL));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public <T> Boolean setIfAbsent(String key, T value, long TTL){
         try {
             String json = objectMapper.writeValueAsString(value);
