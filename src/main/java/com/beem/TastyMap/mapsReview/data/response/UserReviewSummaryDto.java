@@ -7,11 +7,12 @@ import java.util.Collections;
 import java.util.List;
 
 public class UserReviewSummaryDto {
-    private Long review_id;
-    private String author_name;
+    private Long reviewId;
+    private String userName;
     private Double rating;
     private String text;
-    private Long created_at;
+    private Long createdAt;
+    private Long updatedAt;
     private List<ScoreDto> scores;
 
     public UserReviewSummaryDto() {}
@@ -25,20 +26,16 @@ public class UserReviewSummaryDto {
                         .toList() : Collections.emptyList();
 
         UserReviewSummaryDto dto = new UserReviewSummaryDto();
-        dto.setReview_id(entity.getId());
-        dto.setAuthor_name(entity.getAuthorName());
+        dto.setReviewId(entity.getId());
+        dto.setUserName(entity.getAuthorName());
         dto.setRating(entity.getRating());
         dto.setText(entity.getText());
-        dto.setCreated_at(entity.getCreatedAt());
+        dto.setCreatedAt(entity.getCreatedAt());
         dto.setScores(scoreList);
+        dto.setUpdatedAt(entity.getUpdateAt());
         return dto;
     }
 
-    public Long getReview_id() { return review_id; }
-    public void setReview_id(Long review_id) { this.review_id = review_id; }
-
-    public String getAuthor_name() { return author_name; }
-    public void setAuthor_name(String author_name) { this.author_name = author_name; }
 
     public Double getRating() { return rating; }
     public void setRating(Double rating) { this.rating = rating; }
@@ -46,9 +43,39 @@ public class UserReviewSummaryDto {
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
 
-    public Long getCreated_at() { return created_at; }
-    public void setCreated_at(Long created_at) { this.created_at = created_at; }
-
     public List<ScoreDto> getScores() { return scores; }
     public void setScores(List<ScoreDto> scores) { this.scores = scores; }
+
+
+    public Long getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Long updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Long getReviewId() {
+        return reviewId;
+    }
+
+    public void setReviewId(Long reviewId) {
+        this.reviewId = reviewId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public Long getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Long createdAt) {
+        this.createdAt = createdAt;
+    }
 }

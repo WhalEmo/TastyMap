@@ -1,9 +1,10 @@
 package com.beem.TastyMap.maps.data;
 
 
-import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsDto;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.data.response.UserReviewSummaryDto;
+import com.beem.TastyMap.stats.data.response.PlaceStatsDto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
@@ -30,11 +31,13 @@ public class PlaceDetailsResult {
 
     private OpeningHours openingHours;
     private Geometry geometry;
-    private List<Review> reviews;
+    private List<ReviewResult> reviews;
 
     private UserReviewSummaryDto userReview;
 
     private String formattedAddress;
+
+    private PlaceStatsDto stats;
 
     public static PlaceDetailsResult fromEntity(PlaceEntity entity) {
         PlaceDetailsResult result = new PlaceDetailsResult();
@@ -76,24 +79,6 @@ public class PlaceDetailsResult {
         }
 
 
-        return result;
-    }
-
-    public static PlaceDetailsResult fromGoogleDto(GooglePlaceDetailsDto dto) {
-        PlaceDetailsResult result = new PlaceDetailsResult();
-        result.setPlace_id(dto.getPlace_id());
-        result.setName(dto.getName());
-        result.setGoogleRating(dto.getRating() != null ? dto.getRating() : 0.0);
-        result.setGoogleReviewCount(dto.getUserRatingsTotal() != null ? dto.getUserRatingsTotal() : 0);
-        result.setPriceLevel(dto.getPriceLevel());
-        result.setTypes(dto.getTypes());
-        result.setFormattedPhoneNumber(dto.getFormattedPhoneNumber());
-        result.setInternationalPhoneNumber(dto.getInternationalPhoneNumber());
-        result.setWebsite(dto.getWebsite());
-        result.setOpeningHours(dto.getOpeningHours());
-        result.setGeometry(dto.getGeometry());
-        result.setReviews(dto.getReviews());
-        result.setFormattedAddress(dto.getFormattedAddress());
         return result;
     }
 
@@ -181,11 +166,11 @@ public class PlaceDetailsResult {
     }
 
 
-    public List<Review> getReviews() {
+    public List<ReviewResult> getReviews() {
         return reviews;
     }
 
-    public void setReviews(List<Review> reviews) {
+    public void setReviews(List<ReviewResult> reviews) {
         this.reviews = reviews;
     }
 
@@ -227,5 +212,13 @@ public class PlaceDetailsResult {
 
     public void setTastyMapReviewCount(Integer tastyMapReviewCount) {
         this.tastyMapReviewCount = tastyMapReviewCount;
+    }
+
+    public PlaceStatsDto getStats() {
+        return stats;
+    }
+
+    public void setStats(PlaceStatsDto stats) {
+        this.stats = stats;
     }
 }

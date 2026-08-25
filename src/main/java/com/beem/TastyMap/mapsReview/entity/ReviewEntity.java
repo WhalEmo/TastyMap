@@ -76,7 +76,6 @@ public class ReviewEntity {
     @PreUpdate
     public void onUpdate(){
         updateAt = System.currentTimeMillis();
-        this.rating = calculateTotalRating();
     }
 
     private double calculateTotalRating(){
@@ -237,9 +236,6 @@ public class ReviewEntity {
 
     public void setVersion(Long version) {
         this.version = version;
-    }
-    public void recalculateRating() {
-        this.rating = calculateTotalRating();
     }
 
 }

@@ -12,10 +12,13 @@ import com.beem.TastyMap.maps.entity.GridStatus;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.geo.GeoUtils;
 import com.beem.TastyMap.maps.geo.GridCell;
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
 import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
 import com.beem.TastyMap.mapsReview.data.response.UserReviewSummaryDto;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
+import com.beem.TastyMap.stats.StatsService;
+import com.beem.TastyMap.stats.data.response.PlaceStatsDto;
 import com.beem.TastyMap.redis.RedisCacheService;
 import com.beem.TastyMap.redis.RedisKeyGenerator;
 import com.beem.TastyMap.maps.repository.GridRepo;
@@ -46,6 +49,7 @@ public class PlacesService {
     private final ApplicationEventPublisher eventPublisher;
     private final PlaceMapper placeMapper;
     private final ReviewQueryRepository reviewQueryRepository;
+    private final StatsService statsService;
 
     public PlacesService(
             RedisCacheService service,
@@ -55,7 +59,7 @@ public class PlacesService {
             GridRepo gridRepo,
             ReviewRepo reviewRepo,
             ApplicationEventPublisher eventPublisher,
-            PlaceMapper placeMapper, ReviewQueryRepository reviewQueryRepository
+            PlaceMapper placeMapper, ReviewQueryRepository reviewQueryRepository, StatsService statsService
     ) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
@@ -66,6 +70,7 @@ public class PlacesService {
         this.eventPublisher = eventPublisher;
         this.placeMapper = placeMapper;
         this.reviewQueryRepository = reviewQueryRepository;
+        this.statsService = statsService;
     }
 
     @Cacheable(
@@ -221,8 +226,16 @@ public class PlacesService {
 
         PlaceDetailsResult detailsResult = PlaceDetailsResult.fromEntity(entity);
 
-        List<Review> reviews = reviewQueryRepository.findReviewsWithScoresByPlaceId(entity.getId());
+        List<ReviewResult> reviews = reviewQueryRepository.findReviews(entity.getId(), 0, 5);
         detailsResult.setReviews(reviews);
+
+        PlaceStatsDto stats = statsService.calculatePlaceStats(
+                entity.getId(),
+                entity.getTastyMapRating(),
+                entity.getTastyMapReviewCount()
+        );
+
+        detailsResult.setStats(stats);
 
         cachePlaceDetailsResults(key, detailsResult);
 
@@ -268,8 +281,15 @@ public class PlacesService {
 
         PlaceDetailsResult details = PlaceDetailsResult.fromEntity(place);
 
-        List<Review> reviews = reviewQueryRepository.findReviewsWithScoresByPlaceId(place.getId());
+        List<ReviewResult> reviews = reviewQueryRepository.findReviews(place.getId(), 0, 5);
         details.setReviews(reviews);
+
+        PlaceStatsDto stats = statsService.calculatePlaceStats(
+                place.getId(),
+                place.getTastyMapRating(),
+                place.getTastyMapReviewCount()
+        );
+        details.setStats(stats);
 
         cachePlaceDetailsResults(key, details);
 
@@ -465,6 +485,11 @@ public class PlacesService {
         response.setResult(detailsResult);
         response.setStatus("Ok");
         return response;
+    }
+
+    public PlaceEntity findById(Long id) {
+        return placeRepo.findById(id)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Mekan bulunamadı. ID: " + id));
     }
     
 }

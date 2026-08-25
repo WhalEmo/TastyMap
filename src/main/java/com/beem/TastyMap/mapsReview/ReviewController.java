@@ -1,10 +1,12 @@
 package com.beem.TastyMap.mapsReview;
 
 import com.beem.TastyMap.BaseApiResponse;
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.data.request.SentReviewReq;
 import com.beem.TastyMap.mapsReview.data.request.UpdateReviewReq;
 import com.beem.TastyMap.mapsReview.data.response.CreatedReviewRes;
 import com.beem.TastyMap.mapsReview.data.response.ReviewResponse;
+import com.beem.TastyMap.mapsReview.data.response.UpdatedReviewRes;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -37,7 +39,7 @@ public class ReviewController {
     }
 
     @PostMapping("/send-review")
-    public BaseApiResponse<CreatedReviewRes> sendPlaceReview(
+    public BaseApiResponse<ReviewResult> sendPlaceReview(
             @RequestBody SentReviewReq request,
             Authentication authentication
     ){
@@ -51,13 +53,12 @@ public class ReviewController {
     }
 
     @PatchMapping("/update-review")
-    public ResponseEntity<?> updatePlaceReview(
+    public BaseApiResponse<ReviewResult> updatePlaceReview(
             @RequestBody UpdateReviewReq request,
             Authentication authentication
     ){
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(
+        return BaseApiResponse
+                .success(
                         service.patchPlaceReview(
                                 request,
                                 (Long) authentication.getPrincipal()
@@ -65,17 +66,18 @@ public class ReviewController {
                 );
     }
     @DeleteMapping("/delete-review/{reviewID}")
-    public ResponseEntity<?> deletePlaceReview(
+    public BaseApiResponse<Boolean> deletePlaceReview(
             @PathVariable Long reviewID,
             Authentication authentication
     ){
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(
-                        service.deletePlaceReview(
-                                reviewID,
-                                (Long) authentication.getPrincipal()
-                        )
+        service.deletePlaceReview(
+                reviewID,
+                (Long) authentication.getPrincipal()
+        );
+        return BaseApiResponse
+                .success(
+                        true,
+                        "Review deleted successfully."
                 );
     }
 }
