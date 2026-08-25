@@ -5,6 +5,7 @@ import com.beem.TastyMap.registerLogin.UserService;
 import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
+import com.beem.TastyMap.security.token.TokenBlacklistService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,8 +42,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, UserService service, RedisRateLimitService rateLimitService) throws Exception {
-        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service);
+    public SecurityFilterChain filterChain(HttpSecurity http, UserService service, RedisRateLimitService rateLimitService, TokenBlacklistService tokenBlacklistService) throws Exception {
+        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service, tokenBlacklistService);
         RateLimitingFilter rateLimitingFilter = new RateLimitingFilter(rateLimitService);
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

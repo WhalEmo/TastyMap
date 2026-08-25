@@ -1,4 +1,3 @@
-
 plugins {
     java
     id("org.springframework.boot") version "3.3.5"
@@ -11,13 +10,21 @@ version = "0.0.1-SNAPSHOT"
 description = "Demo project for Spring Boot"
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+val springAiVersion = "1.0.0-M1"
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.ai:spring-ai-bom:$springAiVersion")
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
+    maven { url = uri("https://repo.spring.io/milestone") }
     maven { url = uri("https://repo.osgeo.org/repository/release/") }
 }
 
@@ -61,8 +68,12 @@ dependencies {
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
     implementation(kotlin("stdlib-jdk8"))
+
+    implementation("org.springframework.kafka:spring-kafka")
+    implementation("org.springframework.ai:spring-ai-ollama-spring-boot-starter")
+    implementation("org.springframework.ai:spring-ai-qdrant-store-spring-boot-starter")
 }
 
 tasks.withType<Test> {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }

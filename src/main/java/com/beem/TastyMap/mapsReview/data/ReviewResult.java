@@ -17,7 +17,15 @@ public class ReviewResult {
     private Long createdAt;
     private Long updateAt;
 
-
+    public ReviewResult(Long id, String name, double rating, String content, ReviewSource source, Integer likeCount, Long createdAt) {
+        this.id = id;
+        this.name = name;
+        this.rating = rating;
+        this.content = content;
+        this.source = source;
+        this.likeCount = likeCount;
+        this.createdAt = createdAt;
+    }
     public static ReviewResult fromEntity(ReviewEntity entity){
         ReviewResult review = new ReviewResult();
 

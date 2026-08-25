@@ -20,6 +20,14 @@ public class Review {
     private String relative_time_description;
     private String language;
 
+    public Review(String author_name, Double rating, String text, Long time, String relative_time_description, String language) {
+        this.author_name = author_name;
+        this.rating = rating;
+        this.text = text;
+        this.time = time;
+        this.relative_time_description = relative_time_description;
+        this.language = language;
+    }
     public static Review fromEntity(ReviewEntity entity){
         Review review = new Review();
         review.author_name = entity.getAuthorName();

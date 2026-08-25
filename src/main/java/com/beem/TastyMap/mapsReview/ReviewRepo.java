@@ -1,5 +1,6 @@
 package com.beem.TastyMap.mapsReview;
 
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
@@ -25,6 +26,21 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
 
     Page<ReviewEntity> findByPlace_PlaceIdAndStatus(String placeId, ReviewStatus status, Pageable pageable);
 
+    @Query("""
+    SELECT new com.beem.TastyMap.mapsReview.data.ReviewResult(
+        r.id,
+        COALESCE(r.authorName, u.username),
+        r.rating,
+        r.text,
+        r.source,
+        r.likeCount,
+        r.createdAt
+    )
+    FROM ReviewEntity r
+    LEFT JOIN r.user u
+    WHERE r.place.placeId = :placeId
+""")
+    List<ReviewResult> findReviewResultsByPlaceId(@Param("placeId") String placeId);
     boolean existsByIdAndPlaceId(Long id, Long placeId);
 
     boolean existsByIdAndPlaceIdAndSourceAndStatus(
