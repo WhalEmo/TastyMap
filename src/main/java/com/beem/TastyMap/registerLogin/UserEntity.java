@@ -63,6 +63,8 @@ public class UserEntity {
 
     private boolean emailVerified = true;
 
+    private boolean onboardingCompleted = false;
+
     @Column(nullable = false)
     private long postCount = 0;
 
@@ -198,5 +200,13 @@ public class UserEntity {
 
     public void setSubscribedCount(long subscribedCount) {
         this.subscribedCount = subscribedCount;
+    }
+
+    public boolean isOnboardingCompleted() {
+        return onboardingCompleted;
+    }
+
+    public void setOnboardingCompleted(boolean onboardingCompleted) {
+        this.onboardingCompleted = onboardingCompleted;
     }
 }

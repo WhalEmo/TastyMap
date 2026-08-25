@@ -1,6 +1,5 @@
 package com.beem.TastyMap.security.verification.emailVerify;
 
-import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,7 +26,7 @@ public class EmailController {
     }
     @PostMapping("/resendMail")
     public ResponseEntity<Long> resendMail(
-            @RequestBody CommonRequestDTO dto
+            @RequestBody EmailRequestDTO dto
     ) {
         long userId = emailService.resendVerification(dto);
         return ResponseEntity.ok(userId);

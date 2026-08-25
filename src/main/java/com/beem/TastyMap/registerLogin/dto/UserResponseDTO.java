@@ -15,6 +15,7 @@ public class UserResponseDTO {
     private LocalDateTime date;
     private String biography;
     private boolean emailVerified;
+    private boolean onboardingCompleted;
     private boolean privateProfile;
 
     public UserResponseDTO(){}
@@ -30,6 +31,7 @@ public class UserResponseDTO {
         date = user.getDate();
         this.biography = user.getBiography();
         this.emailVerified=user.isEmailVerified();
+        this.onboardingCompleted = user.isOnboardingCompleted();
         this.privateProfile= user.isPrivateProfile();
     }
 
@@ -118,5 +120,13 @@ public class UserResponseDTO {
 
     public void setPrivateProfile(boolean privateProfile) {
         this.privateProfile = privateProfile;
+    }
+
+    public boolean isOnboardingCompleted() {
+        return onboardingCompleted;
+    }
+
+    public void setOnboardingCompleted(boolean onboardingCompleted) {
+        this.onboardingCompleted = onboardingCompleted;
     }
 }

@@ -1,5 +1,6 @@
 package com.beem.TastyMap.mapsReview;
 
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
@@ -38,6 +39,15 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
             Long id,
             Long userId
     );
+
+    @Query("""
+    SELECT new com.beem.TastyMap.mapsReview.data.ReviewResult(
+        r.content
+    ) 
+    FROM ReviewEntity r 
+    WHERE r.place.placeId = :placeId
+""")
+    List<ReviewResult> findReviewResultsByPlaceId(@Param("placeId") String placeId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""

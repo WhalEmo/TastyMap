@@ -2,6 +2,7 @@ package com.beem.TastyMap.userRelated.health;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.health.dtos.AllergyInfoDTO;
 import com.beem.TastyMap.userRelated.health.dtos.HealthRequestDTO;
 import com.beem.TastyMap.userRelated.health.dtos.HealthResponseDTO;
@@ -26,28 +27,37 @@ public class HealthService {
     private final UserHealthRepo userHealthRepo;
     private final AllergiesRepo allergiesRepo;
     private final UserAllergiesRepo userAllergiesRepo;
+    private final UserRepo userRepo;
     private final EntityManager entityManager;
 
-    public HealthService(UserHealthRepo userHealthRepo, AllergiesRepo allergiesRepo, UserAllergiesRepo userAllergiesRepo, EntityManager entityManager) {
+    public HealthService(UserHealthRepo userHealthRepo, AllergiesRepo allergiesRepo, UserAllergiesRepo userAllergiesRepo, UserRepo userRepo, EntityManager entityManager) {
         this.userHealthRepo = userHealthRepo;
         this.allergiesRepo = allergiesRepo;
         this.userAllergiesRepo = userAllergiesRepo;
+        this.userRepo = userRepo;
         this.entityManager = entityManager;
     }
     @Transactional
     public HealthResponseDTO addHealthInfo(HealthRequestDTO dto, Long userId) {
-        UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
-
+        UserEntity user = userRepo.findById(userId)
+                .orElseThrow(() ->
+                        new CustomExceptions.NotFoundException("Kullanıcı bulunamadı.")
+                );
         UserHealthEntity userHealthEntity = new UserHealthEntity();
-        userHealthEntity.setUser(userRef);
+        userHealthEntity.setUser(user);
         userHealthEntity.setEatType(dto.getEatType());
         userHealthEntity.setHasDiabetes(dto.isHasDiabetes());
+
         userHealthRepo.save(userHealthEntity);
 
-        List<AllergiesEntity> allergies = allergiesRepo.findAllById(dto.getAllergyIds());
+        List<AllergiesEntity> allergies =
+                allergiesRepo.findAllById(dto.getAllergyIds());
+
 
         if (allergies.size() != dto.getAllergyIds().size()) {
-            throw new CustomExceptions.NotFoundException("Seçilen bazı alerjiler sistemde bulunamadı.");
+            throw new CustomExceptions.NotFoundException(
+                    "Seçilen bazı alerjiler sistemde bulunamadı."
+            );
         }
 
         List<UserAllergiesEntity> mappingsToSave = new ArrayList<>();
@@ -55,17 +65,25 @@ public class HealthService {
 
         for (AllergiesEntity allergy : allergies) {
             UserAllergiesEntity mapping = new UserAllergiesEntity();
-            mapping.setUser(userRef);
+            mapping.setUser(user);
             mapping.setAllergies(allergy);
             mappingsToSave.add(mapping);
 
-            responseAllergyList.add(new AllergyInfoDTO(allergy.getId(), allergy.getAllergyName()));
+            responseAllergyList.add(
+                    new AllergyInfoDTO(
+                            allergy.getId(),
+                            allergy.getAllergyName()
+                    )
+            );
         }
-
         if (!mappingsToSave.isEmpty()) {
             userAllergiesRepo.saveAll(mappingsToSave);
         }
 
+        if (!user.isOnboardingCompleted()) {
+            user.setOnboardingCompleted(true);
+            userRepo.save(user);
+        }
         return new HealthResponseDTO(
                 userHealthEntity.isHasDiabetes(),
                 userHealthEntity.getEatType().name(),
