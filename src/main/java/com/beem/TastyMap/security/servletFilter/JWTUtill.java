@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Date;
 
 @Component
@@ -98,6 +99,9 @@ public class JWTUtill {
 
     public String getRole(String token) {
         return getClaims(token).get("role", String.class);
+    }
+    public Instant getIssuedAt(String token) {
+        return getClaims(token).getIssuedAt().toInstant();
     }
 
     private Claims getClaims(String token) {

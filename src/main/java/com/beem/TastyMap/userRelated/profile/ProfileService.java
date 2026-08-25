@@ -8,6 +8,7 @@ import com.beem.TastyMap.security.refreshToken.RefreshTokenEntity;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
 import com.beem.TastyMap.security.device.UserDeviceRepo;
+import com.beem.TastyMap.security.token.TokenBlacklistService;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,12 +21,14 @@ public class ProfileService {
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
     private final BlockRepo blockRepo;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo) {
+    public ProfileService(UserRepo userRepo, RefreshTokenRepo refreshTokenRepo, PasswordEncoder passwordEncoder, BlockRepo blockRepo, TokenBlacklistService tokenBlacklistService) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
         this.blockRepo = blockRepo;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     public void updateProfile(UpdateProfileDTO request, Long userId){
@@ -78,6 +81,8 @@ public class ProfileService {
             throw new CustomExceptions.InvalidCredentialsException("Yeni şifre eski şifreyle aynı olamaz!");
         }
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        tokenBlacklistService.invalidateUserSessions(userId);
+        refreshTokenRepo.revokeAllUserTokensExceptCurrentDevice(userId,dto.getDeviceId());
         userRepo.save(user);
     }
 

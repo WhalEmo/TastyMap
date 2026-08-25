@@ -1,6 +1,7 @@
 package com.beem.TastyMap.security.servletFilter;
 
 import com.beem.TastyMap.registerLogin.UserService;
+import com.beem.TastyMap.security.token.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,13 +12,16 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JWTUtill jwtUtill;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public JwtAuthenticationFilter(JWTUtill jwtUtill, UserService userService) {
+    public JwtAuthenticationFilter(JWTUtill jwtUtill, UserService userService, TokenBlacklistService tokenBlacklistService) {
         this.jwtUtill = jwtUtill;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Override
@@ -59,6 +63,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             if (jwtUtill != null && jwtUtill.validateAccessToken(token)) {
                 Long userId = jwtUtill.getUserId(token);
+
+                Instant issuedAt = jwtUtill.getIssuedAt(token);
+
+                if (tokenBlacklistService.isTokenInvalidated(userId, issuedAt)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"error\": \"Şifreniz değiştirildiği için oturumunuz sonlandırılmıştır.\"}");
+                    return; // İstek controller'a ulaşmadan burada kesilir!
+                }
                 String role = jwtUtill.getRole(token);
 
                 var authorities = List.of(

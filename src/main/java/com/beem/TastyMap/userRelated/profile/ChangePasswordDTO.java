@@ -15,6 +15,8 @@ public class ChangePasswordDTO {
     @Size(min = 6, message = "Parola en az 6 karakter olmalı")
     private String againNew;
 
+    private String deviceId;
+
     public String getOldPassword() {
         return oldPassword;
     }
@@ -37,5 +39,13 @@ public class ChangePasswordDTO {
 
     public void setAgainNew(String againNew) {
         this.againNew = againNew;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 }
