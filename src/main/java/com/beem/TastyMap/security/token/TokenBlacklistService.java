@@ -15,30 +15,67 @@ public class TokenBlacklistService {
     @Value("${jwt.access-exp-ms:900000}")
     private long accessExpMs;
 
-    private static final String PREFIX = "pwd_changed_at:";
+    private static final String USER_PREFIX = "user_all_sessions_invalidated_at:";
+    private static final String DEVICE_PREFIX = "device_session_invalidated_at:";
+    private static final String PASSWORD_CHANGED_PREFIX = "device_password_changed_at:";
 
     public TokenBlacklistService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
-    public void invalidateUserSessions(Long userId) {
-        String key = PREFIX + userId;
+    public enum InvalidationReason {
+        NONE,
+        PASSWORD_CHANGED,
+        LOGGED_OUT
+    }
+
+    public void invalidateAllUserSessions(Long userId) {
+        String key = USER_PREFIX + userId;
         long currentTimestampSeconds = Instant.now().getEpochSecond();
         redisTemplate.opsForValue().set(key, String.valueOf(currentTimestampSeconds), accessExpMs, TimeUnit.MILLISECONDS);
     }
 
-    public boolean isTokenInvalidated(Long userId, Instant tokenIssuedAt) {
-        String key = PREFIX + userId;
-        String pwdChangedAtStr = redisTemplate.opsForValue().get(key);
+    public void invalidateDeviceSession(Long userId, String deviceId) {
+        String key = DEVICE_PREFIX + userId + ":" + deviceId;
+        long currentTimestampSeconds = Instant.now().getEpochSecond();
+        redisTemplate.opsForValue().set(key, String.valueOf(currentTimestampSeconds), accessExpMs, TimeUnit.MILLISECONDS);
+    }
 
-        if (pwdChangedAtStr == null) {
-            return false;
-        }
+    public void invalidateDevicePasswordChanged(Long userId, String deviceId) {
+        String key = PASSWORD_CHANGED_PREFIX + userId + ":" + deviceId;
+        long currentTimestampSeconds = Instant.now().getEpochSecond();
+        redisTemplate.opsForValue().set(key, String.valueOf(currentTimestampSeconds), accessExpMs, TimeUnit.MILLISECONDS);
+    }
 
-        long pwdChangedAtSeconds = Long.parseLong(pwdChangedAtStr);
-
+    public InvalidationReason getInvalidationReason(Long userId, String deviceId, Instant tokenIssuedAt) {
         long tokenIssuedAtSeconds = tokenIssuedAt.getEpochSecond();
 
-        return tokenIssuedAtSeconds < pwdChangedAtSeconds;
+        String userInvalidatedAtStr = redisTemplate.opsForValue().get(USER_PREFIX + userId);
+        if (userInvalidatedAtStr != null) {
+            long userInvalidatedAt = Long.parseLong(userInvalidatedAtStr);
+            if (tokenIssuedAtSeconds < userInvalidatedAt) {
+                return InvalidationReason.PASSWORD_CHANGED;
+            }
+        }
+
+        if (deviceId != null) {
+            String pwdInvalidatedAtStr = redisTemplate.opsForValue().get(PASSWORD_CHANGED_PREFIX + userId + ":" + deviceId);
+            if (pwdInvalidatedAtStr != null) {
+                long pwdInvalidatedAt = Long.parseLong(pwdInvalidatedAtStr);
+                if (tokenIssuedAtSeconds < pwdInvalidatedAt) {
+                    return InvalidationReason.PASSWORD_CHANGED;
+                }
+            }
+
+            String deviceInvalidatedAtStr = redisTemplate.opsForValue().get(DEVICE_PREFIX + userId + ":" + deviceId);
+            if (deviceInvalidatedAtStr != null) {
+                long deviceInvalidatedAt = Long.parseLong(deviceInvalidatedAtStr);
+                if (tokenIssuedAtSeconds < deviceInvalidatedAt) {
+                    return InvalidationReason.LOGGED_OUT;
+                }
+            }
+        }
+
+        return InvalidationReason.NONE;
     }
 }

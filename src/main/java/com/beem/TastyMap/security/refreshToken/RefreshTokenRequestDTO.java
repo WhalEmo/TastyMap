@@ -4,6 +4,11 @@ public class RefreshTokenRequestDTO {
     private String refreshToken;
     private String deviceId;
 
+    public RefreshTokenRequestDTO(String refreshToken, String deviceId) {
+        this.refreshToken = refreshToken;
+        this.deviceId = deviceId;
+    }
+
     public String getRefreshToken() {
         return refreshToken;
     }

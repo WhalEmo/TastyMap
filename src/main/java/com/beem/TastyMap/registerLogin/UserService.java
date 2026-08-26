@@ -169,7 +169,7 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     private LoginResponseDTO createTokensAndLogin(UserEntity user, LoginRequestDTO dto, String userAgent,RefreshTokenEntity existingToken,UserDeviceDTO cachedDevice) {
-        String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
+        String accessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole(),dto.getDeviceId());
         String refreshToken = jwtUtill.generateRefreshToken(user.getId(), dto.getDeviceId());
         RefreshTokenEntity refresh = (existingToken != null) ? existingToken : new RefreshTokenEntity();
 
@@ -218,7 +218,7 @@ public class UserService implements UserDetailsService {
         return new CustomUserDetails(user);
     }
 
-    protected ResponseCookie createCookie(String name, String value, long maxAge, String path) {
+    public ResponseCookie createCookie(String name, String value, long maxAge, String path) {
         return ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(true)

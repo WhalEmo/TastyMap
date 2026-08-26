@@ -1,8 +1,13 @@
 package com.beem.TastyMap.userRelated.profile;
 
+import com.beem.TastyMap.registerLogin.ClientTypes;
+import com.beem.TastyMap.registerLogin.UserService;
 import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
 import jakarta.validation.Valid;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,9 +19,11 @@ import java.util.Map;
 @RequestMapping("/api/myProfile")
 public class MyProfileController {
     private final ProfileService profileService;
+    private final UserService userService;
 
-    public MyProfileController(ProfileService profileService) {
+    public MyProfileController(ProfileService profileService, UserService userService) {
         this.profileService = profileService;
+        this.userService = userService;
     }
 
     @GetMapping("/active")
@@ -30,9 +37,31 @@ public class MyProfileController {
         return response;
     }
     @PostMapping("/logout")
-    public void logout(@RequestBody RefreshTokenRequestDTO dto, Authentication authentication) {
+    public ResponseEntity<Void> logout(
+            @RequestBody RefreshTokenRequestDTO dto,
+            @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType,
+            @CookieValue(value = "refresh_token", required = false) String cookieRefreshToken,
+            Authentication authentication
+    ) {
         Long userId=(Long)authentication.getPrincipal();
-        profileService.logout(dto,userId);
+
+        String refreshToken = ClientTypes.MOBILE.equalsIgnoreCase(clientType) && dto != null
+                ? dto.getRefreshToken()
+                : cookieRefreshToken;
+
+        profileService.logout(new RefreshTokenRequestDTO(refreshToken, dto.getDeviceId()), userId);
+
+        if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
+            return ResponseEntity.ok().build();
+        } else {
+            ResponseCookie clearAccessCookie = userService.createCookie("access_token", "", 0, "/");
+            ResponseCookie clearRefreshCookie = userService.createCookie("refresh_token", "", 0, "/api/users/refresh");
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, clearAccessCookie.toString())
+                    .header(HttpHeaders.SET_COOKIE, clearRefreshCookie.toString())
+                    .build();
+        }
     }
 
     @PostMapping("/update")

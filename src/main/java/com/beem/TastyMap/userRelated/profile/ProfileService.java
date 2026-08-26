@@ -56,6 +56,7 @@ public class ProfileService {
             throw new CustomExceptions.AuthorizationException("Yetkisiz veya geçersiz cihaz");
         }
         rf.setRevoked(true);
+        tokenBlacklistService.invalidateDeviceSession(userId, dto.getDeviceId());
         refreshTokenRepo.save(rf);
     }
 
@@ -81,8 +82,13 @@ public class ProfileService {
             throw new CustomExceptions.InvalidCredentialsException("Yeni şifre eski şifreyle aynı olamaz!");
         }
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
-        tokenBlacklistService.invalidateUserSessions(userId);
         refreshTokenRepo.revokeAllUserTokensExceptCurrentDevice(userId,dto.getDeviceId());
+
+        List<String> otherDeviceIds = refreshTokenRepo.findActiveDeviceIdsByUserIdExceptCurrent(userId, dto.getDeviceId());
+
+        for (String deviceId : otherDeviceIds) {
+            tokenBlacklistService.invalidateDevicePasswordChanged(userId, deviceId);
+        }
         userRepo.save(user);
     }
 

@@ -19,6 +19,9 @@ public interface RefreshTokenRepo extends JpaRepository<RefreshTokenEntity,Long>
     @Query("UPDATE RefreshTokenEntity r SET r.revoked = true WHERE r.user.id = :userId AND r.deviceId <> :currentDeviceId AND r.revoked = false")
     void revokeAllUserTokensExceptCurrentDevice(@Param("userId") Long userId, @Param("currentDeviceId") String currentDeviceId);
 
+    @Query("SELECT DISTINCT r.deviceId FROM RefreshTokenEntity r WHERE r.user.id = :userId AND r.deviceId <> :currentDeviceId AND r.revoked = false")
+    List<String> findActiveDeviceIdsByUserIdExceptCurrent(@Param("userId") Long userId, @Param("currentDeviceId") String currentDeviceId);
+
     @Modifying
     @Query("""
         UPDATE RefreshTokenEntity r

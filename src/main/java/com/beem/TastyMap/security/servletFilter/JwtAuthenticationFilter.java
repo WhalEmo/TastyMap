@@ -63,14 +63,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             if (jwtUtill != null && jwtUtill.validateAccessToken(token)) {
                 Long userId = jwtUtill.getUserId(token);
-
+                String deviceId = jwtUtill.getDeviceId(token);
                 Instant issuedAt = jwtUtill.getIssuedAt(token);
 
-                if (tokenBlacklistService.isTokenInvalidated(userId, issuedAt)) {
+                TokenBlacklistService.InvalidationReason reason =
+                        tokenBlacklistService.getInvalidationReason(userId, deviceId, issuedAt);
+
+                if (reason == TokenBlacklistService.InvalidationReason.PASSWORD_CHANGED) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write("{\"error\": \"Şifreniz değiştirildiği için oturumunuz sonlandırılmıştır.\"}");
-                    return; // İstek controller'a ulaşmadan burada kesilir!
+                    response.getWriter().write("{\"error\": \"PASSWORD_CHANGED\", \"message\": \"Şifreniz değiştirildiği için oturumunuz kapatıldı.\"}");
+                    return;
+                }
+
+                if (reason == TokenBlacklistService.InvalidationReason.LOGGED_OUT) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"error\": \"LOGGED_OUT\", \"message\": \"Bu cihazdan çıkış yapıldı.\"}");
+                    return;
                 }
                 String role = jwtUtill.getRole(token);
 

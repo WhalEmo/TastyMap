@@ -54,7 +54,7 @@ public class RefreshTokenService {
             throw new CustomExceptions.AuthorizationException("Bu token farklı cihaza ait");
         }
 
-        String newAccessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole());
+        String newAccessToken = jwtUtill.generateAccessToken(user.getId(), user.getRole(), deviceId);
 
         Duration total = Duration.between(rf.getCreatedAt(), rf.getExpiryDate());
         Duration remaining = Duration.between(LocalDateTime.now(), rf.getExpiryDate());
@@ -123,7 +123,7 @@ public class RefreshTokenService {
         );
 
         refreshTokenRepo.save(rf);
-        String accessToken = jwtUtill.generateAccessToken(notification.getUser().getId(), notification.getUser().getRole());
+        String accessToken = jwtUtill.generateAccessToken(notification.getUser().getId(), notification.getUser().getRole(),dto.getDeviceId());
         notificationRepo.delete(notification);
         return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(notification.getUser()));
     }
