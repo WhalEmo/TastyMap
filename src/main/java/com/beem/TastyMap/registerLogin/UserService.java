@@ -182,7 +182,15 @@ public class UserService implements UserDetailsService {
 
         userDeviceService.registerOrUpdateDevice(user, dto.getDeviceId(), userAgent, dto.getFcmToken(), true,cachedDevice);
         refreshTokenRepo.save(refresh);
-        return new LoginResponseDTO(accessToken, refreshToken, new UserResponseDTO(user));
+
+        UserResponseDTO userResponseDTO = new UserResponseDTO(user);
+
+        if (!user.isOnboardingCompleted()) {
+            user.setOnboardingCompleted(true);
+            userRepo.save(user);
+        }
+
+        return new LoginResponseDTO(accessToken, refreshToken, userResponseDTO);
     }
 
 

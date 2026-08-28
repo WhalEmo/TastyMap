@@ -1,7 +1,6 @@
 package com.beem.TastyMap.registerLogin.dto;
 
 import com.beem.TastyMap.registerLogin.UserEntity;
-
 import java.time.LocalDateTime;
 
 public class UserResponseDTO {
@@ -15,6 +14,7 @@ public class UserResponseDTO {
     private LocalDateTime date;
     private String biography;
     private boolean emailVerified;
+    private boolean onboardingCompleted; // EKLENDİ
     private boolean privateProfile;
 
     public UserResponseDTO(){}
@@ -26,11 +26,12 @@ public class UserResponseDTO {
         this.name = user.getName();
         this.surname = user.getSurname();
         this.profile = user.getProfile();
-        this.role=user.getRole();
-        date = user.getDate();
+        this.role = user.getRole();
+        this.date = user.getDate();
         this.biography = user.getBiography();
-        this.emailVerified=user.isEmailVerified();
-        this.privateProfile= user.isPrivateProfile();
+        this.emailVerified = user.isEmailVerified();
+        this.onboardingCompleted = user.isOnboardingCompleted();
+        this.privateProfile = user.isPrivateProfile();
     }
 
     public Long getId() {
@@ -94,7 +95,7 @@ public class UserResponseDTO {
     }
 
     public void setDate(LocalDateTime date) {
-        date = date;
+        this.date = date; // DÜZELTİLDİ (this.date yapıldı)
     }
 
     public String getBiography() {
@@ -112,6 +113,15 @@ public class UserResponseDTO {
     public void setEmailVerified(boolean emailVerified) {
         this.emailVerified = emailVerified;
     }
+
+    public boolean isOnboardingCompleted() { // EKLENDİ
+        return onboardingCompleted;
+    }
+
+    public void setOnboardingCompleted(boolean onboardingCompleted) { // EKLENDİ
+        this.onboardingCompleted = onboardingCompleted;
+    }
+
     public boolean isPrivateProfile() {
         return privateProfile;
     }

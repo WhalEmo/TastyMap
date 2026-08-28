@@ -5,6 +5,7 @@ public class AllergyInfoDTO {
     private String name;
 
     public AllergyInfoDTO(Long id, String name) {
+        this.id = id;
         this.name = name;
     }
 

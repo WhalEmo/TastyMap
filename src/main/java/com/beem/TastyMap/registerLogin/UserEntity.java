@@ -72,6 +72,9 @@ public class UserEntity {
     @Column(nullable = false)
     private long subscribedCount = 0;
 
+    @Column(nullable = false)
+    private boolean onboardingCompleted = false;
+
     public LocalDateTime getLastInteractionAt() {
         return lastInteractionAt;
     }
@@ -198,5 +201,13 @@ public class UserEntity {
 
     public void setSubscribedCount(long subscribedCount) {
         this.subscribedCount = subscribedCount;
+    }
+
+    public boolean isOnboardingCompleted() {
+        return onboardingCompleted;
+    }
+
+    public void setOnboardingCompleted(boolean onboardingCompleted) {
+        this.onboardingCompleted = onboardingCompleted;
     }
 }

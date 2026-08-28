@@ -65,7 +65,7 @@ public class MyProfileController {
     }
 
     @PostMapping("/update")
-    private Map<String, String> updateProfile(
+    public Map<String, String> updateProfile(
             @Valid @RequestBody UpdateProfileDTO req,
             Authentication authentication
     ){
@@ -76,7 +76,7 @@ public class MyProfileController {
     }
 
     @PostMapping("/changePassword")
-    private Map<String,String> changePassword(
+    public Map<String,String> changePassword(
             @Valid @RequestBody ChangePasswordDTO dto,
             Authentication authentication
     ){
@@ -86,7 +86,7 @@ public class MyProfileController {
     }
 
     @GetMapping("/meProfile")
-    private ProfileDTOresponse getProfile(
+    public ProfileDTOresponse getProfile(
             Authentication authentication
     ){
         Long myId=(Long)authentication.getPrincipal();
@@ -94,7 +94,7 @@ public class MyProfileController {
     }
 
     @GetMapping("/me")
-    private UserResponseDTO getMe(
+    public UserResponseDTO getMe(
             Authentication authentication
     ){
         Long myId=(Long)authentication.getPrincipal();
