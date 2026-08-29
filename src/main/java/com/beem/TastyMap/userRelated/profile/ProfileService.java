@@ -12,6 +12,7 @@ import com.beem.TastyMap.security.token.TokenBlacklistService;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class ProfileService {
         this.tokenBlacklistService = tokenBlacklistService;
     }
 
+    @Transactional
     public void updateProfile(UpdateProfileDTO request, Long userId){
         UserEntity user=userRepo.findById(userId)
                 .orElseThrow(()->new CustomExceptions.NotFoundException("Kullanıcı bulunamadı/Yetkisiz erişim"));
@@ -47,17 +49,14 @@ public class ProfileService {
         userRepo.save(user);
     }
 
-    public void logout(RefreshTokenRequestDTO dto, Long userId) {
-        RefreshTokenEntity rf = refreshTokenRepo
-                .findByTokenAndRevokedFalse(dto.getRefreshToken())
-                .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Refresh token bulunamadı"));
-        if (!rf.getUser().getId().equals(userId) || !rf.getDeviceId().equals(dto.getDeviceId())) {
-            throw new CustomExceptions.AuthorizationException("Yetkisiz veya geçersiz cihaz");
-        }
-        rf.setRevoked(true);
-        tokenBlacklistService.invalidateDeviceSession(userId, dto.getDeviceId());
-        refreshTokenRepo.save(rf);
+    @Transactional
+    public void logout(String deviceId, Long userId) {
+        refreshTokenRepo.findByUserIdAndDeviceIdAndRevokedFalse(userId, deviceId)
+                .ifPresent(rf -> {
+                    rf.setRevoked(true);
+                    refreshTokenRepo.save(rf);
+                });
+        tokenBlacklistService.invalidateDeviceSession(userId,deviceId);
     }
 
     public List<ActiveDeviceDTO> getActiveDevices(Long userId){
@@ -68,6 +67,7 @@ public class ProfileService {
         return refreshTokenRepo.countByUser_IdAndRevokedFalse(userId);
     }
 
+    @Transactional
     public void changePassword(ChangePasswordDTO dto, Long userId){
         UserEntity user=userRepo.findById(userId)
                 .orElseThrow(()->new CustomExceptions.NotFoundException("Kullanıcı bulunamadı/Yetkisiz erişim"));
@@ -91,7 +91,7 @@ public class ProfileService {
         }
         userRepo.save(user);
     }
-
+    @Transactional
     public ProfileDTOresponse getProfile(Long userId, Long myId){
         UserEntity user=userRepo.findById(userId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
