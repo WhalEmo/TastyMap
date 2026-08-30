@@ -3,13 +3,15 @@ package com.beem.TastyMap.userRelated.profile;
 public class ProfileDTOresponse {
     private String username;
     private String name;
+    private String surname;
     private String profile;
     private String role;
     private String biography;
-
     private long postCount;
     private long subscriberCount;
     private long subscribedCount;
+    private boolean blockedByMe;
+    private boolean blockedMe;
 
     public ProfileDTOresponse() {
     }
@@ -17,21 +19,27 @@ public class ProfileDTOresponse {
     public ProfileDTOresponse(
             String username,
             String name,
+            String surname,
             String profile,
             String role,
             String biography,
             long postCount,
             long subscriberCount,
-            long subscribedCount
+            long subscribedCount,
+            boolean blockedByMe,    //ben engelledım
+            boolean blockedMe        // o benı engelledı
     ) {
         this.username = username;
         this.name = name;
+        this.surname = surname;
         this.profile = profile;
         this.role = role;
         this.biography = biography;
         this.postCount = postCount;
         this.subscriberCount = subscriberCount;
         this.subscribedCount = subscribedCount;
+        this.blockedMe = blockedMe;
+        this.blockedByMe = blockedByMe;
     }
 
 
@@ -97,5 +105,29 @@ public class ProfileDTOresponse {
 
     public void setSubscribedCount(long subscribedCount) {
         this.subscribedCount = subscribedCount;
+    }
+
+    public boolean isBlockedByMe() {
+        return blockedByMe;
+    }
+
+    public void setBlockedByMe(boolean blockedByMe) {
+        this.blockedByMe = blockedByMe;
+    }
+
+    public boolean isBlockedMe() {
+        return blockedMe;
+    }
+
+    public void setBlockedMe(boolean blockedMe) {
+        this.blockedMe = blockedMe;
+    }
+
+    public String getSurname() {
+        return surname;
+    }
+
+    public void setSurname(String surname) {
+        this.surname = surname;
     }
 }

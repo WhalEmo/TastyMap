@@ -68,9 +68,9 @@ public class ProfileService {
     }
 
     @Transactional
-    public void changePassword(ChangePasswordDTO dto, Long userId){
-        UserEntity user=userRepo.findById(userId)
-                .orElseThrow(()->new CustomExceptions.NotFoundException("Kullanıcı bulunamadı/Yetkisiz erişim"));
+    public void changePassword(ChangePasswordDTO dto, Long userId) {
+        UserEntity user = userRepo.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı/Yetkisiz erişim"));
 
         if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
             throw new CustomExceptions.InvalidCredentialsException("Şifre yanlış!");
@@ -81,14 +81,15 @@ public class ProfileService {
         if (passwordEncoder.matches(dto.getNewPassword(), user.getPassword())) {
             throw new CustomExceptions.InvalidCredentialsException("Yeni şifre eski şifreyle aynı olamaz!");
         }
+
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
-        refreshTokenRepo.revokeAllUserTokensExceptCurrentDevice(userId,dto.getDeviceId());
 
-        List<String> otherDeviceIds = refreshTokenRepo.findActiveDeviceIdsByUserIdExceptCurrent(userId, dto.getDeviceId());
+        // Veritabanındaki diğer cihaz Refresh Token'larını revoke et
+        refreshTokenRepo.revokeAllUserTokensExceptCurrentDevice(userId, dto.getDeviceId());
 
-        for (String deviceId : otherDeviceIds) {
-            tokenBlacklistService.invalidateDevicePasswordChanged(userId, deviceId);
-        }
+        // REDİS: Şifreyi değiştiren cihaz HARİÇ tüm cihazların erişimini anında kes
+        tokenBlacklistService.invalidateUserSessionsExceptCurrentDevice(userId, dto.getDeviceId());
+
         userRepo.save(user);
     }
     @Transactional
@@ -96,30 +97,39 @@ public class ProfileService {
         UserEntity user=userRepo.findById(userId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı"));
 
-        boolean blocked = blockRepo.existsByBlocker_IdAndBlocked_Id(userId, myId) ||
-                blockRepo.existsByBlocker_IdAndBlocked_Id(myId, userId);
+        // ben onu engelleıdm mı
+        boolean blockedByMe = blockRepo.existsByBlocker_IdAndBlocked_Id(myId, userId);
 
-        if(blocked){
+        // o benı engelleıd mı?
+        boolean blockedMe = blockRepo.existsByBlocker_IdAndBlocked_Id(userId, myId);
+
+        if (blockedByMe || blockedMe) {
             return new ProfileDTOresponse(
                     user.getUsername(),
                     user.getName(),
+                    user.getSurname(),
                     null,
                     user.getRole(),
                     user.getBiography(),
                     0,
-                   0,
-                    0
+                    0,
+                    0,
+                    blockedByMe,
+                    blockedMe
             );
         }
         return new ProfileDTOresponse(
                 user.getUsername(),
                 user.getName(),
+                user.getSurname(),
                 user.getProfile(),
                 user.getRole(),
                 user.getBiography(),
                 user.getPostCount(),
                 user.getSubscriberCount(),
-                user.getSubscribedCount()
+                user.getSubscribedCount(),
+                false,
+                false
         );
     }
     public UserResponseDTO getMe(Long myId){
