@@ -1,24 +1,38 @@
 package com.beem.TastyMap.security.risk;
+
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.notification.NotificationEntity;
 import com.beem.TastyMap.notification.NotificationRepo;
 import com.beem.TastyMap.notification.SecurityHistorySummary;
-import com.beem.TastyMap.notification.Status;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
-import java.util.List;
+
 @Service
 public class SecurityValidationService {
 
     private final BannedDeviceRepo bannedDeviceRepo;
     private final NotificationRepo notificationRepo;
+    private final MessageSource messageSource;
 
-    public SecurityValidationService(BannedDeviceRepo bannedDeviceRepo, NotificationRepo notificationRepo) {
+    public SecurityValidationService(BannedDeviceRepo bannedDeviceRepo,
+                                     NotificationRepo notificationRepo,
+                                     MessageSource messageSource) {
         this.bannedDeviceRepo = bannedDeviceRepo;
         this.notificationRepo = notificationRepo;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code, Object[] args) {
+        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+    }
+
+    private String getMessage(String code) {
+        return getMessage(code, null);
     }
 
     public void checkThrottlingAndBanRules(UserEntity user, String deviceId, String ip, SecurityHistorySummary summary) {
@@ -29,15 +43,12 @@ public class SecurityValidationService {
         long pendingCount = summary.getPendingCount() != null ? summary.getPendingCount() : 0L;
 
         if (ipAttackCount >= 10) {
-            throw new CustomExceptions.AuthorizationException("Bu IP adresinden aşırı istek algılandı. Geçici olarak engellendiniz.");
+            throw new CustomExceptions.AuthorizationException(getMessage("security.risk.ip.excessive"));
         }
-
 
         if (rejectCount >= 5) {
             bannedDeviceRepo.save(createBannedDevice(user, deviceId, ip, now, "MFA Fatigue / Excess Reject Notifications"));
-            throw new CustomExceptions.AuthorizationException(
-                    "Bu cihazdan yapılan şüpheli istekler nedeniyle erişiminiz kalıcı olarak engellenmiştir. Lütfen destek ekibiyle iletişime geçin."
-            );
+            throw new CustomExceptions.AuthorizationException(getMessage("security.risk.device.permanent"));
         }
 
         int dynamicLockoutMinutes = (rejectCount == 4) ? 120 :
@@ -49,7 +60,7 @@ public class SecurityValidationService {
                 LocalDateTime blockUntil = lastRejectedTime.plusMinutes(dynamicLockoutMinutes);
                 if (now.isBefore(blockUntil)) {
                     throw new CustomExceptions.AuthorizationException(
-                            String.format("Bu cihazdan yapılan girişler üst üste reddedildi. Lütfen %d dakika sonra tekrar deneyiniz.", dynamicLockoutMinutes)
+                            getMessage("security.risk.login.lockout", new Object[]{dynamicLockoutMinutes})
                     );
                 }
             });
@@ -57,9 +68,7 @@ public class SecurityValidationService {
 
         if (pendingCount >= 5) {
             bannedDeviceRepo.save(createBannedDevice(user, deviceId, ip, now, "MFA Fatigue / Excess Pending Notifications"));
-            throw new CustomExceptions.AuthorizationException(
-                    "Bu cihazdan yapılan şüpheli istekler nedeniyle erişiminiz kalıcı olarak engellenmiştir. Lütfen destek ekibiyle iletişime geçin."
-            );
+            throw new CustomExceptions.AuthorizationException(getMessage("security.risk.device.permanent"));
         }
 
         int mailThrottlingMinutes = (pendingCount == 4) ? 120 :
@@ -70,7 +79,7 @@ public class SecurityValidationService {
             boolean isMailThrottled = notificationRepo.existsByDeviceIdAndCreatedAtAfter(deviceId, now.minusMinutes(mailThrottlingMinutes));
             if (isMailThrottled) {
                 throw new CustomExceptions.AuthorizationException(
-                        String.format("Çok sık şüpheli giriş isteği üretildi. Lütfen %d dakika sonra tekrar deneyiniz.", mailThrottlingMinutes)
+                        getMessage("security.risk.mail.throttled", new Object[]{mailThrottlingMinutes})
                 );
             }
         }

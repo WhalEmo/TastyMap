@@ -1,52 +1,52 @@
 package com.beem.TastyMap.registerLogin.dto;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public class UserRequestDTO {
-    @NotBlank(message = "Kullanıcı adı boş olamaz")
-    @Size(min = 3, max = 20, message = "Kullanıcı adı 3–20 karakter arasında olmalıdır")
+    @NotBlank(message = "{validation.user.username.notblank}")
+    @Size(min = 3, max = 20, message = "{validation.user.username.size}")
     @Pattern(
             regexp = "^[a-zA-Z0-9._]+$",
-            message = "Kullanıcı adı sadece harf, rakam, nokta ve alt çizgi içerebilir"
+            message = "{validation.user.username.pattern}"
     )
     private String username;
 
-    @NotBlank(message = "Ad boş olamaz")
-    @Size(min = 2, max = 20, message = "Ad 2–50 karakter arasında olmalıdır")
+    @NotBlank(message = "{validation.user.name.notblank}")
+    @Size(min = 2, max = 50, message = "{validation.user.name.size}")
     @Pattern(
             regexp = "^[a-zA-ZçÇğĞıİöÖşŞüÜ ]+$",
-            message = "Ad sadece harf ve boşluk içerebilir"
+            message = "{validation.user.name.pattern}"
     )
     private String name;
 
-    @NotBlank(message = "Soyad boş olamaz")
-    @Size(min = 2, max = 20, message = "Soyad 2–50 karakter arasında olmalıdır")
+    @NotBlank(message = "{validation.user.surname.notblank}")
+    @Size(min = 2, max = 50, message = "{validation.user.surname.size}")
     @Pattern(
             regexp = "^[a-zA-ZçÇğĞıİöÖşŞüÜ]+$",
-            message = "Soyad sadece harf içerebilir"
+            message = "{validation.user.surname.pattern}"
     )
     private String surname;
 
-    @Email(message = "Geçerli bir email girin")
-    @NotBlank(message = "Email boş olamaz")
+    @Email(message = "{validation.user.email.invalid}")
+    @NotBlank(message = "{validation.user.email.notblank}")
     private String email;
 
-    @NotBlank(message = "Parola boş olamaz")
-    @Size(min = 6, message = "Parola en az 6 karakter olmalı")
+    @NotBlank(message = "{validation.user.password.notblank}")
+    @Size(min = 6, message = "{validation.user.password.size}")
     private String password;
 
     private String profile;
 
-    @Size(max = 200, message = "Biyografi en fazla 200 karakter olabilir")
+    @Size(max = 200, message = "{validation.user.biography.size}")
     private String biography;
 
     private String role;
     private boolean privateProfile;
 
     private String deviceId;
-
 
     public boolean isPrivateProfile() {
         return privateProfile;

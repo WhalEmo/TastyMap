@@ -2,6 +2,8 @@ package com.beem.TastyMap.security.verification.pendingRiskVerify;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.notification.NotificationResponse;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -9,16 +11,21 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Locale;
 
 @Controller
 @RequestMapping("/auth")
 public class PendingController {
     private final PendingService pendingService;
+    private final MessageSource messageSource;
 
-    public PendingController(PendingService pendingService) {
+    public PendingController(PendingService pendingService, MessageSource messageSource) {
         this.pendingService = pendingService;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code, Locale locale) {
+        return messageSource.getMessage(code, null, locale);
     }
 
     @GetMapping(value = "/verifyLogin", produces = MediaType.TEXT_HTML_VALUE)
@@ -28,12 +35,17 @@ public class PendingController {
     ) throws IOException {
         pendingService.verifyToken(token, action);
 
+        Locale locale = LocaleContextHolder.getLocale();
         boolean isApproved = "approve".equals(action);
-        String statusText = isApproved ? "ONAYLANDI" : "REDDEDİLDİ";
+
+        String pageTitle = getMessage("verify.login.title", locale);
+        String statusText = isApproved
+                ? getMessage("verify.login.approved.status", locale)
+                : getMessage("verify.login.rejected.status", locale);
         String color = isApproved ? "#28a745" : "#dc3545";
         String extraMessage = isApproved
-                ? "Artık güvenle uygulamanıza devam edebilirsiniz."
-                : "Bu işlem size ait değilse, hesabınızın güvenliği için lütfen hemen şifrenizi değiştirin.";
+                ? getMessage("verify.login.approved.message", locale)
+                : getMessage("verify.login.rejected.message", locale);
 
         String html = """
                 <!DOCTYPE html>
@@ -41,7 +53,7 @@ public class PendingController {
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>TastyMap - İşlem Durumu</title>
+                    <title>%s</title>
                     <style>
                         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
                         .card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
@@ -53,12 +65,13 @@ public class PendingController {
                 <body>
                     <div class="card">
                         <div class="icon">%s</div>
-                        <h1>İşlem %s!</h1>
+                        <h1>%s</h1>
                         <p>%s</p>
                     </div>
                 </body>
                 </html>
                 """.formatted(
+                pageTitle,
                 color,
                 isApproved ? "✅" : "❌",
                 statusText,
@@ -73,7 +86,6 @@ public class PendingController {
     @PostMapping("/resend-security-mail")
     public ResponseEntity<String> resendSecurityMail(
             @RequestParam String deviceId
-
     ) {
         try {
             String result = pendingService.resendSecurityAlertMail(deviceId);
@@ -87,8 +99,6 @@ public class PendingController {
         } catch (Exception e) {
             return ResponseEntity.ok(e.getMessage());
         }
-
-
     }
 
     @GetMapping("/is-used")
@@ -100,5 +110,3 @@ public class PendingController {
         );
     }
 }
-
-

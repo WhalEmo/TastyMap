@@ -6,9 +6,10 @@ import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.post.like.PostLikeDTO;
 import com.beem.TastyMap.userRelated.post.like.PostLikeEntity;
 import com.beem.TastyMap.userRelated.post.like.PostLikeRepo;
-
 import com.beem.TastyMap.userRelated.post.like.PostLikeUserDTO;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,14 +27,24 @@ public class PostService {
     private final AccessChecker accessChecker;
     private final EntityManager entityManager;
     private final PostLikeRepo likeRepo;
+    private final MessageSource messageSource;
 
-
-    public PostService(PostRepo postRepo, UserRepo userRepo, AccessChecker accessChecker, EntityManager entityManager, PostLikeRepo likeRepo) {
+    public PostService(PostRepo postRepo,
+                       UserRepo userRepo,
+                       AccessChecker accessChecker,
+                       EntityManager entityManager,
+                       PostLikeRepo likeRepo,
+                       MessageSource messageSource) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
         this.likeRepo = likeRepo;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code) {
+        return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
     @Transactional
@@ -41,9 +52,9 @@ public class PostService {
         UserEntity userRef = entityManager.getReference(UserEntity.class, myId);
 
         var userView = userRepo.findUserProjectionById(myId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Kullanıcı bulunamadı."));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
 
-        PlaceEmbedded place=new PlaceEmbedded();
+        PlaceEmbedded place = new PlaceEmbedded();
         place.setPlaceId(dto.getPlaceId());
         place.setCity(dto.getCity());
         place.setCategories(dto.getCategories());
@@ -54,7 +65,7 @@ public class PostService {
         place.setLatitude(dto.getLatitude());
         place.setLongitude(dto.getLongitude());
 
-        PostEntity post=new PostEntity();
+        PostEntity post = new PostEntity();
         if (dto.getExplanation() != null) {
             post.setExplanation(dto.getExplanation().trim());
         }
@@ -64,12 +75,12 @@ public class PostService {
         post.setPlaceEmbedded(place);
         post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
-        userRepo.updatePostCount(userRef.getId(),1);
-        return convertToResponseDTO(post,false,userView);
+        userRepo.updatePostCount(userRef.getId(), 1);
+        return convertToResponseDTO(post, false, userView);
     }
 
     public Page<PostResponseDTO> getPosts(Long userId, Long myId, int page, int size) {
-        accessChecker.checkAccess(userId,myId);
+        accessChecker.checkAccess(userId, myId);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return postRepo.getUserPosts(userId, myId, pageable);
     }
@@ -77,9 +88,9 @@ public class PostService {
     @Transactional
     public void deletePost(Long postId, Long myId) {
         PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
         if (!postStatus.getAuthorId().equals(myId)) {
-            throw new CustomExceptions.AuthorizationException("Bu postu silme yetkin yok");
+            throw new CustomExceptions.AuthorizationException(getMessage("post.delete.unauthorized"));
         }
         postRepo.deleteById(postId);
         userRepo.updatePostCount(myId, -1);
@@ -88,17 +99,17 @@ public class PostService {
     @Transactional
     public PostResponseDTO updatePost(Long postId, Long myId, PostUpdateDTO dto) {
         PostEntity post = postRepo.findByIdWithUser(postId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
         if (!post.getUser().getId().equals(myId)) {
-            throw new CustomExceptions.AuthorizationException("Bu postu güncelleme yetkin yok");
+            throw new CustomExceptions.AuthorizationException(getMessage("post.update.unauthorized"));
         }
-        if (dto.getExplanation() != null&& !dto.getExplanation().equals(post.getExplanation())) {
+        if (dto.getExplanation() != null && !dto.getExplanation().equals(post.getExplanation())) {
             post.setExplanation(dto.getExplanation().trim());
         }
-        if(!dto.getPhotoUrl().equals(post.getPhotoUrl())){
+        if (!dto.getPhotoUrl().equals(post.getPhotoUrl())) {
             post.setPhotoUrl(dto.getPhotoUrl());
         }
-        if(!dto.getPuan().equals(post.getPuan())){
+        if (!dto.getPuan().equals(post.getPuan())) {
             post.setPuan(dto.getPuan());
         }
         post.setUpdateDate(LocalDateTime.now());
@@ -110,17 +121,17 @@ public class PostService {
     @Transactional
     public PostResponseDTO togglePinPost(Long postId, Long myId) {
         PostEntity post = postRepo.findByIdWithUser(postId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
         if (!post.getUser().getId().equals(myId)) {
-            throw new CustomExceptions.AuthorizationException("Sadece kendi postunu sabitleyebilirsin");
+            throw new CustomExceptions.AuthorizationException(getMessage("post.pin.unauthorized"));
         }
         if (post.isPinned()) {
             post.setPinned(false);
         } else {
             long currentPinnedCount = postRepo.countByUserIdAndIsPinnedTrue(myId);
             if (currentPinnedCount >= 3) {
-                throw new CustomExceptions.BadRequestException("Maksimum 3 post sabitleyebilirsin.");
+                throw new CustomExceptions.BadRequestException(getMessage("post.pin.limit.exceeded"));
             }
             post.setPinned(true);
         }
@@ -130,26 +141,26 @@ public class PostService {
     }
 
     @Transactional
-    public PostLikeDTO toggleLike(Long postId, Long userId){
+    public PostLikeDTO toggleLike(Long postId, Long userId) {
         var postView = postRepo.findStatsByCPostId(postId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException("Post bulunamadı"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
-        accessChecker.checkAccess(postView.getOwnerId(),userId);
+        accessChecker.checkAccess(postView.getOwnerId(), userId);
         Optional<Long> existingLike = likeRepo.findIdByPostIdAndUserId(postId, userId);
-        if(existingLike.isPresent()){
+        if (existingLike.isPresent()) {
             likeRepo.deleteById(existingLike.get());
             postRepo.decrementLike(postId);
-            return new PostLikeDTO(false,postView.getNumberOfLikes()-1);
-        }else{
+            return new PostLikeDTO(false, postView.getNumberOfLikes() - 1);
+        } else {
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
-            PostLikeEntity like=new PostLikeEntity();
+            PostLikeEntity like = new PostLikeEntity();
             like.setPost(postRef);
             like.setUser(userRef);
 
             likeRepo.save(like);
             postRepo.incrementLike(postId);
-            return new PostLikeDTO(true,postView.getNumberOfLikes()+1);
+            return new PostLikeDTO(true, postView.getNumberOfLikes() + 1);
         }
     }
 
@@ -176,7 +187,6 @@ public class PostService {
         dto.setCommentCount(post.getCommentCount());
         dto.setPinned(post.isPinned());
         dto.setLiked(isLiked);
-
 
         dto.setUserId(userView.getId());
         dto.setUsername(userView.getUsername());
@@ -212,7 +222,6 @@ public class PostService {
         dto.setPinned(post.isPinned());
         dto.setLiked(isLiked);
 
-
         dto.setUserId(post.getUser().getId());
         dto.setUsername(post.getUser().getUsername());
         dto.setProfilePhotoUrl(post.getUser().getProfile());
@@ -231,10 +240,4 @@ public class PostService {
         }
         return dto;
     }
-
 }
-
-
-
-
-

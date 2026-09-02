@@ -6,6 +6,8 @@ import com.beem.TastyMap.security.banned.BanDurationFormatter;
 import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
 import com.beem.TastyMap.security.banned.ProgressiveBanPolicy;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -15,10 +17,25 @@ public class SecurityVerificationChecker {
 
     private final BannedDeviceRepo bannedDeviceRepo;
     private final ProgressiveBanPolicy banPolicy;
+    private final MessageSource messageSource;
+    private final BanDurationFormatter banDurationFormatter;
 
-    public SecurityVerificationChecker(BannedDeviceRepo bannedDeviceRepo, ProgressiveBanPolicy banPolicy) {
+    public SecurityVerificationChecker(BannedDeviceRepo bannedDeviceRepo,
+                                       ProgressiveBanPolicy banPolicy,
+                                       MessageSource messageSource,
+                                       BanDurationFormatter banDurationFormatter) {
         this.bannedDeviceRepo = bannedDeviceRepo;
         this.banPolicy = banPolicy;
+        this.messageSource = messageSource;
+        this.banDurationFormatter = banDurationFormatter;
+    }
+
+    private String getMessage(String code, Object[] args) {
+        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+    }
+
+    private String getMessage(String code) {
+        return getMessage(code, null);
     }
 
     public void checkIfDeviceIsBanned(Long userId, String deviceId) {
@@ -26,20 +43,19 @@ public class SecurityVerificationChecker {
                 .ifPresent(ban -> {
                     if (ban.getBannedUntil() == null) {
                         throw new CustomExceptions.AuthorizationException(
-                                "Bu cihaz kalıcı olarak engellenmiştir. Daha fazla bilgi almak için lütfen destek ekibimizle iletişime geçin."
+                                getMessage("security.device.banned.permanent")
                         );
                     }
 
                     if (ban.getBannedUntil().isAfter(LocalDateTime.now())) {
                         throw new CustomExceptions.AuthorizationException(
-                                "Bu cihaz güvenlik nedeniyle geçici olarak engellenmiştir. Lütfen daha sonra tekrar deneyin."
+                                getMessage("security.device.banned.temporary")
                         );
                     }
                 });
     }
 
-
-    public void applyProgressiveBan(UserEntity user, CommonRequestDTO dto ,String ip) {
+    public void applyProgressiveBan(UserEntity user, CommonRequestDTO dto, String ip) {
         BannedDeviceEntity bannedDevice = bannedDeviceRepo
                 .findByUser_IdAndDeviceId(user.getId(), dto.getDeviceId())
                 .orElse(new BannedDeviceEntity());
@@ -54,13 +70,14 @@ public class SecurityVerificationChecker {
         LocalDateTime bannedUntil = banPolicy.calculateBanReleaseTime(previousViolations);
         bannedDevice.setBannedUntil(bannedUntil);
 
-        bannedDevice.setReason("Excessive password reset requests");
+        bannedDevice.setReason(getMessage("security.ban.reason.excessive"));
 
         bannedDeviceRepo.save(bannedDevice);
+
+        String durationText = banDurationFormatter.formatBanDuration(bannedUntil);
+
         throw new CustomExceptions.InvalidException(
-                "Güvenlik nedeniyle bu cihazın erişimi "
-                        + BanDurationFormatter.formatBanDuration(bannedUntil)
-                        + " süreyle geçici olarak engellenmiştir."
+                getMessage("security.device.banned.progressive", new Object[]{durationText})
         );
     }
 }

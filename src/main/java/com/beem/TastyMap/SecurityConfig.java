@@ -79,6 +79,7 @@ public class SecurityConfig {
                         .requestMatchers( "/api/users/**","/auth/**","/places/**","/place-review/**").permitAll()
                         .requestMatchers("/ws/auth/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
                         .requestMatchers("/favicon.ico", "/error").permitAll()
                         .anyRequest().authenticated()

@@ -4,15 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class LoginRequestDTO {
-    @NotBlank(message = "Kullanıcı adı boş olamaz!")
-    @Size(min = 3, max = 20, message = "Kullanıcı adı 3–20 karakter arasında olmalıdır")
+    @NotBlank(message = "{validation.login.username.notblank}")
+    @Size(min = 3, max = 20, message = "{validation.login.username.size}")
     private String username;
 
-    @NotBlank(message = "Parola boş olamaz!")
+    @NotBlank(message = "{validation.login.password.notblank}")
     private String password;
+
     private String deviceId;
     private String fcmToken;
-
 
     public String getFcmToken() {
         return fcmToken;
@@ -45,5 +45,4 @@ public class LoginRequestDTO {
     public void setDeviceId(String deviceId) {
         this.deviceId = deviceId;
     }
-
 }

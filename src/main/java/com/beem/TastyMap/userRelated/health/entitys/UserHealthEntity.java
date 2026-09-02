@@ -5,7 +5,12 @@ import com.beem.TastyMap.userRelated.health.HealthEnum;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "user_healthies")
+@Table(
+        name = "user_healthies",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_health", columnNames = {"user_id"})
+        }
+)
 public class UserHealthEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

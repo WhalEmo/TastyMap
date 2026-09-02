@@ -103,6 +103,8 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    volumes:
+      - profile_uploads:/app/uploads
     restart: unless-stopped
     networks:
       - app-network
@@ -112,6 +114,7 @@ volumes:
   redis_data:
   ollama_data:
   qdrant_data:
+  profile_uploads:
 
 networks:
   app-network:

@@ -69,7 +69,7 @@ public class MyProfileController {
     }
 
 
-    @PostMapping("/update")
+    @PatchMapping("/update")
     public Map<String, String> updateProfile(
             @Valid @RequestBody UpdateProfileDTO req,
             Authentication authentication

@@ -25,7 +25,7 @@ public class HealthController {
         return healthService.addHealthInfo(dto,myId);
     }
 
-    @PutMapping("/updateHealth")
+    @PatchMapping("/updateHealth")
     public HealthResponseDTO updateHealth(
             @Valid @RequestBody HealthRequestDTO dto,
             Authentication authentication

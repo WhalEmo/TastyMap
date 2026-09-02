@@ -6,6 +6,8 @@ import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.subscribe.SubscribeRepo;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,18 +21,28 @@ public class BlockService {
     private final UserRepo userRepo;
     private final EntityManager entityManager;
     private final SubscribeRepo subscribeRepo;
+    private final MessageSource messageSource;
 
-    public BlockService(BlockRepo blockRepo, UserRepo userRepo, EntityManager entityManager, SubscribeRepo subscribeRepo) {
+    public BlockService(BlockRepo blockRepo,
+                        UserRepo userRepo,
+                        EntityManager entityManager,
+                        SubscribeRepo subscribeRepo,
+                        MessageSource messageSource) {
         this.blockRepo = blockRepo;
         this.userRepo = userRepo;
         this.entityManager = entityManager;
         this.subscribeRepo = subscribeRepo;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code) {
+        return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
     @Transactional
     public void block(Long userId, Long myId) {
         if (userId.equals(myId)) {
-            throw new CustomExceptions.InvalidException("Kendini engelleyemezsin");
+            throw new CustomExceptions.InvalidException(getMessage("block.cannot.block.self"));
         }
         try {
             UserEntity blockerRef = entityManager.getReference(UserEntity.class, myId);
@@ -46,9 +58,9 @@ public class BlockService {
             handleUnsubscribe(userId, myId);
 
         } catch (DataIntegrityViolationException e) {
-            throw new CustomExceptions.UserAlreadyExistsException("Zaten engellenmiş veya kullanıcı bulunamadı");
+            throw new CustomExceptions.UserAlreadyExistsException(getMessage("block.already.exists.or.user.not.found"));
         } catch (EntityNotFoundException e) {
-            throw new CustomExceptions.NotFoundException("Kullanıcı bulunamadı");
+            throw new CustomExceptions.NotFoundException(getMessage("user.not.found.simple"));
         }
     }
 
@@ -59,11 +71,11 @@ public class BlockService {
         }
     }
 
-    public void unBlock(Long userId,Long myId){
-        Long block=blockRepo
-                .findIdByBlockerIdAndBlockedId(myId,userId)
+    public void unBlock(Long userId, Long myId) {
+        Long block = blockRepo
+                .findIdByBlockerIdAndBlockedId(myId, userId)
                 .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException("Engel bulunamadı")
+                        new CustomExceptions.NotFoundException(getMessage("block.not.found"))
                 );
         blockRepo.deleteById(block);
     }
@@ -72,5 +84,4 @@ public class BlockService {
         Pageable pageable = PageRequest.of(page, size);
         return blockRepo.findMyBlocks(myId, pageable);
     }
-
 }

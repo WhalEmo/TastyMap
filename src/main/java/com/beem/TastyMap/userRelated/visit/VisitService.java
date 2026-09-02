@@ -7,6 +7,8 @@ import com.beem.TastyMap.userRelated.post.PostAndVisitRequestDTO;
 import com.beem.TastyMap.userRelated.post.PostResponseDTO;
 import com.beem.TastyMap.userRelated.post.PostService;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,11 +22,17 @@ public class VisitService {
     private final VisitRepo visitRepo;
     private final PostService postService;
     private final EntityManager entityManager;
+    private final MessageSource messageSource;
 
-    public VisitService(VisitRepo visitRepo, PostService postService, EntityManager entityManager) {
+    public VisitService(VisitRepo visitRepo, PostService postService, EntityManager entityManager, MessageSource messageSource) {
         this.visitRepo = visitRepo;
         this.postService = postService;
         this.entityManager = entityManager;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code) {
+        return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
     @Transactional
@@ -57,16 +65,15 @@ public class VisitService {
     }
 
     public Page<VisitResponseDTO> getVisits(Long userId, int page, int size){
-
         Pageable pageable = PageRequest.of(page, size);
         return visitRepo.findUserVisits(userId, pageable);
     }
 
-    public void deleteVisit(Long visitId,Long userId){
-        VisitEntity visit= visitRepo.findById(visitId)
-                .orElseThrow(()->new CustomExceptions.NotFoundException("Ziyaret bulunamadı"));
+    public void deleteVisit(Long visitId, Long userId){
+        VisitEntity visit = visitRepo.findById(visitId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("visit.not.found")));
         if(!visit.getUser().getId().equals(userId)){
-            throw new CustomExceptions.AuthorizationException("Bu ziyareti silme yetkiniz yok.");
+            throw new CustomExceptions.AuthorizationException(getMessage("visit.delete.unauthorized"));
         }
         visit.setDelete(true);
         visitRepo.save(visit);

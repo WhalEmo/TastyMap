@@ -4,7 +4,7 @@ import com.beem.TastyMap.userRelated.visit.VisitRequestDTO;
 import jakarta.validation.constraints.Size;
 
 public class PostAndVisitRequestDTO extends VisitRequestDTO {
-    @Size(max = 500, message = "Açıklama max 500 karakter olmalıdır")
+    @Size(max = 500, message = "{validation.post.explanation.size}")
     private String explanation;
     private Integer puan;
     private String photoUrl;

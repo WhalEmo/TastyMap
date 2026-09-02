@@ -1,9 +1,10 @@
 package com.beem.TastyMap.userRelated.post;
 
-
 import com.beem.TastyMap.userRelated.post.like.PostLikeDTO;
 import com.beem.TastyMap.userRelated.post.like.PostLikeUserDTO;
 import jakarta.validation.Valid;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +15,15 @@ import java.util.Map;
 @RequestMapping("/api/posts")
 public class PostController {
     private final PostService postService;
+    private final MessageSource messageSource;
 
-    public PostController(PostService postService) {
+    public PostController(PostService postService, MessageSource messageSource) {
         this.postService = postService;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code) {
+        return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
     @GetMapping("/getUserPosts/{userId}")
@@ -41,33 +48,33 @@ public class PostController {
     }
 
     @DeleteMapping("/deletePost/{postId}")
-    public Map<String,String> deletePost(
+    public Map<String, String> deletePost(
             @PathVariable Long postId,
             Authentication authentication
-    ){
+    ) {
         Long myId = (Long) authentication.getPrincipal();
-        postService.deletePost(postId,myId);
-        return Map.of("meesage","Post silindi");
+        postService.deletePost(postId, myId);
+        return Map.of("message", getMessage("post.deleted.success"));
     }
 
-    @PatchMapping ("/updatePost/{postId}")
-    public Map<String,String> updatePost(
+    @PatchMapping("/updatePost/{postId}")
+    public Map<String, String> updatePost(
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateDTO dto,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
         postService.updatePost(postId, myId, dto);
-        return Map.of("message","Post güncellendi");
+        return Map.of("message", getMessage("post.updated.success"));
     }
 
     @PostMapping("/toggleLike/{postId}")
     public PostLikeDTO toggleLike(
             @PathVariable Long postId,
             Authentication authentication
-    ){
-        Long myId=(Long) authentication.getPrincipal();
-        return postService.toggleLike(postId,myId);
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        return postService.toggleLike(postId, myId);
     }
 
     @GetMapping("/whosLike/{postId}")
@@ -85,10 +92,8 @@ public class PostController {
     public PostResponseDTO togglePin(
             @PathVariable Long postId,
             Authentication authentication
-    ){
-        Long myId=(Long) authentication.getPrincipal();
-        return postService.togglePinPost(postId,myId);
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        return postService.togglePinPost(postId, myId);
     }
-
-
 }

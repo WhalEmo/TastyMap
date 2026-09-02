@@ -5,15 +5,15 @@ import com.beem.TastyMap.userRelated.health.HealthEnum;
 import java.util.List;
 
 public class HealthRequestDTO {
-    private boolean hasDiabetes;
+    private Boolean hasDiabetes;
     private HealthEnum eatType;
     private List<Long> allergyIds;
 
-    public boolean isHasDiabetes() {
+    public Boolean getHasDiabetes() {
         return hasDiabetes;
     }
 
-    public void setHasDiabetes(boolean hasDiabetes) {
+    public void setHasDiabetes(Boolean hasDiabetes) {
         this.hasDiabetes = hasDiabetes;
     }
 

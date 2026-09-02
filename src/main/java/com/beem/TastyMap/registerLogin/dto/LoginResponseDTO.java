@@ -12,22 +12,25 @@ public class LoginResponseDTO {
     private String message;
 
     public LoginResponseDTO() {}
-    public LoginResponseDTO(String accessToken, String refreshToken, UserResponseDTO userResponseDTO) {
+
+    public LoginResponseDTO(String accessToken, String refreshToken, UserResponseDTO userResponseDTO, String message) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.userResponseDTO = userResponseDTO;
         this.status = LoginStatus.SUCCESS;
-        this.message = "Giriş başarılı";
+        this.message = message;
     }
-    public  LoginResponseDTO(String message,UserResponseDTO userResponseDTO,LoginStatus status){
-        this.message=message;
-        this.userResponseDTO= userResponseDTO;
-        this.status=status;
+
+    public LoginResponseDTO(String message, UserResponseDTO userResponseDTO, LoginStatus status) {
+        this.message = message;
+        this.userResponseDTO = userResponseDTO;
+        this.status = status;
     }
-    public static LoginResponseDTO pendingSecurity() {
+
+    public static LoginResponseDTO pendingSecurity(String message) {
         LoginResponseDTO dto = new LoginResponseDTO();
         dto.status = LoginStatus.PENDING_SECURITY;
-        dto.message = "Yeni cihaz tespit edildi. Güvenlik onayı bekleniyor.";
+        dto.message = message;
         return dto;
     }
 
