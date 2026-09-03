@@ -1,5 +1,7 @@
 package com.beem.TastyMap.userRelated.profile;
 
+import com.beem.TastyMap.userRelated.subscribe.RelationStatus;
+
 public class ProfileDTOresponse {
     private String username;
     private String name;
@@ -12,6 +14,8 @@ public class ProfileDTOresponse {
     private long subscribedCount;
     private boolean blockedByMe;
     private boolean blockedMe;
+    private RelationStatus relationStatus;
+    private boolean hasPendingIncomingRequest;
 
     public ProfileDTOresponse() {
     }
@@ -27,7 +31,9 @@ public class ProfileDTOresponse {
             long subscriberCount,
             long subscribedCount,
             boolean blockedByMe,    //ben engelledım
-            boolean blockedMe        // o benı engelledı
+            boolean blockedMe,// o benı engelledı
+            RelationStatus relationStatus,
+            boolean hasPendingIncomingRequest
     ) {
         this.username = username;
         this.name = name;
@@ -40,8 +46,26 @@ public class ProfileDTOresponse {
         this.subscribedCount = subscribedCount;
         this.blockedMe = blockedMe;
         this.blockedByMe = blockedByMe;
+        this.relationStatus = relationStatus;
+        this.hasPendingIncomingRequest = hasPendingIncomingRequest;
     }
 
+    // Getter ve Setter metotları...
+    public boolean isHasPendingIncomingRequest() {
+        return hasPendingIncomingRequest;
+    }
+
+    public RelationStatus getRelationStatus() {
+        return relationStatus;
+    }
+
+    public void setRelationStatus(RelationStatus relationStatus) {
+        this.relationStatus = relationStatus;
+    }
+
+    public void setHasPendingIncomingRequest(boolean hasPendingIncomingRequest) {
+        this.hasPendingIncomingRequest = hasPendingIncomingRequest;
+    }
 
     public String getUsername() {
         return username;

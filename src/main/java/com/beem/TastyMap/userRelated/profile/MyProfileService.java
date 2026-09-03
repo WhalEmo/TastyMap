@@ -7,6 +7,7 @@ import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.token.TokenBlacklistService;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
+import com.beem.TastyMap.userRelated.subscribe.RelationStatus;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
-public class ProfileService {
+public class MyProfileService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
@@ -24,12 +25,12 @@ public class ProfileService {
     private final TokenBlacklistService tokenBlacklistService;
     private final MessageSource messageSource;
 
-    public ProfileService(UserRepo userRepo,
-                          RefreshTokenRepo refreshTokenRepo,
-                          PasswordEncoder passwordEncoder,
-                          BlockRepo blockRepo,
-                          TokenBlacklistService tokenBlacklistService,
-                          MessageSource messageSource) {
+    public MyProfileService(UserRepo userRepo,
+                            RefreshTokenRepo refreshTokenRepo,
+                            PasswordEncoder passwordEncoder,
+                            BlockRepo blockRepo,
+                            TokenBlacklistService tokenBlacklistService,
+                            MessageSource messageSource) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
@@ -119,44 +120,15 @@ public class ProfileService {
         userRepo.save(user);
     }
 
-    @Transactional
-    public ProfileDTOresponse getProfile(Long userId, Long myId){
-        UserEntity user = userRepo.findById(userId)
+    @Transactional(readOnly = true)
+    public ProfileDTOresponse getMyProfile(Long myId) {
+        UserEntity user = userRepo.findById(myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
-
-        // ben onu engelledim mi
-        boolean blockedByMe = blockRepo.existsByBlocker_IdAndBlocked_Id(myId, userId);
-
-        // o beni engelledi mi?
-        boolean blockedMe = blockRepo.existsByBlocker_IdAndBlocked_Id(userId, myId);
-
-        if (blockedByMe || blockedMe) {
-            return new ProfileDTOresponse(
-                    user.getUsername(),
-                    user.getName(),
-                    user.getSurname(),
-                    null,
-                    user.getRole(),
-                    user.getBiography(),
-                    0,
-                    0,
-                    0,
-                    blockedByMe,
-                    blockedMe
-            );
-        }
         return new ProfileDTOresponse(
-                user.getUsername(),
-                user.getName(),
-                user.getSurname(),
-                user.getProfile(),
-                user.getRole(),
-                user.getBiography(),
-                user.getPostCount(),
-                user.getSubscriberCount(),
-                user.getSubscribedCount(),
-                false,
-                false
+                user.getUsername(), user.getName(), user.getSurname(),
+                user.getProfile(), user.getRole(), user.getBiography(),
+                user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
+                false, false, RelationStatus.SELF, false
         );
     }
 

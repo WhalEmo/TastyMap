@@ -16,4 +16,15 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long>,Subsc
     @Modifying
     @Query("DELETE FROM SubscribeEntity s WHERE s.subscriber.id = :suberId AND s.subscribed.id = :subedId")
     int deleteAndCount(@Param("suberId") Long suberId, @Param("subedId") Long subedId);
+
+    Optional<SubscribeEntity> findBySubscriber_IdAndSubscribed_Id(Long subscriberId, Long subscribedId);
+
+    boolean existsBySubscriber_IdAndSubscribed_IdAndStatus(Long subscriberId, Long subscribedId, SubscribeStatus status);
+
+    @Query("SELECT s.status FROM SubscribeEntity s WHERE s.subscriber.id = :subscriberId AND s.subscribed.id = :subscribedId")
+    Optional<SubscribeStatus> findStatusBySubscriberIdAndSubscribedId(
+            @Param("subscriberId") Long subscriberId,
+            @Param("subscribedId") Long subscribedId
+    );
+
 }

@@ -26,6 +26,7 @@ public interface UserRepo extends JpaRepository<UserEntity,Long> {
     @Query("SELECT u.privateProfile FROM UserEntity u WHERE u.id = :userId")
     Optional<Boolean> isProfilePrivate(@Param("userId") Long userId);
 
+
     @Modifying
     @Query("UPDATE UserEntity u SET u.postCount = u.postCount + :amount WHERE u.id = :userId")
     void updatePostCount(@Param("userId") Long userId, @Param("amount") int amount);

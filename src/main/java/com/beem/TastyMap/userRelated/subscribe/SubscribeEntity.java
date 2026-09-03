@@ -28,6 +28,10 @@ public class SubscribeEntity {
     @JoinColumn(name = "subscribed_id", nullable = false)
     private UserEntity subscribed;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private SubscribeStatus status;
+
     @Column(name = "date", nullable = false)
     private LocalDateTime date;
 
@@ -61,5 +65,13 @@ public class SubscribeEntity {
 
     public void setDate(LocalDateTime date) {
         this.date = date;
+    }
+
+    public SubscribeStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(SubscribeStatus status) {
+        this.status = status;
     }
 }

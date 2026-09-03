@@ -1,9 +1,7 @@
 package com.beem.TastyMap.userRelated.profile;
 
-import com.beem.TastyMap.registerLogin.ClientTypes;
 import com.beem.TastyMap.registerLogin.UserService;
 import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
-import com.beem.TastyMap.security.refreshToken.RefreshTokenRequestDTO;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.apache.hc.core5.http.HttpHeaders;
@@ -19,19 +17,17 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/myProfile")
 public class MyProfileController {
-    private final ProfileService profileService;
-    private final UserService userService;
+    private final MyProfileService myProfileService;
 
-    public MyProfileController(ProfileService profileService, UserService userService) {
-        this.profileService = profileService;
-        this.userService = userService;
+    public MyProfileController(MyProfileService myProfileService) {
+        this.myProfileService = myProfileService;
     }
 
     @GetMapping("/active")
     public Map<String, Object>getActiveDevices(Authentication authentication){
         Long userId=(Long)authentication.getPrincipal();
-        List<ActiveDeviceDTO> devices=profileService.getActiveDevices(userId);
-        Long count=profileService.getActiveDeviceCount(userId);
+        List<ActiveDeviceDTO> devices= myProfileService.getActiveDevices(userId);
+        Long count= myProfileService.getActiveDeviceCount(userId);
         Map<String,Object> response=new HashMap<>();
         response.put("activeDeviceCount", count);
         response.put("devices", devices);
@@ -44,7 +40,7 @@ public class MyProfileController {
             Authentication authentication
     ) {
         Long userId = (Long) authentication.getPrincipal();
-        profileService.logout(deviceId, userId);
+        myProfileService.logout(deviceId, userId);
 
         ResponseCookie deleteAccessTokenCookie = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
@@ -75,7 +71,7 @@ public class MyProfileController {
             Authentication authentication
     ){
         Long userId=(Long) authentication.getPrincipal();
-        profileService.updateProfile(req,userId);
+        myProfileService.updateProfile(req,userId);
 
         return Map.of("message", "Profil Güncellendi");
     }
@@ -86,7 +82,7 @@ public class MyProfileController {
             Authentication authentication
     ){
         Long userId=(Long)authentication.getPrincipal();
-        profileService.changePassword(dto,userId);
+        myProfileService.changePassword(dto,userId);
         return Map.of("message","Şifre başarıyla değiştirildi!");
     }
 
@@ -95,7 +91,7 @@ public class MyProfileController {
             Authentication authentication
     ){
         Long myId=(Long)authentication.getPrincipal();
-        return profileService.getProfile(myId,myId);
+        return myProfileService.getMyProfile(myId);
     }
 
     @GetMapping("/me")
@@ -103,7 +99,7 @@ public class MyProfileController {
             Authentication authentication
     ){
         Long myId=(Long)authentication.getPrincipal();
-        return profileService.getMe(myId);
+        return myProfileService.getMe(myId);
     }
 
 }

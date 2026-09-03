@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/userProfile")
 public class UserProfileController {
-    private final ProfileService profileService;
+    private final OtherProfileService otherProfileService;
 
-    public UserProfileController(ProfileService profileService) {
-        this.profileService = profileService;
+    public UserProfileController(OtherProfileService otherProfileService) {
+        this.otherProfileService = otherProfileService;
     }
 
     @GetMapping("/profile/{userId}")
@@ -21,6 +21,6 @@ public class UserProfileController {
             Authentication authentication
     ) {
         Long myId=(Long)authentication.getPrincipal();
-        return profileService.getProfile(userId,myId);
+        return otherProfileService.getUserProfile(userId,myId);
     }
 }

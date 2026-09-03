@@ -39,7 +39,7 @@ public class SubscribeService {
     }
 
     @Transactional
-    public void subscribe(Long subscribes, Long myId) {
+    public SubscribeDTO subscribe(Long subscribes, Long myId) {
         if (myId.equals(subscribes)) {
             throw new CustomExceptions.InvalidException(getMessage("subscribe.self.not.allowed"));
         }
@@ -53,6 +53,9 @@ public class SubscribeService {
             throw new CustomExceptions.UserAlreadyExistsException(getMessage("subscribe.already.subscribed"));
         }
 
+        boolean isPrivate = userRepo.isProfilePrivate(subscribes)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found")));
+
         UserEntity subscriberRef = entityManager.getReference(UserEntity.class, myId);
         UserEntity subscribedRef = entityManager.getReference(UserEntity.class, subscribes);
 
@@ -61,48 +64,97 @@ public class SubscribeService {
         entity.setSubscribed(subscribedRef);
         entity.setDate(LocalDateTime.now());
 
-        subscribeRepo.save(entity);
-        userRepo.updateSubscribedCount(myId, 1);
-        userRepo.updateSubscriberCount(subscribes, 1);
+        if (isPrivate) {
+            entity.setStatus(SubscribeStatus.PENDING);
+            subscribeRepo.save(entity);
+        } else {
+            entity.setStatus(SubscribeStatus.ACCEPTED);
+            subscribeRepo.save(entity);
+
+            userRepo.updateSubscribedCount(myId, 1);
+            userRepo.updateSubscriberCount(subscribes, 1);
+        }
+
+        return new SubscribeDTO(
+                entity.getId(),
+                subscribedRef.getProfile(),
+                subscribedRef.getUsername(),
+                entity.getStatus()
+        );
+    }
+
+    // gelen ıstegı kabul etme
+    @Transactional
+    public void acceptSubscribeRequest(Long requesterId, Long myId) {
+        SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(requesterId, myId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
+
+        if (entity.getStatus() == SubscribeStatus.PENDING) {
+            entity.setStatus(SubscribeStatus.ACCEPTED);
+            subscribeRepo.save(entity);
+
+            userRepo.updateSubscribedCount(requesterId, 1);
+            userRepo.updateSubscriberCount(myId, 1);
+        }
+    }
+
+    // Gelen İsteği Reddetme
+    @Transactional
+    public void rejectSubscribeRequest(Long requesterId, Long myId) {
+        SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(requesterId, myId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
+
+        if (entity.getStatus() == SubscribeStatus.PENDING) {
+            subscribeRepo.delete(entity);
+        }
     }
 
     @Transactional
-    //abonelikten cıkma metodu
+    // Abonelikten çıkma / Gönderilen İsteği İptal Etme
     public void unSubscribe(Long subscribes, Long myId) {
-        Long sub = subscribeRepo
-                .findIdBySubscriberAndSubscribed(myId, subscribes)
-                .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException(getMessage("subscribe.not.found"))
-                );
-        subscribeRepo.deleteById(sub);
-        userRepo.updateSubscribedCount(myId, -1);
-        userRepo.updateSubscriberCount(subscribes, -1);
+        SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(myId, subscribes)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
+
+        boolean wasAccepted = entity.getStatus() == SubscribeStatus.ACCEPTED;
+        subscribeRepo.delete(entity);
+
+        if (wasAccepted) {
+            userRepo.updateSubscribedCount(myId, -1);
+            userRepo.updateSubscriberCount(subscribes, -1);
+        }
     }
 
     @Transactional
-    //aboneyi cıkarma metodu
+    // Aboneyi çıkarma
     public void unSubscriber(Long subscribes, Long myId) {
-        Long sub = subscribeRepo
-                .findIdBySubscriberAndSubscribed(subscribes, myId)
-                .orElseThrow(() ->
-                        new CustomExceptions.NotFoundException(getMessage("subscribe.not.found"))
-                );
-        subscribeRepo.deleteById(sub);
-        userRepo.updateSubscribedCount(subscribes, -1);
-        userRepo.updateSubscriberCount(myId, -1);
+        SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(subscribes, myId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
+
+        boolean wasAccepted = entity.getStatus() == SubscribeStatus.ACCEPTED;
+        subscribeRepo.delete(entity);
+
+        if (wasAccepted) {
+            userRepo.updateSubscribedCount(subscribes, -1);
+            userRepo.updateSubscriberCount(myId, -1);
+        }
     }
 
     //benim abone olduklarım
     public Page<SubscribeDTO> getUserSubscribes(Long userId, Long myId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         accessChecker.checkAccess(userId, myId);
-        return subscribeRepo.findUserSubscribes(userId, pageable);
+        return subscribeRepo.findUserSubscribes(userId, myId, pageable);
     }
 
-    //bana abone olanlar
+    // bana abone olanalr
     public Page<SubscribeDTO> getUserSubscribers(Long userId, Long myId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         accessChecker.checkAccess(userId, myId);
-        return subscribeRepo.findUserSubscribers(userId, pageable);
+        return subscribeRepo.findUserSubscribers(userId, myId, pageable);
+    }
+    // Bana Gelen Abonelik İstekleri (Sadece PENDING)
+    public Page<SubscribeDTO> getPendingRequests(Long myId, int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
+        return subscribeRepo.findPendingRequests(myId, pageable);
     }
 }
