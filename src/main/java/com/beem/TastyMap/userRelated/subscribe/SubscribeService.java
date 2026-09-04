@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class SubscribeService {
@@ -38,8 +39,9 @@ public class SubscribeService {
         return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
+    // Takip Et / İstek Gönder
     @Transactional
-    public SubscribeDTO subscribe(Long subscribes, Long myId) {
+    public SubscribeActionResult subscribe(Long subscribes, Long myId) {
         if (myId.equals(subscribes)) {
             throw new CustomExceptions.InvalidException(getMessage("subscribe.self.not.allowed"));
         }
@@ -75,17 +77,12 @@ public class SubscribeService {
             userRepo.updateSubscriberCount(subscribes, 1);
         }
 
-        return new SubscribeDTO(
-                entity.getId(),
-                subscribedRef.getProfile(),
-                subscribedRef.getUsername(),
-                entity.getStatus()
-        );
+        return buildActionResult(myId, subscribes);
     }
 
-    // gelen ıstegı kabul etme
+    // Gelen İstek Kabul Edildiğinde
     @Transactional
-    public void acceptSubscribeRequest(Long requesterId, Long myId) {
+    public SubscribeActionResult acceptSubscribeRequest(Long requesterId, Long myId) {
         SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(requesterId, myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
 
@@ -96,22 +93,26 @@ public class SubscribeService {
             userRepo.updateSubscribedCount(requesterId, 1);
             userRepo.updateSubscriberCount(myId, 1);
         }
+
+        return buildActionResult(myId, requesterId);
     }
 
-    // Gelen İsteği Reddetme
+    // Gelen İstek Reddedildiğinde
     @Transactional
-    public void rejectSubscribeRequest(Long requesterId, Long myId) {
+    public SubscribeActionResult rejectSubscribeRequest(Long requesterId, Long myId) {
         SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(requesterId, myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
 
         if (entity.getStatus() == SubscribeStatus.PENDING) {
             subscribeRepo.delete(entity);
         }
+
+        return buildActionResult(myId, requesterId);
     }
 
+    // Takipten Çıkma / İstek İptal Etme
     @Transactional
-    // Abonelikten çıkma / Gönderilen İsteği İptal Etme
-    public void unSubscribe(Long subscribes, Long myId) {
+    public SubscribeActionResult unSubscribe(Long subscribes, Long myId) {
         SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(myId, subscribes)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
 
@@ -122,11 +123,13 @@ public class SubscribeService {
             userRepo.updateSubscribedCount(myId, -1);
             userRepo.updateSubscriberCount(subscribes, -1);
         }
+
+        return buildActionResult(myId, subscribes);
     }
 
+    // Aboneyi (Takipçiyi) Çıkarma
     @Transactional
-    // Aboneyi çıkarma
-    public void unSubscriber(Long subscribes, Long myId) {
+    public SubscribeActionResult unSubscriber(Long subscribes, Long myId) {
         SubscribeEntity entity = subscribeRepo.findBySubscriber_IdAndSubscribed_Id(subscribes, myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("subscribe.not.found")));
 
@@ -137,22 +140,50 @@ public class SubscribeService {
             userRepo.updateSubscribedCount(subscribes, -1);
             userRepo.updateSubscriberCount(myId, -1);
         }
+
+        return buildActionResult(myId, subscribes);
     }
 
-    //benim abone olduklarım
+    // Tarafımıza düşen durumları toplayıp mobilin işleyebileceği net durumu veren hesaplama
+    private SubscribeActionResult buildActionResult(Long myId, Long targetUserId) {
+        Optional<SubscribeStatus> myRequestStatus = subscribeRepo.findStatusBySubscriberIdAndSubscribedId(myId, targetUserId);
+
+        RelationStatus relationStatus;
+        if (myRequestStatus.isPresent()) {
+            relationStatus = myRequestStatus.get() == SubscribeStatus.ACCEPTED
+                    ? RelationStatus.FOLLOWING
+                    : RelationStatus.PENDING;
+        } else {
+            boolean isFollower = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
+                    targetUserId, myId, SubscribeStatus.ACCEPTED
+            );
+            relationStatus = isFollower ? RelationStatus.FOLLOW_BACK : RelationStatus.NOT_FOLLOWING;
+        }
+
+        boolean hasPendingIncoming = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
+                targetUserId, myId, SubscribeStatus.PENDING
+        );
+
+
+        return new SubscribeActionResult(
+                targetUserId,
+                relationStatus,
+                hasPendingIncoming
+        );
+    }
+
     public Page<SubscribeDTO> getUserSubscribes(Long userId, Long myId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         accessChecker.checkAccess(userId, myId);
         return subscribeRepo.findUserSubscribes(userId, myId, pageable);
     }
 
-    // bana abone olanalr
     public Page<SubscribeDTO> getUserSubscribers(Long userId, Long myId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         accessChecker.checkAccess(userId, myId);
         return subscribeRepo.findUserSubscribers(userId, myId, pageable);
     }
-    // Bana Gelen Abonelik İstekleri (Sadece PENDING)
+
     public Page<SubscribeDTO> getPendingRequests(Long myId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         return subscribeRepo.findPendingRequests(myId, pageable);

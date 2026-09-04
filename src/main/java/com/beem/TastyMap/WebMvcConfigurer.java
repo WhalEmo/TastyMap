@@ -23,7 +23,10 @@ class WebConfig implements WebMvcConfigurer {
         }
 
         registry.addResourceHandler("/uploads/profiles/**")
-                .addResourceLocations(absolutePath);
+                .addResourceLocations(absolutePath)
+                // STATİK DOSYALARA ÖZEL CORS VE NGROK BAŞLIKLARI
+                .setCachePeriod(3600)
+                .resourceChain(false); // Statik dosya yönetimi için
 
         // 2. .well-known dizini yönlendirmesi
         registry.addResourceHandler("/.well-known/**")

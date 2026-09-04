@@ -102,4 +102,9 @@ public class MyProfileController {
         return myProfileService.getMe(myId);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+        return ResponseEntity.ok(myProfileService.getAllUsers());
+    }
+
 }

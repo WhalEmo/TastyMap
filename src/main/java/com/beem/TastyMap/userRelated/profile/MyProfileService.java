@@ -21,20 +21,17 @@ public class MyProfileService {
     private final UserRepo userRepo;
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
-    private final BlockRepo blockRepo;
     private final TokenBlacklistService tokenBlacklistService;
     private final MessageSource messageSource;
 
     public MyProfileService(UserRepo userRepo,
                             RefreshTokenRepo refreshTokenRepo,
                             PasswordEncoder passwordEncoder,
-                            BlockRepo blockRepo,
                             TokenBlacklistService tokenBlacklistService,
                             MessageSource messageSource) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
-        this.blockRepo = blockRepo;
         this.tokenBlacklistService = tokenBlacklistService;
         this.messageSource = messageSource;
     }
@@ -136,5 +133,12 @@ public class MyProfileService {
         UserEntity user = userRepo.findById(myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
         return new UserResponseDTO(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAllUsers() {
+        return userRepo.findAll().stream()
+                .map(UserResponseDTO::new)
+                .toList();
     }
 }

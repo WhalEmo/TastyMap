@@ -4,16 +4,22 @@ public class SubscribeDTO {
     private Long id;
     private String profile;
     private String username;
-    private SubscribeStatus relationStatus; // SELF, ACCEPTED, PENDING veya null (FOLLOW_NONE)
+    private RelationStatus relationStatus; // FOLLOWING, FOLLOW_BACK, PENDING, NOT_FOLLOWING, SELF
 
     public SubscribeDTO() {
     }
 
-    public SubscribeDTO(Long id, String profile, String username, SubscribeStatus relationStatus) {
+    public SubscribeDTO(Long id, String profile, String username, RelationStatus relationStatus) {
         this.id = id;
         this.profile = profile;
         this.username = username;
         this.relationStatus = relationStatus;
+    }
+    public SubscribeDTO(Long id, String profile, String username, String relationStatusStr) {
+        this.id = id;
+        this.profile = profile;
+        this.username = username;
+        this.relationStatus = relationStatusStr != null ? RelationStatus.valueOf(relationStatusStr) : RelationStatus.NOT_FOLLOWING;
     }
 
     public Long getId() {
@@ -40,11 +46,11 @@ public class SubscribeDTO {
         this.username = username;
     }
 
-    public SubscribeStatus getRelationStatus() {
+    public RelationStatus getRelationStatus() {
         return relationStatus;
     }
 
-    public void setRelationStatus(SubscribeStatus relationStatus) {
+    public void setRelationStatus(RelationStatus relationStatus) {
         this.relationStatus = relationStatus;
     }
 }
