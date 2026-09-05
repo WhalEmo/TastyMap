@@ -37,20 +37,20 @@ public class FcmListener {
         }
 
         Locale locale = LocaleContextHolder.getLocale();
-        String title = getMessage("notification.fcm.security.title", null, locale);
-        String body = getMessage("notification.fcm.security.body", new Object[]{event.getCity()}, locale);
+        String title = getMessage(event.getTitleCode(), null, locale);
+        String body = getMessage(event.getBodyCode(), event.getBodyArgs(), locale);
 
         for (String token : fcmTokens) {
             try {
-                fcmService.sendSecurityNotification(
+                fcmService.sendNotification(
                         token,
                         title,
                         body,
-                        event.getNotificationId()
+                        event.getPayloadData()
                 );
-                System.out.println("✅ Bildirim bir cihaza başarıyla gönderildi.");
+                System.out.println("✅ Bildirim cihaza başarıyla gönderildi.");
             } catch (Exception e) {
-                System.err.println("Bir cihaza bildirim gönderilemedi, sonraki cihaza geçiliyor: " + e.getMessage());
+                System.err.println("Bir cihaza bildirim gönderilemedi: " + e.getMessage());
             }
         }
     }

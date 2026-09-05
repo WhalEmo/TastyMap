@@ -31,7 +31,7 @@ import java.time.LocalDateTime;
 
         }
 )
-public class NotificationEntity {
+public class NotificationEntity {// DeviceSessionEntity adı bole olsa daha ıyı degısecek
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

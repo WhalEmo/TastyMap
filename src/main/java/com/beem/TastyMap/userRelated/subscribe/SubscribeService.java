@@ -1,11 +1,13 @@
 package com.beem.TastyMap.userRelated.subscribe;
 
+import com.beem.TastyMap.event.model.FcmNotificationEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
 import com.beem.TastyMap.userRelated.post.AccessChecker;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -25,14 +28,17 @@ public class SubscribeService {
     private final EntityManager entityManager;
     private final BlockRepo blockRepo;
     private final MessageSource messageSource;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public SubscribeService(UserRepo userRepo, SubscribeRepo subscribeRepo, AccessChecker accessChecker, EntityManager entityManager, BlockRepo blockRepo, MessageSource messageSource) {
+
+    public SubscribeService(UserRepo userRepo, SubscribeRepo subscribeRepo, AccessChecker accessChecker, EntityManager entityManager, BlockRepo blockRepo, MessageSource messageSource, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.subscribeRepo = subscribeRepo;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
         this.blockRepo = blockRepo;
         this.messageSource = messageSource;
+        this.eventPublisher = eventPublisher;
     }
 
     private String getMessage(String code) {
@@ -69,12 +75,14 @@ public class SubscribeService {
         if (isPrivate) {
             entity.setStatus(SubscribeStatus.PENDING);
             subscribeRepo.save(entity);
+            sendFollowNotification(subscribes, subscriberRef.getUsername(), true, myId);
         } else {
             entity.setStatus(SubscribeStatus.ACCEPTED);
             subscribeRepo.save(entity);
 
             userRepo.updateSubscribedCount(myId, 1);
             userRepo.updateSubscriberCount(subscribes, 1);
+            sendFollowNotification(subscribes, subscriberRef.getUsername(), false, myId);
         }
 
         return buildActionResult(myId, subscribes);
@@ -187,5 +195,25 @@ public class SubscribeService {
     public Page<SubscribeDTO> getPendingRequests(Long myId, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
         return subscribeRepo.findPendingRequests(myId, pageable);
+    }
+
+    private void sendFollowNotification(Long targetUserId, String senderUsername, boolean isPending, Long senderId) {
+        String titleCode = isPending ? "notification.follow.request.title" : "notification.follow.accept.title";
+        String bodyCode = isPending ? "notification.follow.request.body" : "notification.follow.accept.body";
+
+        Map<String, String> payloadData = Map.of(
+                "type", isPending ? "FOLLOW_REQUEST" : "NEW_FOLLOWER",
+                "userId", senderId.toString() // Tıklanınca açılacak profilin ID'si
+        );
+
+        FcmNotificationEvent event = new FcmNotificationEvent(
+                targetUserId,
+                titleCode,
+                bodyCode,
+                new Object[]{senderUsername},
+                payloadData
+        );
+
+        eventPublisher.publishEvent(event);
     }
 }
