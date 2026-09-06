@@ -6,6 +6,9 @@ import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
 import com.beem.TastyMap.userRelated.post.AccessChecker;
+import com.beem.TastyMap.userRelated.socialnotifications.SocialNotificationService;
+import com.beem.TastyMap.userRelated.socialnotifications.enums.NotificationActionStatus;
+import com.beem.TastyMap.userRelated.socialnotifications.enums.SocialNotificationType;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
@@ -24,6 +27,7 @@ import java.util.Optional;
 public class SubscribeService {
     private final UserRepo userRepo;
     private final SubscribeRepo subscribeRepo;
+    private final SocialNotificationService socialNotificationService;
     private final AccessChecker accessChecker;
     private final EntityManager entityManager;
     private final BlockRepo blockRepo;
@@ -31,9 +35,10 @@ public class SubscribeService {
     private final ApplicationEventPublisher eventPublisher;
 
 
-    public SubscribeService(UserRepo userRepo, SubscribeRepo subscribeRepo, AccessChecker accessChecker, EntityManager entityManager, BlockRepo blockRepo, MessageSource messageSource, ApplicationEventPublisher eventPublisher) {
+    public SubscribeService(UserRepo userRepo, SubscribeRepo subscribeRepo, SocialNotificationService socialNotificationService, AccessChecker accessChecker, EntityManager entityManager, BlockRepo blockRepo, MessageSource messageSource, ApplicationEventPublisher eventPublisher) {
         this.userRepo = userRepo;
         this.subscribeRepo = subscribeRepo;
+        this.socialNotificationService = socialNotificationService;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
         this.blockRepo = blockRepo;
@@ -75,13 +80,26 @@ public class SubscribeService {
         if (isPrivate) {
             entity.setStatus(SubscribeStatus.PENDING);
             subscribeRepo.save(entity);
+            socialNotificationService.createNotification(
+                    subscribedRef,
+                    subscriberRef,
+                    SocialNotificationType.FOLLOW_REQUEST,
+                    null,
+                    null
+            );
             sendFollowNotification(subscribes, subscriberRef.getUsername(), true, myId);
         } else {
             entity.setStatus(SubscribeStatus.ACCEPTED);
             subscribeRepo.save(entity);
-
             userRepo.updateSubscribedCount(myId, 1);
             userRepo.updateSubscriberCount(subscribes, 1);
+            socialNotificationService.createNotification(
+                    subscribedRef,
+                    subscriberRef,
+                    SocialNotificationType.NEW_FOLLOWER,
+                    null,
+                    null
+            );
             sendFollowNotification(subscribes, subscriberRef.getUsername(), false, myId);
         }
 
@@ -100,6 +118,24 @@ public class SubscribeService {
 
             userRepo.updateSubscribedCount(requesterId, 1);
             userRepo.updateSubscriberCount(myId, 1);
+
+            socialNotificationService.updateNotification(
+                    myId,
+                    requesterId,
+                    SocialNotificationType.FOLLOW_REQUEST,
+                    NotificationActionStatus.ACCEPTED
+            );
+            UserEntity requesterRef = entityManager.getReference(UserEntity.class, requesterId);
+            UserEntity myRef = entityManager.getReference(UserEntity.class, myId);
+
+            socialNotificationService.createNotification(
+                    requesterRef,
+                    myRef,
+                    SocialNotificationType.FOLLOW_ACCEPTED,
+                    null,
+                    null
+            );
+            sendAcceptNotification(requesterId, myRef.getUsername(), myId);
         }
 
         return buildActionResult(myId, requesterId);
@@ -115,6 +151,12 @@ public class SubscribeService {
             subscribeRepo.delete(entity);
         }
 
+        socialNotificationService.updateNotification(
+                myId,
+                requesterId,
+                SocialNotificationType.FOLLOW_REQUEST,
+                NotificationActionStatus.REJECTED
+        );
         return buildActionResult(myId, requesterId);
     }
 
@@ -210,6 +252,23 @@ public class SubscribeService {
                 targetUserId,
                 titleCode,
                 bodyCode,
+                new Object[]{senderUsername},
+                payloadData
+        );
+
+        eventPublisher.publishEvent(event);
+    }
+
+    private void sendAcceptNotification(Long targetUserId, String senderUsername, Long senderId) {
+        Map<String, String> payloadData = Map.of(
+                "type", "FOLLOW_ACCEPTED",
+                "userId", senderId.toString()
+        );
+
+        FcmNotificationEvent event = new FcmNotificationEvent(
+                targetUserId,
+                "notification.follow.accept.title", // "Takip İsteği Kabul Edildi"
+                "notification.follow.accept.body",  // "X takip isteğinizi kabul etti."
                 new Object[]{senderUsername},
                 payloadData
         );

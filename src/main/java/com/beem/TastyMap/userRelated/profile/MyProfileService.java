@@ -6,7 +6,6 @@ import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.registerLogin.dto.UserResponseDTO;
 import com.beem.TastyMap.security.refreshToken.RefreshTokenRepo;
 import com.beem.TastyMap.security.token.TokenBlacklistService;
-import com.beem.TastyMap.userRelated.block.BlockRepo;
 import com.beem.TastyMap.userRelated.subscribe.RelationStatus;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;

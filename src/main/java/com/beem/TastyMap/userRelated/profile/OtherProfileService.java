@@ -5,8 +5,8 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
+import com.beem.TastyMap.userRelated.common.CalculateRelationStatus;
 import com.beem.TastyMap.userRelated.subscribe.RelationStatus;
-import com.beem.TastyMap.userRelated.subscribe.SubscribeEntity;
 import com.beem.TastyMap.userRelated.subscribe.SubscribeRepo;
 import com.beem.TastyMap.userRelated.subscribe.SubscribeStatus;
 import org.springframework.context.MessageSource;
@@ -23,15 +23,17 @@ public class OtherProfileService {
     private final BlockRepo blockRepo;
     private final SubscribeRepo subscribeRepo;
     private final MessageSource messageSource;
+    private final CalculateRelationStatus relationStatusCalculator;
 
     public OtherProfileService(UserRepo userRepo,
                                BlockRepo blockRepo,
                                SubscribeRepo subscribeRepo,
-                               MessageSource messageSource) {
+                               MessageSource messageSource, CalculateRelationStatus relationStatusCalculator) {
         this.userRepo = userRepo;
         this.blockRepo = blockRepo;
         this.subscribeRepo = subscribeRepo;
         this.messageSource = messageSource;
+        this.relationStatusCalculator = relationStatusCalculator;
     }
 
     private String getMessage(String code) {
@@ -48,7 +50,7 @@ public class OtherProfileService {
                     user.getUsername(), user.getName(), user.getSurname(),
                     user.getProfile(), user.getRole(), user.getBiography(),
                     user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                    false, false, RelationStatus.SELF,false
+                    false, false, RelationStatus.SELF, false
             );
         }
 
@@ -63,11 +65,11 @@ public class OtherProfileService {
                     user.getUsername(), user.getName(), user.getSurname(),
                     null, user.getRole(), user.getBiography(),
                     0, 0, 0,
-                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING,false
+                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false
             );
         }
         // 1. Sizin karşı tarafa olan durumunuz (FOLLOWING, PENDING, FOLLOW_BACK veya NOT_FOLLOWING)
-        RelationStatus myStatus = calculateRelationStatus(myId, targetUserId);
+        RelationStatus myStatus = relationStatusCalculator.calculate(myId, targetUserId);
 
         // 2. Karşı tarafın size attığı onay bekleyen istek var mı?
         boolean hasPendingIncoming = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
@@ -83,21 +85,4 @@ public class OtherProfileService {
 
     }
 
-    private RelationStatus calculateRelationStatus(Long myId, Long targetUserId) {
-        // Bizim karşı tarafa attığımız isteğin durumu (Sadece status çekilir)
-        Optional<SubscribeStatus> myRequestStatus = subscribeRepo.findStatusBySubscriberIdAndSubscribedId(myId, targetUserId);
-
-        if (myRequestStatus.isPresent()) {
-            return myRequestStatus.get() == SubscribeStatus.ACCEPTED
-                    ? RelationStatus.FOLLOWING
-                    : RelationStatus.PENDING;
-        }
-
-        // Karşı taraf bizi takip ediyor mu?
-        boolean isFollower = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
-                targetUserId, myId, SubscribeStatus.ACCEPTED
-        );
-
-        return isFollower ? RelationStatus.FOLLOW_BACK : RelationStatus.NOT_FOLLOWING;
-    }
 }
