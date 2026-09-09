@@ -1,6 +1,7 @@
 package com.beem.TastyMap.security.device;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,4 +21,7 @@ public interface UserDeviceRepo extends JpaRepository<UserDeviceEntity,Long> {
 
     boolean existsByUser_Id(Long userId);
 
+    @Modifying
+    @Query("UPDATE UserDeviceEntity d SET d.fcmToken = NULL WHERE d.fcmToken = :fcmToken AND (d.user.id <> :userId OR d.deviceId <> :deviceId)")
+    void nullifyTokenFromOtherDevices(@Param("fcmToken") String fcmToken, @Param("userId") Long userId, @Param("deviceId") String deviceId);
 }

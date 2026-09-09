@@ -82,6 +82,7 @@ public class SubscribeService {
             subscribeRepo.save(entity);
             socialNotificationService.createNotification(
                     subscribedRef,
+                    NotificationActionStatus.PENDING,
                     subscriberRef,
                     SocialNotificationType.FOLLOW_REQUEST,
                     null,
@@ -95,6 +96,7 @@ public class SubscribeService {
             userRepo.updateSubscriberCount(subscribes, 1);
             socialNotificationService.createNotification(
                     subscribedRef,
+                    NotificationActionStatus.NONE,
                     subscriberRef,
                     SocialNotificationType.NEW_FOLLOWER,
                     null,
@@ -130,6 +132,7 @@ public class SubscribeService {
 
             socialNotificationService.createNotification(
                     requesterRef,
+                    NotificationActionStatus.NONE,
                     myRef,
                     SocialNotificationType.FOLLOW_ACCEPTED,
                     null,
@@ -172,6 +175,8 @@ public class SubscribeService {
         if (wasAccepted) {
             userRepo.updateSubscribedCount(myId, -1);
             userRepo.updateSubscriberCount(subscribes, -1);
+        }else {
+            socialNotificationService.deleteNotification(subscribes, myId, SocialNotificationType.FOLLOW_REQUEST);
         }
 
         return buildActionResult(myId, subscribes);
@@ -245,7 +250,7 @@ public class SubscribeService {
 
         Map<String, String> payloadData = Map.of(
                 "type", isPending ? "FOLLOW_REQUEST" : "NEW_FOLLOWER",
-                "userId", senderId.toString() // Tıklanınca açılacak profilin ID'si
+                "userId", senderId.toString()
         );
 
         FcmNotificationEvent event = new FcmNotificationEvent(
@@ -267,8 +272,8 @@ public class SubscribeService {
 
         FcmNotificationEvent event = new FcmNotificationEvent(
                 targetUserId,
-                "notification.follow.accept.title", // "Takip İsteği Kabul Edildi"
-                "notification.follow.accept.body",  // "X takip isteğinizi kabul etti."
+                "notification.follow.request.accepted.title", // "Takip İsteği Kabul Edildi"
+                "notification.follow.request.accepted.body",  // "X takip isteğinizi kabul etti."
                 new Object[]{senderUsername},
                 payloadData
         );

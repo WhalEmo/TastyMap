@@ -20,6 +20,7 @@ public class SocialNotificationService {
 
     private final SocialNotificationRepo notificationRepo;
     private final CalculateRelationStatus relationStatusCalculator;
+    private static final int MAX_NOTIFICATION_LIMIT = 30;
 
     private static final Set<SocialNotificationType> FOLLOW_RELATED_TYPES = Set.of(
             SocialNotificationType.FOLLOW_REQUEST,
@@ -33,7 +34,7 @@ public class SocialNotificationService {
     }
 
     @Transactional
-    public void createNotification(UserEntity recipient, UserEntity actor, SocialNotificationType type, Long targetId, String content) {
+    public void createNotification(UserEntity recipient,NotificationActionStatus status, UserEntity actor, SocialNotificationType type, Long targetId, String content) {
         if (recipient.getId().equals(actor.getId())) return;
 
         SocialNotificationEntity notification = new SocialNotificationEntity();
@@ -41,11 +42,30 @@ public class SocialNotificationService {
         notification.setActor(actor);
         notification.setType(type);
         notification.setTargetId(targetId);
+        notification.setActionStatus(status);
         notification.setContent(content);
 
         notificationRepo.save(notification);
+        cleanupOldNotifications(recipient.getId());
+    }
+    private void cleanupOldNotifications(Long recipientId) {
+        List<Long> allIds = notificationRepo.findIdsByRecipientIdOrderByCreatedAtDesc(recipientId);
+
+        if (allIds.size() > MAX_NOTIFICATION_LIMIT) {
+            List<Long> idsToDelete = allIds.subList(MAX_NOTIFICATION_LIMIT, allIds.size());
+            notificationRepo.deleteAllByIdIn(idsToDelete);
+        }
     }
 
+    @Transactional
+    public void deleteNotification(Long recipientId, Long actorId, SocialNotificationType type) {
+        notificationRepo.deleteByRecipient_IdAndActor_IdAndType(recipientId, actorId, type);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean checkHasUnread(Long recipientId) {
+        return notificationRepo.existsByRecipientIdAndIsReadFalse(recipientId);
+    }
     @Transactional(readOnly = true)
     public Page<SocialNotificationDTO> getUserNotifications(Long myId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);

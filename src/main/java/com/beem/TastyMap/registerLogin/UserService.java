@@ -210,10 +210,6 @@ public class UserService implements UserDetailsService {
 
         UserResponseDTO userResponseDTO = new UserResponseDTO(user);
 
-        if (!user.isOnboardingCompleted()) {
-            user.setOnboardingCompleted(true);
-            userRepo.save(user);
-        }
 
         return new LoginResponseDTO(
                 accessToken,

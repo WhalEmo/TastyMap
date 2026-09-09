@@ -54,4 +54,33 @@ public class UserDeviceService {
 
         userDeviceRepo.save(device);
     }
+
+    @Transactional
+    public void updateFcmToken(Long userId, String deviceId, String newFcmToken) {
+        if (newFcmToken == null || newFcmToken.isBlank() || deviceId == null || deviceId.isBlank()) {
+            return;
+        }
+
+        userDeviceRepo.nullifyTokenFromOtherDevices(newFcmToken, userId, deviceId);
+
+        UserDeviceEntity device = userDeviceRepo.findByUser_IdAndDeviceId(userId, deviceId)
+                .orElseGet(() -> {
+                    UserDeviceEntity newDevice = new UserDeviceEntity();
+                    UserEntity userReference = new UserEntity();
+                    userReference.setId(userId);
+                    newDevice.setUser(userReference);
+                    newDevice.setDeviceId(deviceId);
+                    return newDevice;
+                });
+
+
+        if (newFcmToken.equals(device.getFcmToken())) {
+            return;
+        }
+
+        device.setFcmToken(newFcmToken);
+        device.setLastLoginAt(LocalDateTime.now());
+
+        userDeviceRepo.save(device);
+    }
 }

@@ -2,6 +2,7 @@ package com.beem.TastyMap.userRelated.health;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.health.dtos.AllergyInfoDTO;
 import com.beem.TastyMap.userRelated.health.dtos.HealthRequestDTO;
 import com.beem.TastyMap.userRelated.health.dtos.HealthResponseDTO;
@@ -27,17 +28,19 @@ import java.util.stream.Collectors;
 public class HealthService {
     private final UserHealthRepo userHealthRepo;
     private final AllergiesRepo allergiesRepo;
+    private final UserRepo userRepo;
     private final UserAllergiesRepo userAllergiesRepo;
     private final EntityManager entityManager;
     private final MessageSource messageSource;
 
     public HealthService(UserHealthRepo userHealthRepo,
-                         AllergiesRepo allergiesRepo,
+                         AllergiesRepo allergiesRepo, UserRepo userRepo,
                          UserAllergiesRepo userAllergiesRepo,
                          EntityManager entityManager,
                          MessageSource messageSource) {
         this.userHealthRepo = userHealthRepo;
         this.allergiesRepo = allergiesRepo;
+        this.userRepo = userRepo;
         this.userAllergiesRepo = userAllergiesRepo;
         this.entityManager = entityManager;
         this.messageSource = messageSource;
@@ -49,13 +52,15 @@ public class HealthService {
 
     @Transactional
     public HealthResponseDTO addHealthInfo(HealthRequestDTO dto, Long userId) {
-        UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
+        UserEntity user = userRepo.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found")));
 
-        // 1. Kullanıcının mevcut kaydı var mı bak, yoksa yeni oluştur (INSERT yerine UPDATE mantığı)
+        user.setOnboardingCompleted(true);
+
         UserHealthEntity userHealthEntity = userHealthRepo.findByUserId(userId)
                 .orElseGet(() -> {
                     UserHealthEntity newEntity = new UserHealthEntity();
-                    newEntity.setUser(userRef);
+                    newEntity.setUser(user);
                     return newEntity;
                 });
 
@@ -78,7 +83,7 @@ public class HealthService {
 
             for (AllergiesEntity allergy : allergies) {
                 UserAllergiesEntity mapping = new UserAllergiesEntity();
-                mapping.setUser(userRef);
+                mapping.setUser(user);
                 mapping.setAllergies(allergy);
                 mappingsToSave.add(mapping);
 
@@ -94,7 +99,6 @@ public class HealthService {
                 responseAllergyList
         );
     }
-
     @Transactional
     public HealthResponseDTO updateHealth(HealthRequestDTO dto, Long userId) {
         UserHealthEntity healthData = userHealthRepo.findByUserId(userId)

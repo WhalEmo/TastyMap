@@ -26,6 +26,9 @@ public class UserHealthEntity {
     @Column(name = "eat_type")
     private HealthEnum eatType = HealthEnum.NORMAL;
 
+    @Column(nullable = false)
+    private boolean onboardingCompleted = false;
+
     public Long getId() {
         return id;
     }
@@ -56,5 +59,13 @@ public class UserHealthEntity {
 
     public void setEatType(HealthEnum eatType) {
         this.eatType = eatType;
+    }
+
+    public boolean isOnboardingCompleted() {
+        return onboardingCompleted;
+    }
+
+    public void setOnboardingCompleted(boolean onboardingCompleted) {
+        this.onboardingCompleted = onboardingCompleted;
     }
 }

@@ -5,6 +5,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/socialnotifications")
 public class SocialNotificationController {
@@ -33,5 +35,13 @@ public class SocialNotificationController {
         Long myId = (Long) authentication.getPrincipal();
         notificationService.markNotificationAsRead(myId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/has-unread")
+    public ResponseEntity<Map<String, Boolean>> checkHasUnread(Authentication authentication) {
+        Long myId = (Long) authentication.getPrincipal();
+        boolean hasUnread = notificationService.checkHasUnread(myId);
+
+        return ResponseEntity.ok(Map.of("hasUnread", hasUnread));
     }
 }
