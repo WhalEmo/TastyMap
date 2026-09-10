@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 public class SubscribeService {
@@ -50,22 +50,19 @@ public class SubscribeService {
         return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
-    // Takip Et / İstek Gönder
     @Transactional
     public SubscribeActionResult subscribe(Long subscribes, Long myId) {
         if (myId.equals(subscribes)) {
             throw new CustomExceptions.InvalidException(getMessage("subscribe.self.not.allowed"));
         }
-        boolean blocked = blockRepo.existsByBlocker_IdAndBlocked_Id(subscribes, myId) ||
-                blockRepo.existsByBlocker_IdAndBlocked_Id(myId, subscribes);
 
-        if (blocked) {
+        if (blockRepo.isBlockExistsBetween(myId, subscribes)) {
             throw new CustomExceptions.ForbiddenException(getMessage("subscribe.blocked"));
         }
+
         if (subscribeRepo.existsBySubscriber_IdAndSubscribed_Id(myId, subscribes)) {
             throw new CustomExceptions.UserAlreadyExistsException(getMessage("subscribe.already.subscribed"));
         }
-
         boolean isPrivate = userRepo.isProfilePrivate(subscribes)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found")));
 
@@ -77,35 +74,41 @@ public class SubscribeService {
         entity.setSubscribed(subscribedRef);
         entity.setDate(LocalDateTime.now());
 
+        socialNotificationService.clearFollowNotificationsBetween(myId, subscribes);
+
+        RelationStatus finalStatus;
+
         if (isPrivate) {
             entity.setStatus(SubscribeStatus.PENDING);
             subscribeRepo.save(entity);
             socialNotificationService.createNotification(
-                    subscribedRef,
-                    NotificationActionStatus.PENDING,
-                    subscriberRef,
-                    SocialNotificationType.FOLLOW_REQUEST,
-                    null,
-                    null
+                    subscribedRef, NotificationActionStatus.PENDING, subscriberRef, SocialNotificationType.FOLLOW_REQUEST, null, null
             );
             sendFollowNotification(subscribes, subscriberRef.getUsername(), true, myId);
+
+            finalStatus = RelationStatus.PENDING;
         } else {
             entity.setStatus(SubscribeStatus.ACCEPTED);
             subscribeRepo.save(entity);
             userRepo.updateSubscribedCount(myId, 1);
             userRepo.updateSubscriberCount(subscribes, 1);
             socialNotificationService.createNotification(
-                    subscribedRef,
-                    NotificationActionStatus.NONE,
-                    subscriberRef,
-                    SocialNotificationType.NEW_FOLLOWER,
-                    null,
-                    null
+                    subscribedRef, NotificationActionStatus.NONE, subscriberRef, SocialNotificationType.NEW_FOLLOWER, null, null
             );
             sendFollowNotification(subscribes, subscriberRef.getUsername(), false, myId);
+
+            finalStatus = RelationStatus.FOLLOWING;
         }
 
-        return buildActionResult(myId, subscribes);
+        boolean hasPendingIncoming = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
+                subscribes, myId, SubscribeStatus.PENDING
+        );
+
+        boolean isFollower = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
+                subscribes, myId, SubscribeStatus.ACCEPTED
+        );
+
+        return new SubscribeActionResult(subscribes, finalStatus, hasPendingIncoming, isFollower);
     }
 
     // Gelen İstek Kabul Edildiğinde
@@ -175,9 +178,8 @@ public class SubscribeService {
         if (wasAccepted) {
             userRepo.updateSubscribedCount(myId, -1);
             userRepo.updateSubscriberCount(subscribes, -1);
-        }else {
-            socialNotificationService.deleteNotification(subscribes, myId, SocialNotificationType.FOLLOW_REQUEST);
         }
+        socialNotificationService.deleteOutgoingFollowNotifications(myId, subscribes);
 
         return buildActionResult(myId, subscribes);
     }
@@ -195,36 +197,42 @@ public class SubscribeService {
             userRepo.updateSubscribedCount(subscribes, -1);
             userRepo.updateSubscriberCount(myId, -1);
         }
+        socialNotificationService.deleteOutgoingFollowNotifications(subscribes, myId);
 
         return buildActionResult(myId, subscribes);
     }
 
-    // Tarafımıza düşen durumları toplayıp mobilin işleyebileceği net durumu veren hesaplama
     private SubscribeActionResult buildActionResult(Long myId, Long targetUserId) {
-        Optional<SubscribeStatus> myRequestStatus = subscribeRepo.findStatusBySubscriberIdAndSubscribedId(myId, targetUserId);
+        List<SubscribeEntity> relations = subscribeRepo.findRelationsBetween(myId, targetUserId);
 
-        RelationStatus relationStatus;
-        if (myRequestStatus.isPresent()) {
-            relationStatus = myRequestStatus.get() == SubscribeStatus.ACCEPTED
-                    ? RelationStatus.FOLLOWING
-                    : RelationStatus.PENDING;
-        } else {
-            boolean isFollower = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
-                    targetUserId, myId, SubscribeStatus.ACCEPTED
-            );
-            relationStatus = isFollower ? RelationStatus.FOLLOW_BACK : RelationStatus.NOT_FOLLOWING;
+        RelationStatus relationStatus = RelationStatus.NOT_FOLLOWING;
+        boolean hasPendingIncoming = false;
+        boolean isFollower = false;
+
+        for (SubscribeEntity relation : relations) {
+            // Benim karşıya gönderdiğim istek veya takip
+            if (relation.getSubscriber().getId().equals(myId)) {
+                if (relation.getStatus() == SubscribeStatus.ACCEPTED) {
+                    relationStatus = RelationStatus.FOLLOWING;
+                } else if (relation.getStatus() == SubscribeStatus.PENDING) {
+                    relationStatus = RelationStatus.PENDING;
+                }
+            }
+            // Karşı tarafın bana gönderdiği istek veya takip
+            else if (relation.getSubscriber().getId().equals(targetUserId)) {
+                if (relation.getStatus() == SubscribeStatus.ACCEPTED) {
+                    isFollower = true;
+                } else if (relation.getStatus() == SubscribeStatus.PENDING) {
+                    hasPendingIncoming = true;
+                }
+            }
         }
 
-        boolean hasPendingIncoming = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
-                targetUserId, myId, SubscribeStatus.PENDING
-        );
+        if (relationStatus == RelationStatus.NOT_FOLLOWING && isFollower) {
+            relationStatus = RelationStatus.FOLLOW_BACK;
+        }
 
-
-        return new SubscribeActionResult(
-                targetUserId,
-                relationStatus,
-                hasPendingIncoming
-        );
+        return new SubscribeActionResult(targetUserId, relationStatus, hasPendingIncoming, isFollower);
     }
 
     public Page<SubscribeDTO> getUserSubscribes(Long userId, Long myId, int page, int size) {
@@ -272,8 +280,8 @@ public class SubscribeService {
 
         FcmNotificationEvent event = new FcmNotificationEvent(
                 targetUserId,
-                "notification.follow.request.accepted.title", // "Takip İsteği Kabul Edildi"
-                "notification.follow.request.accepted.body",  // "X takip isteğinizi kabul etti."
+                "notification.follow.request.accepted.title",
+                "notification.follow.request.accepted.body",
                 new Object[]{senderUsername},
                 payloadData
         );

@@ -5,8 +5,8 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.beem.TastyMap.userRelated.block.BlockRepo;
-import com.beem.TastyMap.userRelated.common.CalculateRelationStatus;
 import com.beem.TastyMap.userRelated.subscribe.RelationStatus;
+import com.beem.TastyMap.userRelated.subscribe.SubscribeEntity;
 import com.beem.TastyMap.userRelated.subscribe.SubscribeRepo;
 import com.beem.TastyMap.userRelated.subscribe.SubscribeStatus;
 import org.springframework.context.MessageSource;
@@ -14,6 +14,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -23,17 +24,15 @@ public class OtherProfileService {
     private final BlockRepo blockRepo;
     private final SubscribeRepo subscribeRepo;
     private final MessageSource messageSource;
-    private final CalculateRelationStatus relationStatusCalculator;
 
     public OtherProfileService(UserRepo userRepo,
                                BlockRepo blockRepo,
                                SubscribeRepo subscribeRepo,
-                               MessageSource messageSource, CalculateRelationStatus relationStatusCalculator) {
+                               MessageSource messageSource) {
         this.userRepo = userRepo;
         this.blockRepo = blockRepo;
         this.subscribeRepo = subscribeRepo;
         this.messageSource = messageSource;
-        this.relationStatusCalculator = relationStatusCalculator;
     }
 
     private String getMessage(String code) {
@@ -50,39 +49,57 @@ public class OtherProfileService {
                     user.getUsername(), user.getName(), user.getSurname(),
                     user.getProfile(), user.getRole(), user.getBiography(),
                     user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                    false, false, RelationStatus.SELF, false
+                    false, false, RelationStatus.SELF, false, false
             );
         }
 
         UserEntity user = userRepo.findById(targetUserId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
 
-        boolean blockedByMe = blockRepo.existsByBlocker_IdAndBlocked_Id(myId, targetUserId);
-        boolean blockedMe = blockRepo.existsByBlocker_IdAndBlocked_Id(targetUserId, myId);
+        List<Long> blockerIds = blockRepo.findBlockerIdsBetween(myId, targetUserId);
+        boolean blockedByMe = blockerIds.contains(myId);
+        boolean blockedMe = blockerIds.contains(targetUserId);
 
         if (blockedByMe || blockedMe) {
             return new ProfileDTOresponse(
                     user.getUsername(), user.getName(), user.getSurname(),
                     null, user.getRole(), user.getBiography(),
                     0, 0, 0,
-                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false
+                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false,false
             );
         }
-        // 1. Sizin karşı tarafa olan durumunuz (FOLLOWING, PENDING, FOLLOW_BACK veya NOT_FOLLOWING)
-        RelationStatus myStatus = relationStatusCalculator.calculate(myId, targetUserId);
+        List<SubscribeEntity> relations = subscribeRepo.findRelationsBetween(myId, targetUserId);
 
-        // 2. Karşı tarafın size attığı onay bekleyen istek var mı?
-        boolean hasPendingIncoming = subscribeRepo.existsBySubscriber_IdAndSubscribed_IdAndStatus(
-                targetUserId, myId, SubscribeStatus.PENDING
-        );
+        RelationStatus myStatus = RelationStatus.NOT_FOLLOWING;
+        boolean hasPendingIncoming = false;
+        boolean isFollower = false;
+
+        for (SubscribeEntity relation : relations) {
+            if (relation.getSubscriber().getId().equals(myId)) {
+                if (relation.getStatus() == SubscribeStatus.ACCEPTED) {
+                    myStatus = RelationStatus.FOLLOWING;
+                } else if (relation.getStatus() == SubscribeStatus.PENDING) {
+                    myStatus = RelationStatus.PENDING;
+                }
+            }
+            else if (relation.getSubscriber().getId().equals(targetUserId)) {
+                if (relation.getStatus() == SubscribeStatus.ACCEPTED) {
+                    isFollower = true;
+                } else if (relation.getStatus() == SubscribeStatus.PENDING) {
+                    hasPendingIncoming = true;
+                }
+            }
+        }
+
+        if (myStatus == RelationStatus.NOT_FOLLOWING && isFollower) {
+            myStatus = RelationStatus.FOLLOW_BACK;
+        }
 
         return new ProfileDTOresponse(
                 user.getUsername(), user.getName(), user.getSurname(),
                 user.getProfile(), user.getRole(), user.getBiography(),
                 user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                false, false, myStatus, hasPendingIncoming
+                false, false, myStatus, hasPendingIncoming, isFollower
         );
-
     }
-
 }

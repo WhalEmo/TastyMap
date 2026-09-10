@@ -124,7 +124,7 @@ public class MyProfileService {
                 user.getUsername(), user.getName(), user.getSurname(),
                 user.getProfile(), user.getRole(), user.getBiography(),
                 user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                false, false, RelationStatus.SELF, false
+                false, false, RelationStatus.SELF, false, false
         );
     }
 

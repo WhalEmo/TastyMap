@@ -168,7 +168,7 @@ public class UserService implements UserDetailsService {
         RiskResult riskResult = riskAnalysisService.calculateRiskScore(user, ip, deviceId);
         UserDeviceDTO cachedDevice = riskResult.getDeviceDto();
 
-        if (riskResult.getScore() != 0) {
+        if (riskResult.getScore() >=70) {
             System.out.println("USerservıce ife gırdı");
             return handleHighRiskLogin(user, dto, userAgent, ip, cachedDevice);
         }

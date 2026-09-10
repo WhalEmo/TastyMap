@@ -1,6 +1,7 @@
 package com.beem.TastyMap.userRelated.profile;
 
 import com.beem.TastyMap.userRelated.subscribe.RelationStatus;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ProfileDTOresponse {
     private String username;
@@ -16,6 +17,9 @@ public class ProfileDTOresponse {
     private boolean blockedMe;
     private RelationStatus relationStatus;
     private boolean hasPendingIncomingRequest;
+
+    @JsonProperty("isFollower")
+    private boolean isFollower;
 
     public ProfileDTOresponse() {
     }
@@ -33,7 +37,7 @@ public class ProfileDTOresponse {
             boolean blockedByMe,    //ben engelledım
             boolean blockedMe,// o benı engelledı
             RelationStatus relationStatus,
-            boolean hasPendingIncomingRequest
+            boolean hasPendingIncomingRequest,boolean isFollower
     ) {
         this.username = username;
         this.name = name;
@@ -48,6 +52,7 @@ public class ProfileDTOresponse {
         this.blockedByMe = blockedByMe;
         this.relationStatus = relationStatus;
         this.hasPendingIncomingRequest = hasPendingIncomingRequest;
+        this.isFollower = isFollower;
     }
 
     // Getter ve Setter metotları...
@@ -153,5 +158,13 @@ public class ProfileDTOresponse {
 
     public void setSurname(String surname) {
         this.surname = surname;
+    }
+
+    public boolean isFollower() {
+        return isFollower;
+    }
+
+    public void setFollower(boolean follower) {
+        isFollower = follower;
     }
 }
