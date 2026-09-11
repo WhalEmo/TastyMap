@@ -3,7 +3,9 @@ package com.beem.TastyMap.userRelated.block;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
+import com.beem.TastyMap.userRelated.socialnotifications.SocialNotificationService;
 import com.beem.TastyMap.userRelated.subscribe.SubscribeRepo;
+import com.beem.TastyMap.userRelated.subscribe.SubscribeStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.context.MessageSource;
@@ -22,17 +24,19 @@ public class BlockService {
     private final EntityManager entityManager;
     private final SubscribeRepo subscribeRepo;
     private final MessageSource messageSource;
+    private final SocialNotificationService socialNotificationService;
 
     public BlockService(BlockRepo blockRepo,
                         UserRepo userRepo,
                         EntityManager entityManager,
                         SubscribeRepo subscribeRepo,
-                        MessageSource messageSource) {
+                        MessageSource messageSource, SocialNotificationService socialNotificationService) {
         this.blockRepo = blockRepo;
         this.userRepo = userRepo;
         this.entityManager = entityManager;
         this.subscribeRepo = subscribeRepo;
         this.messageSource = messageSource;
+        this.socialNotificationService = socialNotificationService;
     }
 
     private String getMessage(String code) {
@@ -54,9 +58,10 @@ public class BlockService {
 
             blockRepo.saveAndFlush(block);
 
-            handleUnsubscribe(myId, userId);
-            handleUnsubscribe(userId, myId);
+            safeUnsubscribe(myId, userId);
+            safeUnsubscribe(userId, myId);
 
+            socialNotificationService.clearFollowNotificationsBetween(myId, userId);
         } catch (DataIntegrityViolationException e) {
             throw new CustomExceptions.UserAlreadyExistsException(getMessage("block.already.exists.or.user.not.found"));
         } catch (EntityNotFoundException e) {
@@ -64,11 +69,18 @@ public class BlockService {
         }
     }
 
-    private void handleUnsubscribe(Long subscriber, Long subscribed) {
-        if (subscribeRepo.deleteAndCount(subscriber, subscribed) > 0) {
-            userRepo.updateSubscribedCount(subscriber, -1);
-            userRepo.updateSubscriberCount(subscribed, -1);
-        }
+    private void safeUnsubscribe(Long subscriberId, Long subscribedId) {
+        subscribeRepo.findBySubscriber_IdAndSubscribed_Id(subscriberId, subscribedId)
+                .ifPresent(entity -> {
+                    boolean wasAccepted = entity.getStatus() == SubscribeStatus.ACCEPTED;
+
+                    subscribeRepo.delete(entity);
+
+                    if (wasAccepted) {
+                        userRepo.updateSubscribedCount(subscriberId, -1);
+                        userRepo.updateSubscriberCount(subscribedId, -1);
+                    }
+                });
     }
 
     public void unBlock(Long userId, Long myId) {
