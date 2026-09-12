@@ -21,4 +21,9 @@ public interface BlockRepo extends JpaRepository<BlockEntity,Long> ,BlockRepoCus
             "(b.blocker.id = :userId AND b.blocked.id = :targetId) OR " +
             "(b.blocker.id = :targetId AND b.blocked.id = :userId)")
     boolean isBlockExistsBetween(@Param("userId") Long userId, @Param("targetId") Long targetId);
+
+    @Query("SELECT b.blocked.id FROM BlockEntity b WHERE b.blocker.id = :userId " +
+            "UNION " +
+            "SELECT b.blocker.id FROM BlockEntity b WHERE b.blocked.id = :userId")
+    List<Long> findExcludedUserIds(@Param("userId") Long userId);
 }

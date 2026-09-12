@@ -17,6 +17,7 @@ public class ProfileDTOresponse {
     private boolean blockedMe;
     private RelationStatus relationStatus;
     private boolean hasPendingIncomingRequest;
+    private boolean privateProfile;
 
     @JsonProperty("isFollower")
     private boolean isFollower;
@@ -37,7 +38,7 @@ public class ProfileDTOresponse {
             boolean blockedByMe,    //ben engelledım
             boolean blockedMe,// o benı engelledı
             RelationStatus relationStatus,
-            boolean hasPendingIncomingRequest,boolean isFollower
+            boolean hasPendingIncomingRequest,boolean isFollower,boolean privateProfile
     ) {
         this.username = username;
         this.name = name;
@@ -53,6 +54,7 @@ public class ProfileDTOresponse {
         this.relationStatus = relationStatus;
         this.hasPendingIncomingRequest = hasPendingIncomingRequest;
         this.isFollower = isFollower;
+        this.privateProfile = privateProfile;
     }
 
     // Getter ve Setter metotları...
@@ -166,5 +168,13 @@ public class ProfileDTOresponse {
 
     public void setFollower(boolean follower) {
         isFollower = follower;
+    }
+
+    public boolean isPrivateProfile() {
+        return privateProfile;
+    }
+
+    public void setPrivateProfile(boolean privateProfile) {
+        this.privateProfile = privateProfile;
     }
 }

@@ -1,5 +1,6 @@
 package com.beem.TastyMap.registerLogin;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import org.hibernate.search.engine.backend.types.Projectable;
 import org.hibernate.search.engine.backend.types.Searchable;
@@ -32,7 +33,7 @@ public class UserEntity {
     @Column(nullable = false,length = 20)
     private String name;
 
-    @FullTextField
+    @FullTextField(projectable = Projectable.YES)
     @Column(nullable = false,length = 20)
     private String surname;
 
@@ -56,6 +57,7 @@ public class UserEntity {
     @FullTextField(projectable = Projectable.YES)
     private String biography;
 
+    @JsonProperty("privateProfile")
     @Column(nullable = false)
     private boolean privateProfile = false;
 

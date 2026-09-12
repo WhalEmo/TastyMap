@@ -107,4 +107,14 @@ public class MyProfileController {
         return ResponseEntity.ok(myProfileService.getAllUsers());
     }
 
+    @PatchMapping("/privacy")
+    public ResponseEntity<Void> updatePrivacyStatus(
+            @RequestParam boolean isPrivate,
+            Authentication authentication
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+        myProfileService.updatePrivacyStatus(userId, isPrivate);
+        return ResponseEntity.ok().build();
+    }
+
 }

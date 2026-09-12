@@ -120,12 +120,19 @@ public class MyProfileService {
     public ProfileDTOresponse getMyProfile(Long myId) {
         UserEntity user = userRepo.findById(myId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
-        return new ProfileDTOresponse(
+
+        System.out.println("PROFILE_LOG [DB Entity]: User ID: {}, Username: {}, isPrivateProfile: {}"+ user.getId()+ user.getUsername()+ user.isPrivateProfile());
+
+        ProfileDTOresponse response = new ProfileDTOresponse(
                 user.getUsername(), user.getName(), user.getSurname(),
                 user.getProfile(), user.getRole(), user.getBiography(),
                 user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                false, false, RelationStatus.SELF, false, false
+                false, false, RelationStatus.SELF, false, false, user.isPrivateProfile()
         );
+
+        System.out.println("PROFILE_LOG [DTO Response]: privateProfile value set in DTO: {}"+ response.isPrivateProfile());
+
+        return response;
     }
 
     public UserResponseDTO getMe(Long myId){
@@ -134,10 +141,21 @@ public class MyProfileService {
         return new UserResponseDTO(user);
     }
 
+    @Transactional
+    public void updatePrivacyStatus(Long userId, boolean isPrivate) {
+        UserEntity user = userRepo.findById(userId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found")));
+
+        user.setPrivateProfile(isPrivate);
+        userRepo.save(user);
+    }
+
     @Transactional(readOnly = true)
     public List<UserResponseDTO> getAllUsers() {
         return userRepo.findAll().stream()
                 .map(UserResponseDTO::new)
                 .toList();
     }
+
+
 }

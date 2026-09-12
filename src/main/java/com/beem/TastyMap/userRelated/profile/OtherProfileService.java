@@ -49,7 +49,7 @@ public class OtherProfileService {
                     user.getUsername(), user.getName(), user.getSurname(),
                     user.getProfile(), user.getRole(), user.getBiography(),
                     user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                    false, false, RelationStatus.SELF, false, false
+                    false, false, RelationStatus.SELF, false, false,user.isPrivateProfile()
             );
         }
 
@@ -65,7 +65,7 @@ public class OtherProfileService {
                     user.getUsername(), user.getName(), user.getSurname(),
                     null, user.getRole(), user.getBiography(),
                     0, 0, 0,
-                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false,false
+                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false,false,user.isPrivateProfile()
             );
         }
         List<SubscribeEntity> relations = subscribeRepo.findRelationsBetween(myId, targetUserId);
@@ -99,7 +99,7 @@ public class OtherProfileService {
                 user.getUsername(), user.getName(), user.getSurname(),
                 user.getProfile(), user.getRole(), user.getBiography(),
                 user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                false, false, myStatus, hasPendingIncoming, isFollower
+                false, false, myStatus, hasPendingIncoming, isFollower,user.isPrivateProfile()
         );
     }
 }
