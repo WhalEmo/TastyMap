@@ -1,16 +1,15 @@
 package com.beem.TastyMap.rag.service;
 
-import com.beem.TastyMap.userRelated.health.entitys.UserAllergiesEntity;
-import com.beem.TastyMap.userRelated.health.entitys.UserHealthEntity;
-import com.beem.TastyMap.userRelated.health.repos.UserAllergiesRepo;
-import com.beem.TastyMap.userRelated.health.repos.UserHealthRepo;
-import com.beem.TastyMap.userRelated.visit.VisitResponseDTO;
+import com.beem.TastyMap.user.health.entity.UserAllergiesEntity;
+import com.beem.TastyMap.user.health.entity.UserHealthEntity;
+import com.beem.TastyMap.user.health.repo.UserAllergiesRepo;
+import com.beem.TastyMap.user.health.repo.UserHealthRepo;
+import com.beem.TastyMap.visit.dto.VisitResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component

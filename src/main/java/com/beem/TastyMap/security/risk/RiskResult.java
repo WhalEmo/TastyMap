@@ -1,6 +1,6 @@
 package com.beem.TastyMap.security.risk;
 
-import com.beem.TastyMap.security.device.UserDeviceDTO;
+import com.beem.TastyMap.security.device.dto.UserDeviceDTO;
 
 public class RiskResult {
     private final int score;

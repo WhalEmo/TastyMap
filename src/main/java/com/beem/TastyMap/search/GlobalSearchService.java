@@ -2,7 +2,7 @@ package com.beem.TastyMap.search;
 
 
 import com.beem.TastyMap.maps.entity.PlaceEntity;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import com.beem.TastyMap.search.data.AppUserResult;
 import com.beem.TastyMap.search.data.GlobalSearchResult;
 import com.beem.TastyMap.search.data.SearchMapper;

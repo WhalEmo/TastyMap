@@ -1,9 +1,9 @@
 package com.beem.TastyMap.security.risk;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.notification.NotificationRepo;
-import com.beem.TastyMap.notification.SecurityHistorySummary;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.securitynotification.NotificationRepo;
+import com.beem.TastyMap.securitynotification.SecurityHistorySummary;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
 import org.springframework.context.MessageSource;

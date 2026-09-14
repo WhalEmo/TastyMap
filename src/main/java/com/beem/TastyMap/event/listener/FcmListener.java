@@ -1,8 +1,8 @@
 package com.beem.TastyMap.event.listener;
 
 import com.beem.TastyMap.event.model.FcmNotificationEvent;
-import com.beem.TastyMap.notification.FcmService;
-import com.beem.TastyMap.security.device.UserDeviceRepo;
+import com.beem.TastyMap.securitynotification.FcmService;
+import com.beem.TastyMap.security.device.repo.UserDeviceRepo;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.context.event.EventListener;

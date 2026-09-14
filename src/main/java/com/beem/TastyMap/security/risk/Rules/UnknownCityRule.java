@@ -1,6 +1,6 @@
 package com.beem.TastyMap.security.risk.Rules;
 
-import com.beem.TastyMap.security.device.UserDeviceRepo;
+import com.beem.TastyMap.security.device.repo.UserDeviceRepo;
 import com.beem.TastyMap.security.risk.RiskContext;
 import com.beem.TastyMap.security.risk.RiskRule;
 import org.springframework.stereotype.Service;

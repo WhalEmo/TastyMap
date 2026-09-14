@@ -1,7 +1,7 @@
 package com.beem.TastyMap;
 
 import com.beem.TastyMap.redis.RedisRateLimitService;
-import com.beem.TastyMap.registerLogin.UserService;
+import com.beem.TastyMap.user.account.service.UserService;
 import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;

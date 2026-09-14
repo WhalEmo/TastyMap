@@ -1,7 +1,7 @@
 package com.beem.TastyMap.security.verification.common;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import com.beem.TastyMap.security.banned.BanDurationFormatter;
 import com.beem.TastyMap.security.banned.BannedDeviceEntity;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;

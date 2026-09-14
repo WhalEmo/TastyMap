@@ -1,11 +1,11 @@
 package com.beem.TastyMap.rag.service;
 
-import com.beem.TastyMap.userRelated.health.entitys.UserAllergiesEntity;
-import com.beem.TastyMap.userRelated.health.entitys.UserHealthEntity;
-import com.beem.TastyMap.userRelated.health.repos.UserAllergiesRepo;
-import com.beem.TastyMap.userRelated.health.repos.UserHealthRepo;
-import com.beem.TastyMap.userRelated.visit.VisitResponseDTO;
-import com.beem.TastyMap.userRelated.visit.VisitService;
+import com.beem.TastyMap.user.health.entity.UserAllergiesEntity;
+import com.beem.TastyMap.user.health.entity.UserHealthEntity;
+import com.beem.TastyMap.user.health.repo.UserAllergiesRepo;
+import com.beem.TastyMap.user.health.repo.UserHealthRepo;
+import com.beem.TastyMap.visit.dto.VisitResponseDTO;
+import com.beem.TastyMap.visit.service.VisitService;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;

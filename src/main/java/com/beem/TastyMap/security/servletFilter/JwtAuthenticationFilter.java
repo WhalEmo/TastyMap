@@ -1,6 +1,6 @@
 package com.beem.TastyMap.security.servletFilter;
 
-import com.beem.TastyMap.registerLogin.UserService;
+import com.beem.TastyMap.user.account.service.UserService;
 import com.beem.TastyMap.security.token.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

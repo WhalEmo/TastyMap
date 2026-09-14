@@ -1,0 +1,89 @@
+package com.beem.TastyMap.security.device.service;
+
+import com.beem.TastyMap.security.device.dto.UserDeviceDTO;
+import com.beem.TastyMap.security.device.entity.UserDeviceEntity;
+import com.beem.TastyMap.security.device.repo.UserDeviceRepo;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.security.Location.GeoLocationService;
+import com.beem.TastyMap.security.util.IpUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
+
+@Service
+public class UserDeviceService {
+    private final UserDeviceRepo userDeviceRepo;
+    private final GeoLocationService geoLocationService;
+
+    public UserDeviceService(UserDeviceRepo userDeviceRepo, GeoLocationService geoLocationService) {
+        this.userDeviceRepo = userDeviceRepo;
+        this.geoLocationService = geoLocationService;
+    }
+
+    @Transactional
+    public void registerOrUpdateDevice(UserEntity user,
+                                       String deviceId,
+                                       String userAgent,
+                                       String fcmToken,
+                                       boolean isTrusted,
+                                       UserDeviceDTO deviceDto) {
+
+        String ip = IpUtils.getClientIp();
+        String city = geoLocationService.getCity(ip);
+        LocalDateTime now = LocalDateTime.now();
+
+        UserDeviceEntity device;
+
+        if (deviceDto != null && deviceDto.getId() != null) {
+            device = userDeviceRepo.getReferenceById(deviceDto.getId());
+        } else {
+            device = userDeviceRepo.findByUser_IdAndDeviceId(user.getId(), deviceId)
+                    .orElseGet(() -> {
+                        UserDeviceEntity newDevice = new UserDeviceEntity();
+                        newDevice.setUser(user);
+                        newDevice.setDeviceId(deviceId);
+                        return newDevice;
+                    });
+        }
+        device.setUserAgent(userAgent);
+        device.setLastIpAddress(ip);
+        device.setLastCity(city);
+        device.setLastLoginAt(now);
+        device.setTrusted(isTrusted);
+
+        if (fcmToken != null) {
+            device.setFcmToken(fcmToken);
+        }
+
+        userDeviceRepo.save(device);
+    }
+
+    @Transactional
+    public void updateFcmToken(Long userId, String deviceId, String newFcmToken) {
+        if (newFcmToken == null || newFcmToken.isBlank() || deviceId == null || deviceId.isBlank()) {
+            return;
+        }
+
+        userDeviceRepo.nullifyTokenFromOtherDevices(newFcmToken, userId, deviceId);
+
+        UserDeviceEntity device = userDeviceRepo.findByUser_IdAndDeviceId(userId, deviceId)
+                .orElseGet(() -> {
+                    UserDeviceEntity newDevice = new UserDeviceEntity();
+                    UserEntity userReference = new UserEntity();
+                    userReference.setId(userId);
+                    newDevice.setUser(userReference);
+                    newDevice.setDeviceId(deviceId);
+                    return newDevice;
+                });
+
+
+        if (newFcmToken.equals(device.getFcmToken())) {
+            return;
+        }
+
+        device.setFcmToken(newFcmToken);
+        device.setLastLoginAt(LocalDateTime.now());
+
+        userDeviceRepo.save(device);
+    }
+}
