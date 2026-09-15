@@ -1,9 +1,10 @@
 package com.beem.TastyMap.post.repo;
 
-import com.beem.TastyMap.user.QUserEntity;
+
 import com.beem.TastyMap.post.dto.PostResponseDTO;
-import com.beem.TastyMap.userRelated.post.QPostEntity;
-import com.beem.TastyMap.userRelated.post.like.QPostLikeEntity;
+import com.beem.TastyMap.post.entity.QPostEntity;
+import com.beem.TastyMap.post.like.QPostLikeEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;

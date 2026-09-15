@@ -1,8 +1,8 @@
 package com.beem.TastyMap.user.health.repo;
 
 import com.beem.TastyMap.user.health.dto.AllergyInfoDTO;
-import com.beem.TastyMap.userRelated.health.entity.QAllergiesEntity;
-import com.beem.TastyMap.userRelated.health.entity.QUserAllergiesEntity;
+import com.beem.TastyMap.user.health.entity.QAllergiesEntity;
+import com.beem.TastyMap.user.health.entity.QUserAllergiesEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 

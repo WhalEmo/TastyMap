@@ -1,12 +1,15 @@
 package com.beem.TastyMap.user.account.dto;
 
+import com.beem.TastyMap.user.account.model.DeleteReason;
 import jakarta.validation.constraints.NotBlank;
 
 public class DeleteAccountRequest {
     @NotBlank(message = "{validation.login.password.notblank}")
     private String password;
 
-    private String reason;
+    private String customReason;
+
+    private DeleteReason reasonType;
 
     public String getPassword() {
         return password;
@@ -16,11 +19,19 @@ public class DeleteAccountRequest {
         this.password = password;
     }
 
-    public String getReason() {
-        return reason;
+    public String getCustomReason() {
+        return customReason;
     }
 
-    public void setReason(String reason) {
-        this.reason = reason;
+    public void setCustomReason(String customReason) {
+        this.customReason = customReason;
+    }
+
+    public DeleteReason getReasonType() {
+        return reasonType;
+    }
+
+    public void setReasonType(DeleteReason reasonType) {
+        this.reasonType = reasonType;
     }
 }

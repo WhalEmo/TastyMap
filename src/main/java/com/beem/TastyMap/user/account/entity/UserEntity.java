@@ -1,5 +1,6 @@
 package com.beem.TastyMap.user.account.entity;
 
+import com.beem.TastyMap.user.account.model.DeleteReason;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import org.hibernate.annotations.SQLRestriction;
@@ -81,6 +82,12 @@ public class UserEntity {
 
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
+
+    @Enumerated(EnumType.STRING)
+    private DeleteReason deleteReasonType;
+
+    @Column(length = 500)
+    private String customDeleteReason;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt = null;
@@ -235,5 +242,21 @@ public class UserEntity {
 
     public void setDeletedAt(LocalDateTime deletedAt) {
         this.deletedAt = deletedAt;
+    }
+
+    public DeleteReason getDeleteReasonType() {
+        return deleteReasonType;
+    }
+
+    public void setDeleteReasonType(DeleteReason deleteReasonType) {
+        this.deleteReasonType = deleteReasonType;
+    }
+
+    public String getCustomDeleteReason() {
+        return customDeleteReason;
+    }
+
+    public void setCustomDeleteReason(String customDeleteReason) {
+        this.customDeleteReason = customDeleteReason;
     }
 }

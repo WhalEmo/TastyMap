@@ -1,9 +1,8 @@
 package com.beem.TastyMap.post.like;
 
-import com.beem.TastyMap.user.QUserEntity;
-import com.beem.TastyMap.userRelated.block.QBlockEntity;
-import com.beem.TastyMap.userRelated.post.like.QPostLikeEntity;
-import com.beem.TastyMap.userRelated.subscribe.QSubscribeEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
+import com.beem.TastyMap.user.block.entity.QBlockEntity;
+import com.beem.TastyMap.user.subscribe.entity.QSubscribeEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;

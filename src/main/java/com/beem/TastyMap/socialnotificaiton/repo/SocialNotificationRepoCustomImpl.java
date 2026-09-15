@@ -1,10 +1,10 @@
 package com.beem.TastyMap.socialnotificaiton.repo;
 
-import com.beem.TastyMap.user.QUserEntity;
-import com.beem.TastyMap.userRelated.socialnotifications.QSocialNotificationEntity;
 import com.beem.TastyMap.socialnotificaiton.dto.SocialNotificationDTO;
+import com.beem.TastyMap.socialnotificaiton.entity.QSocialNotificationEntity;
 import com.beem.TastyMap.socialnotificaiton.model.NotificationActionStatus;
 import com.beem.TastyMap.socialnotificaiton.model.SocialNotificationType;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.beem.TastyMap.user.subscribe.model.RelationStatus;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;

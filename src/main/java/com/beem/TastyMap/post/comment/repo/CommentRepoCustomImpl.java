@@ -1,9 +1,9 @@
 package com.beem.TastyMap.post.comment.repo;
 
-import com.beem.TastyMap.user.QUserEntity;
 import com.beem.TastyMap.post.comment.dto.CommentsResponseDTO;
-import com.beem.TastyMap.userRelated.post.comment.like.QLikeEntity;
-import com.beem.TastyMap.userRelated.post.comment.QCommentEntity;
+import com.beem.TastyMap.post.comment.entity.QCommentEntity;
+import com.beem.TastyMap.post.comment.like.QLikeEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;

@@ -35,6 +35,6 @@ public interface RefreshTokenRepo extends JpaRepository<RefreshTokenEntity,Long>
     Optional<RefreshTokenEntity> findByUserIdAndDeviceIdAndRevokedFalse(Long userId, String deviceId);
 
     @Modifying
-    @Query("DELETE FROM RefreshToken r WHERE r.user.id = :userId")
+    @Query("DELETE FROM RefreshTokenEntity r WHERE r.user.id = :userId")
     void revokeAllUserTokens(@Param("userId") Long userId);
 }

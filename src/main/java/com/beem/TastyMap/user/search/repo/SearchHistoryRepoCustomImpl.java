@@ -1,8 +1,8 @@
 package com.beem.TastyMap.user.search.repo;
 
-import com.beem.TastyMap.user.QUserEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.beem.TastyMap.user.search.dto.UserSearchDTO;
-import com.beem.TastyMap.userRelated.search.searchhistory.QSearchHistoryEntity;
+import com.beem.TastyMap.user.search.entity.QSearchHistoryEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;

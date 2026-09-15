@@ -1,7 +1,7 @@
 package com.beem.TastyMap.user.subscribe.repo;
 
-import com.beem.TastyMap.user.QUserEntity;
-import com.beem.TastyMap.userRelated.subscribe.QSubscribeEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
+import com.beem.TastyMap.user.subscribe.entity.QSubscribeEntity;
 import com.beem.TastyMap.user.subscribe.model.RelationStatus;
 import com.beem.TastyMap.user.subscribe.model.SubscribeStatus;
 import com.beem.TastyMap.user.subscribe.dto.SubscribeDTO;

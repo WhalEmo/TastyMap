@@ -1,6 +1,6 @@
 package com.beem.TastyMap.security.refreshtoken.repo;
-import com.beem.TastyMap.security.device.QUserDeviceEntity;
-import com.beem.TastyMap.security.refreshtoken.QRefreshTokenEntity;
+import com.beem.TastyMap.security.device.entity.QUserDeviceEntity;
+import com.beem.TastyMap.security.refreshtoken.entity.QRefreshTokenEntity;
 import com.beem.TastyMap.user.profile.dto.ActiveDeviceDTO;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;

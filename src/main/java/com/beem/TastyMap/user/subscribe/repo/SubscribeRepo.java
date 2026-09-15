@@ -2,6 +2,7 @@ package com.beem.TastyMap.user.subscribe.repo;
 
 import com.beem.TastyMap.user.subscribe.model.SubscribeStatus;
 import com.beem.TastyMap.user.subscribe.entity.SubscribeEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,12 +15,6 @@ import java.util.Set;
 public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long>,SubscribeRepoCustom {
     boolean existsBySubscriber_IdAndSubscribed_Id(Long subscriberId, Long subscribedId);
 
-    @Query("SELECT s.id FROM SubscribeEntity s WHERE s.subscriber.id = :myId AND s.subscribed.id = :targetId")
-    Optional<Long> findIdBySubscriberAndSubscribed(@Param("myId") Long myId, @Param("targetId") Long targetId);
-
-    @Modifying
-    @Query("DELETE FROM SubscribeEntity s WHERE s.subscriber.id = :suberId AND s.subscribed.id = :subedId")
-    int deleteAndCount(@Param("suberId") Long suberId, @Param("subedId") Long subedId);
 
     Optional<SubscribeEntity> findBySubscriber_IdAndSubscribed_Id(Long subscriberId, Long subscribedId);
 
@@ -41,4 +36,10 @@ public interface SubscribeRepo extends JpaRepository<SubscribeEntity,Long>,Subsc
             "(s.subscriber.id IN :actorIds AND s.subscribed.id = :myId)")
     List<SubscribeEntity> findRelationsBetweenMyIdAndActors(@Param("myId") Long myId, @Param("actorIds") Set<Long> actorIds);
 
+
+    @Query("SELECT s.subscriber.id FROM SubscribeEntity s WHERE s.subscribed.id = :targetUserId AND s.id > :lastId ORDER BY s.id ASC")
+    List<Long> findFollowerIdsKeyset(@Param("targetUserId") Long targetUserId, @Param("lastId") Long lastId, Pageable pageable);
+
+    @Query("SELECT s.subscribed.id FROM SubscribeEntity s WHERE s.subscriber.id = :targetUserId AND s.id > :lastId ORDER BY s.id ASC")
+    List<Long> findSubscribedIdsKeyset(@Param("targetUserId") Long targetUserId, @Param("lastId") Long lastId, Pageable pageable);
 }

@@ -1,8 +1,8 @@
 package com.beem.TastyMap.user.block.repo;
 
-import com.beem.TastyMap.user.QUserEntity;
-import com.beem.TastyMap.userRelated.block.QBlockEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.beem.TastyMap.user.block.dto.BlockDTOResponse;
+import com.beem.TastyMap.user.block.entity.QBlockEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;

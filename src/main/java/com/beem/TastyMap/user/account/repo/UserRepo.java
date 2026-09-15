@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -49,6 +50,24 @@ public interface UserRepo extends JpaRepository<UserEntity,Long> {
     @Modifying
     @Query(value = "DELETE FROM users WHERE is_deleted = true AND deleted_at < :dateThreshold", nativeQuery = true)
     int hardDeleteExpiredAccounts(@Param("dateThreshold") LocalDateTime dateThreshold);
+
+    @Modifying
+    @Query("UPDATE UserEntity u SET u.subscribedCount = u.subscribedCount - 1 " +
+            "WHERE u.id IN :userIds AND u.subscribedCount > 0")
+    void decrementSubscribedCountsInBatch(@Param("userIds") List<Long> userIds);
+
+    @Modifying
+    @Query("UPDATE UserEntity u SET u.subscribedCount = u.subscribedCount + 1 WHERE u.id IN :userIds")
+    void incrementSubscribedCountsInBatch(@Param("userIds") List<Long> userIds);
+
+    @Modifying
+    @Query("UPDATE UserEntity u SET u.subscriberCount = u.subscriberCount - 1 " +
+            "WHERE u.id IN :userIds AND u.subscriberCount > 0")
+    void decrementSubscriberCountsInBatch(@Param("userIds") List<Long> userIds);
+
+    @Modifying
+    @Query("UPDATE UserEntity u SET u.subscriberCount = u.subscriberCount + 1 WHERE u.id IN :userIds")
+    void incrementSubscriberCountsInBatch(@Param("userIds") List<Long> userIds);
 
 
 }

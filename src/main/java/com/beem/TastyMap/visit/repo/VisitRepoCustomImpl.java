@@ -1,7 +1,7 @@
 package com.beem.TastyMap.visit.repo;
 
-import com.beem.TastyMap.userRelated.visit.QVisitEntity;
 import com.beem.TastyMap.visit.dto.VisitResponseDTO;
+import com.beem.TastyMap.visit.entity.QVisitEntity;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;

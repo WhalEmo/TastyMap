@@ -7,10 +7,13 @@ import com.beem.TastyMap.exceptions.EmailNotVerifiedException;
 import com.beem.TastyMap.securitynotification.NotificationRepo;
 import com.beem.TastyMap.securitynotification.SecurityHistorySummary;
 import com.beem.TastyMap.securitynotification.Status;
+import com.beem.TastyMap.user.account.config.KafkaUserConfig;
 import com.beem.TastyMap.user.account.dto.LoginRequestDTO;
 import com.beem.TastyMap.user.account.dto.LoginResponseDTO;
 import com.beem.TastyMap.user.account.dto.UserRequestDTO;
 import com.beem.TastyMap.user.account.dto.UserResponseDTO;
+import com.beem.TastyMap.user.account.event.UserLifecycleEvent;
+import com.beem.TastyMap.user.account.event.UserLifecycleEventType;
 import com.beem.TastyMap.user.account.model.CustomUserDetails;
 import com.beem.TastyMap.user.account.repo.UserRepo;
 import com.beem.TastyMap.security.banned.BannedDeviceRepo;
@@ -32,6 +35,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.ResponseCookie;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -58,6 +62,7 @@ public class UserService implements UserDetailsService {
     private final JWTUtill jwtUtill;
     private final ApplicationEventPublisher eventPublisher;
     private final MessageSource messageSource;
+    private final KafkaTemplate<String, UserLifecycleEvent> kafkaTemplate;
 
     public UserService(UserRepo userRepo,
                        RefreshTokenRepo refreshTokenRepo,
@@ -71,7 +76,7 @@ public class UserService implements UserDetailsService {
                        PasswordEncoder passwordEncoder,
                        JWTUtill jwtUtill,
                        ApplicationEventPublisher eventPublisher,
-                       MessageSource messageSource) {
+                       MessageSource messageSource, KafkaTemplate<String, UserLifecycleEvent> kafkaTemplate) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.notificationRepo = notificationRepo;
@@ -85,6 +90,7 @@ public class UserService implements UserDetailsService {
         this.jwtUtill = jwtUtill;
         this.eventPublisher = eventPublisher;
         this.messageSource = messageSource;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @Value("${app.lockout-minutes}")
@@ -163,6 +169,13 @@ public class UserService implements UserDetailsService {
             user.setDeleted(false);
             user.setDeletedAt(null);
             userRepo.save(user);
+
+            UserLifecycleEvent restoredEvent = new UserLifecycleEvent(
+                    user.getId(),
+                    UserLifecycleEventType.RESTORED,
+                    LocalDateTime.now()
+            );
+            kafkaTemplate.send(KafkaUserConfig.USER_LIFECYCLE_EVENTS_TOPIC, String.valueOf(user.getId()), restoredEvent);
         }
 
         if (!user.isEmailVerified()) {
