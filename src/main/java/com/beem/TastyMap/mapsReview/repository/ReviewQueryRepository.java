@@ -1,13 +1,12 @@
 package com.beem.TastyMap.mapsReview.repository;
 
-import com.beem.TastyMap.maps.data.Review;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.data.ScoreDto;
 import com.beem.TastyMap.mapsReview.entity.QReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.QScoreEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
-import com.beem.TastyMap.registerLogin.QUserEntity;
+import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
