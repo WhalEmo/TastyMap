@@ -9,13 +9,6 @@ import java.util.List;
 @Component
 public class SearchMapper {
 
-    public VenueResult toVenueResult(PlaceEntity entity){
-        return new VenueResult(
-                entity.getId(),
-                entity.getName(),
-                entity.getVicinity()
-        );
-    }
 
     public AppUserResult toAppUserResult(UserEntity entity){
         return new AppUserResult(

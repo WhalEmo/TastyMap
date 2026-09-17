@@ -7,29 +7,31 @@ import com.beem.TastyMap.mapsReview.data.ReviewMapper;
 import com.beem.TastyMap.mapsReview.data.ScoreDto;
 import com.beem.TastyMap.mapsReview.data.request.SentReviewReq;
 import com.beem.TastyMap.mapsReview.data.request.UpdateReviewReq;
-import com.beem.TastyMap.mapsReview.data.response.CreatedReviewRes;
 import com.beem.TastyMap.mapsReview.data.response.ReviewResponse;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
-import com.beem.TastyMap.mapsReview.data.response.UpdatedReviewRes;
+import com.beem.TastyMap.mapsReview.entity.QReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ScoreEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
 import com.beem.TastyMap.mapsReview.enums.ScoreType;
-import com.beem.TastyMap.redis.RedisKeyGenerator;
+import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
+import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
+import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,40 +42,32 @@ import java.util.stream.Collectors;
 @Service
 public class ReviewService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReviewService.class);
+
     private final ReviewRepo reviewRepo;
     private final PlacesService placesService;
     private final EntityManager entityManager;
     private final UserRepo userRepo;
     private final ReviewMapper reviewMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final JPAQueryFactory queryFactory;
+    private final ReviewQueryRepository reviewQueryRepository;
 
     public ReviewService(ReviewRepo reviewRepo, PlacesService placesService,
                          EntityManager entityManager, UserRepo userRepo, ReviewMapper reviewMapper,
-                         ApplicationEventPublisher eventPublisher) {
+                         ApplicationEventPublisher eventPublisher, JPAQueryFactory queryFactory, ReviewQueryRepository reviewQueryRepository) {
         this.reviewRepo = reviewRepo;
         this.placesService = placesService;
         this.entityManager = entityManager;
         this.userRepo = userRepo;
         this.reviewMapper = reviewMapper;
         this.eventPublisher = eventPublisher;
+        this.queryFactory = queryFactory;
+        this.reviewQueryRepository = reviewQueryRepository;
     }
 
     @Transactional
     public ReviewResponse getPlaceReviews(String placeId, int page, int size) {
-        boolean hasData = reviewRepo.existsByPlace_PlaceIdAndSource(placeId, ReviewSource.GOOGLE);
-
-        if(hasData){
-            eventPublisher.publishEvent(new ReviewUpdateEvent(placeId));
-        }
-        else{
-            String key = RedisKeyGenerator.createPlaceDetailsKey(placeId);
-            System.out.println("getPlaceReviews");
-            placesService.searchPlaceDetailsGoogleAPI(
-                    placeId,
-                    key
-            );
-        }
-
         return getReviewDataBaseToResponse(
                 placeId,
                 page,
@@ -82,14 +76,8 @@ public class ReviewService {
     }
 
     private ReviewResponse getReviewDataBaseToResponse(String placeId, int page, int size){
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-
-        Page<ReviewEntity> reviewPage = reviewRepo.findByPlace_PlaceIdAndStatus(placeId, ReviewStatus.APPROVED, pageable);
-
-        List<ReviewResult> reviewResults = reviewPage.getContent()
-                .stream()
-                .map(ReviewResult::fromEntity)
-                .toList();
+        List<ReviewResult> reviewResults = reviewQueryRepository
+                .findReviews(placeId, page, size);
 
         return new ReviewResponse(
                 page,
@@ -123,9 +111,25 @@ public class ReviewService {
     }
 
     @Transactional
-    public CreatedReviewRes sendPlaceReview(SentReviewReq request, Long userId){
-        createReviewRequestDtoControl(request);
+    public ReviewResult sendPlaceReview(SentReviewReq request, Long userId){
+        if (request.getMainRating() == null || request.getMainRating() < 0.5 || request.getMainRating() > 5.0) {
+            throw new CustomExceptions.ServiceException("Rating must be between 0.5 and 5.0");
+        }
+
+        if (request.getParentId() == null) {
+            boolean alreadyReviewed = reviewRepo.existsByPlace_PlaceIdAndUserIdAndParentIsNullAndStatus(
+                    request.getPlaceId(),
+                    userId,
+                    ReviewStatus.APPROVED
+            );
+            if (alreadyReviewed) {
+                throw new CustomExceptions.InvalidException("Bu mekana zaten bir değerlendirme yaptınız. Mevcut yorumunuzu güncelleyebilirsiniz.");
+            }
+        }
+
         PlaceEntity place = placesService.getReferenceIfExists(request.getPlaceId());
+
+        createReviewRequestDtoControl(request, place.getId());
 
         UserEntity user = userRepo.findById(userId)
                 .orElseThrow(()-> new CustomExceptions.NotFoundException("User not found"));
@@ -143,19 +147,32 @@ public class ReviewService {
                 ReviewStatus.APPROVED
         );
 
-        applyScoreListCreate(request, entity);
+        entity.setRating(request.getMainRating());
+
+        List<ScoreDto> scoreDto = applyScoreListCreate(request, entity);
 
         reviewRepo.saveAndFlush(entity);
 
-        return new CreatedReviewRes(
+        if (request.getParentId() == null) {
+            updateTastyMapPlaceStats(place.getId());
+        }
+
+        return new ReviewResult(
                 entity.getId(),
-                place.getId(),
-                entity.getAuthorName(),
-                entity.getStatus(),
+                user.getId(),
+                user.getUsername(),
+                user.getProfile(),
+                entity.getRating(),
+                entity.getText(),
+                entity.getSource(),
+                entity.getParent() != null ? entity.getParent().getId() : null,
+                entity.getLikeCount(),
                 entity.getCreatedAt(),
-                request.getScores()
+                entity.getUpdateAt(),
+                scoreDto
         );
     }
+
 
     @Transactional
     public Map<String, Object> deletePlaceReview(Long reviewId, Long userId){
@@ -165,31 +182,67 @@ public class ReviewService {
         review.setStatus(ReviewStatus.REJECTED);
 
         reviewRepo.rejectChildReviews(reviewId, ReviewStatus.REJECTED);
-        reviewRepo.save(review);
+        reviewRepo.saveAndFlush(review);
+
+        if (review.getPlace() != null && review.getParent() == null) {
+            updateTastyMapPlaceStats(review.getPlace().getId());
+        }
+
         return reviewMapper.toDeletedReviewRes();
     }
 
     @Transactional
-    public UpdatedReviewRes patchPlaceReview(UpdateReviewReq request, Long userId){
+    public ReviewResult patchPlaceReview(UpdateReviewReq request, Long userId){
         ReviewEntity review =
                 getReviewByUserIdAndReviewId(userId, request.getReviewId());
 
         //Security
         if(review.getStatus() != ReviewStatus.APPROVED)
             throw new CustomExceptions.ServiceException("This review not APPROVED.");
+
+        if (request.getMainRating() == null || request.getMainRating() < 0.5 || request.getMainRating() > 5.0) {
+            throw new CustomExceptions.ServiceException("Rating must be between 0.5 and 5.0");
+        }
         updateScoreRatingControl(request);
         updateChildParentScoreControl(review, request);
 
+
+        review.setRating(request.getMainRating());
+        review.setText(request.getContent() != null ? request.getContent().trim() : null);
+        review.setUpdateAt(System.currentTimeMillis());
+
         //Apply
         applyScoreUpdates(review, request);
-        applyContentUpdate(review, request);
         applyScoreDelete(review, request);
 
-        //Rebuild
-        review.recalculateRating();
+        ReviewEntity updatedReview = reviewRepo.saveAndFlush(review);
 
-        ReviewEntity updatedReview = reviewRepo.save(review);
-        return reviewMapper.toUpdatedReviewRes(updatedReview);
+        if (review.getPlace() != null) {
+            updateTastyMapPlaceStats(review.getPlace().getId());
+        }
+
+        List<ScoreDto> currentScoreDtos = updatedReview.getScores() != null
+                ? updatedReview.getScores().stream()
+                .map(s -> new ScoreDto(s.getType(), s.getScore()))
+                .toList()
+                : List.of();
+
+        UserEntity user = updatedReview.getUser();
+
+        return new ReviewResult(
+                updatedReview.getId(),
+                user != null ? user.getId() : null,
+                updatedReview.getAuthorName(),
+                user != null ? user.getProfile() : null,
+                updatedReview.getRating(),
+                updatedReview.getText(),
+                updatedReview.getSource(),
+                updatedReview.getParent() != null ? updatedReview.getParent().getId() : null,
+                updatedReview.getLikeCount(),
+                updatedReview.getCreatedAt(),
+                updatedReview.getUpdateAt(),
+                currentScoreDtos
+        );
     }
 
 
@@ -216,6 +269,20 @@ public class ReviewService {
                 ));
             }
         }
+
+        ScoreEntity overAll = existing.get(ScoreType.OVERALL);
+
+        if (overAll != null) {
+            overAll.setScore(request.getMainRating());
+        } else {
+            review.getScores().add(
+                    new ScoreEntity(
+                            ScoreType.OVERALL,
+                            request.getMainRating(),
+                            review
+                    )
+            );
+        }
     }
 
     private void applyScoreDelete(ReviewEntity review, UpdateReviewReq request){
@@ -226,17 +293,8 @@ public class ReviewService {
                         .collect(Collectors.toSet());
 
         review.getScores().removeIf(
-                score -> !incomingTypes.contains(score.getType())
+                score -> score.getType() != ScoreType.OVERALL && !incomingTypes.contains(score.getType())
         );
-    }
-
-    private void applyContentUpdate(ReviewEntity review, UpdateReviewReq request) {
-
-        if (request.getContent() == null || request.getContent().isEmpty()) {
-            return;
-        }
-
-        review.setText(request.getContent());
     }
 
     private void updateScoreRatingControl(UpdateReviewReq req){
@@ -255,19 +313,45 @@ public class ReviewService {
                     "Child reviews cannot have scores."
             );
         }
-
-        if(!isChildReview && !hasScores){
-            throw new CustomExceptions.ServiceException(
-                    "Parent reviews must have scores."
-            );
-        }
     }
 
-    private void createReviewRequestDtoControl(SentReviewReq request){
+    private void updateTastyMapPlaceStats(Long placeId) {
+        QReviewEntity review = QReviewEntity.reviewEntity;
+
+        NumberExpression<Double> avgScoreExpr = review.rating.avg();
+        NumberExpression<Long> countExpr = review.count();
+
+        Tuple stats = queryFactory
+                .select(avgScoreExpr, countExpr)
+                .from(review)
+                .where(
+                        review.place.id.eq(placeId),
+                        review.source.eq(ReviewSource.INTERNAL),
+                        review.parent.isNull(),
+                        review.status.eq(ReviewStatus.APPROVED),
+                        review.deleted.isFalse()
+                )
+                .fetchOne();
+
+        Double avgScore = stats != null ? stats.get(avgScoreExpr) : null;
+        Long reviewCount = stats != null ? stats.get(countExpr) : 0L;
+
+        double calculatedRating = (avgScore != null) ? Math.round(avgScore * 10.0) / 10.0 : 0.0;
+        int calculatedCount = (reviewCount != null) ? reviewCount.intValue() : 0;
+
+        PlaceEntity place = placesService.findById(placeId);
+        place.setTastyMapRating(calculatedRating);
+        place.setTastyMapReviewCount(calculatedCount);
+
+        placesService.save(place);
+        placesService.evictPlaceCache(place.getPlaceId());
+    }
+
+    private void createReviewRequestDtoControl(SentReviewReq request, Long placeId){
         if(request.getParentId() != null){
             if(
                     !reviewRepo.existsByIdAndPlaceIdAndSourceAndStatus(request.getParentId(),
-                            request.getPlaceId(),
+                            placeId,
                             ReviewSource.INTERNAL,
                             ReviewStatus.APPROVED
                     )
@@ -283,7 +367,7 @@ public class ReviewService {
         }
     }
 
-    private void applyScoreListCreate(SentReviewReq request, ReviewEntity entity){
+    private List<ScoreDto> applyScoreListCreate(SentReviewReq request, ReviewEntity entity){
 
         boolean isChildReview = request.getParentId() != null;
         boolean hasScores = request.getScores() != null && !request.getScores().isEmpty();
@@ -294,28 +378,30 @@ public class ReviewService {
             );
         }
 
-        if(!isChildReview && !hasScores){
-            throw new CustomExceptions.ServiceException(
-                    "Parent reviews must have scores."
-            );
+
+        List<ScoreEntity> scoreEntities = new ArrayList<>();
+
+        if (!isChildReview && request.getMainRating() != null) {
+            scoreEntities.add(new ScoreEntity(ScoreType.OVERALL, request.getMainRating(), entity));
         }
 
-        if(!hasScores){
-            return;
+        if (hasScores) {
+            for (ScoreDto scoreDto : request.getScores()) {
+                if (scoreDto.getType() != ScoreType.OVERALL) {
+                    scoreEntities.add(new ScoreEntity(scoreDto.getType(), scoreDto.getScore(), entity));
+                }
+            }
         }
 
-        List<ScoreEntity> scores = request
-                .getScores()
-                .stream()
-                .map(scoreReq->{
-                    return new ScoreEntity(
-                            scoreReq.getType(),
-                            scoreReq.getScore(),
-                            entity
+        entity.setScores(scoreEntities);
+
+        return scoreEntities.stream()
+                .map(scoreEntity -> {
+                    return new ScoreDto(
+                            scoreEntity.getType(),
+                            scoreEntity.getScore()
                     );
-                })
-                .toList();
-        entity.setScores(scores);
+                }).toList();
     }
 
 }

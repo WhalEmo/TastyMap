@@ -1,4 +1,4 @@
-package com.beem.TastyMap.mapsReview;
+package com.beem.TastyMap.mapsReview.repository;
 
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
@@ -40,14 +40,17 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
             Long userId
     );
 
-    @Query("""
-    SELECT new com.beem.TastyMap.mapsReview.data.ReviewResult(
-        r.content
-    ) 
-    FROM ReviewEntity r 
-    WHERE r.place.placeId = :placeId
-""")
-    List<ReviewResult> findReviewResultsByPlaceId(@Param("placeId") String placeId);
+    Optional<ReviewEntity> findFirstByPlace_PlaceIdAndUserIdAndParentIsNullAndStatusOrderByCreatedAtDesc(
+            String placeId,
+            Long userId,
+            ReviewStatus status
+    );
+
+    boolean existsByPlace_PlaceIdAndUserIdAndParentIsNullAndStatus(
+            String placeId,
+            Long userId,
+            ReviewStatus status
+    );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -70,6 +73,12 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
 
     @Query("Select r.createdAt from ReviewEntity r Where r.place.placeId = :placeId")
     Set<Long> findAllCreatedAtsByPlaceId(@Param("placeId") String placeId);
+
+    @Query("SELECT r.time FROM ReviewEntity r WHERE r.place.placeId = :placeId AND r.time IS NOT NULL")
+    Set<Long> findAllTimesByPlaceId(@Param("placeId") String placeId);
+
+    @Query("SELECT r.time FROM ReviewEntity r WHERE r.place.id = :placeDbId AND r.time IS NOT NULL")
+    Set<Long> findAllTimesByPlaceDbId(@Param("placeDbId") Long placeDbId);
 
 
 }

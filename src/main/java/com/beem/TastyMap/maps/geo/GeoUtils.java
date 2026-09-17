@@ -67,44 +67,6 @@ public class GeoUtils {
         return gridCenters;
     }
 
-    public static double centerDistance(
-            BigDecimal centerLat,
-            BigDecimal centerLng,
-            BigDecimal nearbyLat,
-            BigDecimal nearbyLng
-    ) {
-        final double EARTH_RADIUS = 6371000.0; // metre
-
-        double lat1 = Math.toRadians(centerLat.doubleValue());
-        double lon1 = Math.toRadians(centerLng.doubleValue());
-        double lat2 = Math.toRadians(nearbyLat.doubleValue());
-        double lon2 = Math.toRadians(nearbyLng.doubleValue());
-
-        double dLat = lat2 - lat1;
-        double dLon = lon2 - lon1;
-
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(lat1) * Math.cos(lat2)
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        double distanceMeters = EARTH_RADIUS * c;
-
-        return distanceMeters;
-    }
-
-
-    public static void printCells(List<GridCell> gridCells){
-        int sqrt = (int) Math.sqrt(gridCells.size());
-        for(int i=0; i<sqrt; i++){
-            for (int j=0; j<sqrt; j++){
-                printCell(gridCells.get(i*sqrt + j));
-                System.out.print("\t");
-            }
-            System.out.print("\n");
-        }
-    }
 
     private static void printCell(GridCell cell){
         System.out.print(

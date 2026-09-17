@@ -48,17 +48,27 @@ public class GlobalSearchService {
                             } else {
                                 return new VenueResult(
                                         (Long) projection.get(0),
+                                        (String) projection.get(6),
                                         (String) projection.get(1),
-                                        (String) projection.get(4)
+                                        (String) projection.get(4),
+                                        (Double) projection.get(7),
+                                        (Double) projection.get(8),
+                                        (Double) projection.get(9),
+                                        (Double) projection.get(10)
                                 );
                             }
                         },
-                        f.field("id", Long.class),
-                        f.field("name", String.class),
-                        f.field("username", String.class),
-                        f.field("biography", String.class),
-                        f.field("vicinity", String.class),
-                        f.field("profile", String.class)
+                        f.field("id", Long.class),              // 0
+                        f.field("name", String.class),          // 1
+                        f.field("username", String.class),      // 2
+                        f.field("biography", String.class),     // 3
+                        f.field("vicinity", String.class),      // 4
+                        f.field("profile", String.class),       // 5
+                        f.field("placeId", String.class),       // 6
+                        f.field("latitude", Double.class),      // 7
+                        f.field("longitude", Double.class),     // 8
+                        f.field("googleRating", Double.class),  // 9
+                        f.field("tastyMapRating", Double.class) // 10
                 ))
                 .where(f -> f.bool()
                         .should(f.match()
