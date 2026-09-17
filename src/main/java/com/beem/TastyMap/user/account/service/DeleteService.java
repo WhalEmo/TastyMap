@@ -45,7 +45,7 @@ public class DeleteService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new CustomExceptions.InvalidCredentialsException(
-                    getMessage("user.login.invalid.credentials")
+                    getMessage("password.incorrect")
             );
         }
 
