@@ -7,10 +7,8 @@ import com.beem.TastyMap.mapsReview.data.ReviewMapper;
 import com.beem.TastyMap.mapsReview.data.ScoreDto;
 import com.beem.TastyMap.mapsReview.data.request.SentReviewReq;
 import com.beem.TastyMap.mapsReview.data.request.UpdateReviewReq;
-import com.beem.TastyMap.mapsReview.data.response.CreatedReviewRes;
 import com.beem.TastyMap.mapsReview.data.response.ReviewResponse;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
-import com.beem.TastyMap.mapsReview.data.response.UpdatedReviewRes;
 import com.beem.TastyMap.mapsReview.entity.QReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ScoreEntity;
@@ -19,18 +17,15 @@ import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
 import com.beem.TastyMap.mapsReview.enums.ScoreType;
 import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
 import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
-import com.beem.TastyMap.redis.RedisKeyGenerator;
 import com.beem.TastyMap.registerLogin.UserEntity;
 import com.beem.TastyMap.registerLogin.UserRepo;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +41,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ReviewService {
+
+    private static final Logger log = LoggerFactory.getLogger(ReviewService.class);
 
     private final ReviewRepo reviewRepo;
     private final PlacesService placesService;
@@ -71,20 +68,6 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse getPlaceReviews(String placeId, int page, int size) {
-        boolean hasData = reviewRepo.existsByPlace_PlaceIdAndSource(placeId, ReviewSource.GOOGLE);
-
-        if(hasData){
-            eventPublisher.publishEvent(new ReviewUpdateEvent(placeId));
-        }
-        else{
-            String key = RedisKeyGenerator.createPlaceDetailsKey(placeId);
-            System.out.println("getPlaceReviews");
-            placesService.searchPlaceDetailsGoogleAPI(
-                    placeId,
-                    key
-            );
-        }
-
         return getReviewDataBaseToResponse(
                 placeId,
                 page,

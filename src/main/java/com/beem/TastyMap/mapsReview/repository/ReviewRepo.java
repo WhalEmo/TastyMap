@@ -73,5 +73,11 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
     @Query("Select r.createdAt from ReviewEntity r Where r.place.placeId = :placeId")
     Set<Long> findAllCreatedAtsByPlaceId(@Param("placeId") String placeId);
 
+    @Query("SELECT r.time FROM ReviewEntity r WHERE r.place.placeId = :placeId AND r.time IS NOT NULL")
+    Set<Long> findAllTimesByPlaceId(@Param("placeId") String placeId);
+
+    @Query("SELECT r.time FROM ReviewEntity r WHERE r.place.id = :placeDbId AND r.time IS NOT NULL")
+    Set<Long> findAllTimesByPlaceDbId(@Param("placeDbId") Long placeDbId);
+
 
 }

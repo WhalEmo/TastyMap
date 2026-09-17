@@ -1,4 +1,4 @@
-package com.beem.TastyMap.maps;
+package com.beem.TastyMap.maps.listeners.events;
 
 import com.beem.TastyMap.maps.geo.GridCell;
 

@@ -28,6 +28,7 @@ public class PlaceEntity {
     @GenericField(projectable = Projectable.YES)
     private Long id;
 
+    @GenericField(projectable = Projectable.YES)
     @Column(name = "place_id", nullable = false, unique = true)
     private String placeId;
 
@@ -38,12 +39,14 @@ public class PlaceEntity {
     @FullTextField(projectable = Projectable.YES)
     private String vicinity;
 
+    @GenericField(projectable = Projectable.YES)
     @Column(name = "google_rating")
     private Double googleRating = 0.0;
 
     @Column(name = "google_review_count")
     private Integer googleReviewCount = 0;
 
+    @GenericField(projectable = Projectable.YES)
     @Column(name = "tastymap_rating")
     private Double tastyMapRating = 0.0;
 
@@ -68,7 +71,10 @@ public class PlaceEntity {
     )
     private List<ReviewEntity> reviews = new ArrayList<>();
 
+    @GenericField(projectable = Projectable.YES)
     private Double latitude;
+
+    @GenericField(projectable = Projectable.YES)
     private Double longitude;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -85,6 +91,8 @@ public class PlaceEntity {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private LocalDateTime lastSyncedAt;
 
     private String formattedAddress;
 
@@ -147,10 +155,12 @@ public class PlaceEntity {
         entity.setWebsite(dto.getWebsite());
 
 
-        entity.openingHours = new OpeningHoursEmbeddable(
-                dto.getOpeningHours().getOpen_now(),
-                dto.getOpeningHours().getWeekday_text()
-        );
+        if (dto.getOpeningHours() != null) {
+            entity.setOpeningHours(new OpeningHoursEmbeddable(
+                    dto.getOpeningHours().getOpen_now(),
+                    dto.getOpeningHours().getWeekday_text()
+            ));
+        }
 
         entity.setFormattedAddress(dto.getFormattedAddress());
 
@@ -183,6 +193,8 @@ public class PlaceEntity {
                     dto.getOpeningHours().getWeekday_text()
             ));
         }
+
+        this.lastSyncedAt = LocalDateTime.now();
     }
 
 
@@ -371,5 +383,13 @@ public class PlaceEntity {
 
     public void setTastyMapReviewCount(Integer tastymapReviewCount) {
         this.tastyMapReviewCount = tastymapReviewCount;
+    }
+
+    public LocalDateTime getLastSyncedAt() {
+        return lastSyncedAt;
+    }
+
+    public void setLastSyncedAt(LocalDateTime lastSyncedAt) {
+        this.lastSyncedAt = lastSyncedAt;
     }
 }

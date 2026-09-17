@@ -27,6 +27,7 @@ public class PlaceResult {
 
     public static PlaceResult fromEntity(PlaceEntity entity){
         PlaceResult result = new PlaceResult();
+        result.setId(entity.getId());
         result.setName(entity.getName());
         result.setVicinity(entity.getVicinity());
         result.setRating(entity.getGoogleRating());
