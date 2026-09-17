@@ -168,6 +168,8 @@ public class UserService implements UserDetailsService {
         if (user.isDeleted()) {
             user.setDeleted(false);
             user.setDeletedAt(null);
+            user.setDeleteReasonType(null);
+            user.setCustomDeleteReason(null);
             userRepo.save(user);
 
             UserLifecycleEvent restoredEvent = new UserLifecycleEvent(
