@@ -1,0 +1,29 @@
+package com.beem.TastyMap.security.refreshtoken.dto;
+
+public class RefreshTokenRequestDTO {
+    private String refreshToken;
+    private String deviceId;
+
+    public RefreshTokenRequestDTO() {
+    }
+    public RefreshTokenRequestDTO(String refreshToken, String deviceId) {
+        this.refreshToken = refreshToken;
+        this.deviceId = deviceId;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+}

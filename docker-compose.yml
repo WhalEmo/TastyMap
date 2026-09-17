@@ -45,7 +45,7 @@ services:
       - ollama_data:/root/.ollama
     networks:
       - app-network
-   
+
     deploy:
       resources:
         reservations:
@@ -71,7 +71,7 @@ services:
     image: apache/kafka:latest
     container_name: tasty_kafka
     ports:
-       - "9092:9092"
+      - "9092:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
@@ -103,6 +103,8 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    volumes:
+      - profile_uploads:/app/uploads
     restart: unless-stopped
     networks:
       - app-network
@@ -112,10 +114,8 @@ volumes:
   redis_data:
   ollama_data:
   qdrant_data:
+  profile_uploads:
 
 networks:
   app-network:
     driver: bridge
-
-
-

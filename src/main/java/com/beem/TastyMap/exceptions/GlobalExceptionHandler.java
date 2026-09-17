@@ -39,8 +39,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));
     }
     @ExceptionHandler(CustomExceptions.InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleCredentialExceptions(Exception ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse(ex.getMessage()));
+    public ResponseEntity<ErrorResponse> handleCredentialExceptions(CustomExceptions.InvalidCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(ex.getMessage()));
     }
     @ExceptionHandler(CustomExceptions.ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbiddenExceptions(Exception ex) {

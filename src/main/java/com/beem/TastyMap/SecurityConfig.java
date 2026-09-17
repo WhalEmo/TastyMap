@@ -1,10 +1,12 @@
 package com.beem.TastyMap;
 
 import com.beem.TastyMap.redis.RedisRateLimitService;
-import com.beem.TastyMap.registerLogin.UserService;
+import com.beem.TastyMap.user.account.service.UserService;
 import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
+import com.beem.TastyMap.security.token.TokenBlacklistService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,8 +43,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, UserService service, RedisRateLimitService rateLimitService) throws Exception {
-        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service);
+    public SecurityFilterChain filterChain(HttpSecurity http, UserService service, RedisRateLimitService rateLimitService, TokenBlacklistService tokenBlacklistService) throws Exception {
+        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service, tokenBlacklistService);
         RateLimitingFilter rateLimitingFilter = new RateLimitingFilter(rateLimitService);
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -52,12 +54,34 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .exceptionHandling(exception -> exception
+
+                        // Authentication yok / JWT geçersiz
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write(
+                                    "{\"error\":\"UNAUTHORIZED\",\"message\":\"Kimlik doğrulaması gerekli.\"}"
+                            );
+                        })
+
+                        // Authentication var ama yetki yok
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write(
+                                    "{\"error\":\"FORBIDDEN\",\"message\":\"Bu işlem için yetkiniz yok.\"}"
+                            );
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**","/places/**","/place-review/**").permitAll()
                         .requestMatchers("/ws/auth/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .requestMatchers("/.well-known/**").permitAll()
+                        .requestMatchers("/favicon.ico", "/error").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -79,7 +103,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:8080","http://localhost:8081", "https://coleman-nonethic-marinda.ngrok-free.dev"));
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:8080",
+                "http://localhost:8081",
+                "https://*.ngrok-free.dev",
+                "https://coleman-nonethic-marinda.ngrok-free.dev"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",

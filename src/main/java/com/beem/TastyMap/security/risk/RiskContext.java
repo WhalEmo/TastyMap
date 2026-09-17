@@ -1,7 +1,7 @@
 package com.beem.TastyMap.security.risk;
 
-import com.beem.TastyMap.registerLogin.UserEntity;
-import com.beem.TastyMap.security.device.UserDeviceEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.security.device.entity.UserDeviceEntity;
 
 public class RiskContext {
 

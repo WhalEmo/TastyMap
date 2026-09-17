@@ -1,9 +1,9 @@
 package com.beem.TastyMap.event.listener;
 
 import com.beem.TastyMap.event.model.PasswordMailEvent;
-import com.beem.TastyMap.event.model.SecurityEmailEvent;
-import com.beem.TastyMap.security.verification.forgotPassword.PasswordService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -11,32 +11,36 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.Locale;
+
 @Component
 public class PasswordMailListener {
     private final JavaMailSender javaMailSender;
+    private final MessageSource messageSource;
 
     @Value("${app.base-url}")
     private String baseURL;
 
-    public PasswordMailListener(JavaMailSender javaMailSender) {
+    public PasswordMailListener(JavaMailSender javaMailSender, MessageSource messageSource) {
         this.javaMailSender = javaMailSender;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code, Object[] args, Locale locale) {
+        return messageSource.getMessage(code, args, locale);
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void passwordEvent(PasswordMailEvent event){
-        String subject="Şifre Sıfırlama Talebi";
-        //String resetLinkA= baseURL + "/auth/resetPassword/validate?token=" + event.getToken();
+    public void passwordEvent(PasswordMailEvent event) {
+        Locale locale = LocaleContextHolder.getLocale();
+
         String resetLinkB = "http://localhost:8081/#reset?token=" + event.getToken();
-        String body =
 
-                "Merhaba,\n\n" +
-                        "Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:\n\n" +
-                        resetLinkB +
-                        "\n\nBu bağlantı 10 dakika boyunca geçerlidir.\n" +
-                        "Eğer bu isteği siz yapmadıysanız, lütfen bu e-postayı dikkate almayın.";
+        String subject = getMessage("email.password.reset.subject", null, locale);
+        String body = getMessage("email.password.reset.body", new Object[]{resetLinkB}, locale);
 
-        SimpleMailMessage simpleMailMessage=new SimpleMailMessage();
+        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
         simpleMailMessage.setFrom("beemdevops@gmail.com");
         simpleMailMessage.setTo(event.getEmail());
         simpleMailMessage.setSubject(subject);

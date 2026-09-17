@@ -1,0 +1,188 @@
+package com.beem.TastyMap.securitynotification;
+
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        indexes = {
+
+                @Index(
+                        name="idx_device_used_created",
+                        columnList="deviceId,isUsed,createdAt"
+                ),
+
+                @Index(
+                        name="idx_token",
+                        columnList="token"
+                ),
+
+                @Index(
+                        name="idx_user_status_expiry",
+                        columnList="user_id,status,expiresAt"
+                ),
+
+                @Index(
+                        name="idx_device_created",
+                        columnList="deviceId,createdAt"
+                )
+
+        }
+)
+public class NotificationEntity {// DeviceSessionEntity adı bole olsa daha ıyı degısecek
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity user;
+
+    private String deviceId;
+    private String userAgent;
+
+    @Enumerated(EnumType.STRING)
+    private Status status;
+
+    private String lastIpAddress;
+    private String lastCity;
+    private boolean isTrusted = false;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime expiresAt;
+    private String token;
+    private boolean isUsed;
+    private LocalDateTime updatedAt;
+
+
+
+
+    public NotificationEntity createResendNotification(String newToken, LocalDateTime expiresAt) {
+        NotificationEntity notification = new NotificationEntity();
+
+        notification.setUser(this.user);
+        notification.setDeviceId(this.deviceId);
+        notification.setUserAgent(this.userAgent);
+        notification.setLastIpAddress(this.lastIpAddress);
+        notification.setLastCity(this.lastCity);
+        notification.setTrusted(this.isTrusted);
+
+        notification.setToken(newToken);
+        notification.setExpiresAt(expiresAt);
+        notification.setStatus(Status.PENDING);
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setUsed(false);
+
+        return notification;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getLastIpAddress() {
+        return lastIpAddress;
+    }
+
+    public void setLastIpAddress(String lastIpAddress) {
+        this.lastIpAddress = lastIpAddress;
+    }
+
+    public String getLastCity() {
+        return lastCity;
+    }
+
+    public void setLastCity(String lastCity) {
+        this.lastCity = lastCity;
+    }
+
+    public boolean isTrusted() {
+        return isTrusted;
+    }
+
+    public void setTrusted(boolean trusted) {
+        isTrusted = trusted;
+    }
+
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public boolean isUsed() {
+        return isUsed;
+    }
+
+    public void setUsed(boolean used) {
+        isUsed = used;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+
+}

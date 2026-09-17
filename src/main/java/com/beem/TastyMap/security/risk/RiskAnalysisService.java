@@ -1,9 +1,8 @@
 package com.beem.TastyMap.security.risk;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import com.beem.TastyMap.security.Location.GeoLocationService;
-import com.beem.TastyMap.security.device.UserDeviceDTO;
-import com.beem.TastyMap.security.device.UserDeviceEntity;
-import com.beem.TastyMap.security.device.UserDeviceRepo;
+import com.beem.TastyMap.security.device.entity.UserDeviceEntity;
+import com.beem.TastyMap.security.device.repo.UserDeviceRepo;
 import org.springframework.stereotype.Service;
 import java.util.List;
 

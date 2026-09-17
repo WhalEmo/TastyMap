@@ -4,7 +4,7 @@ import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
 import com.beem.TastyMap.mapsReview.enums.ScoreType;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;

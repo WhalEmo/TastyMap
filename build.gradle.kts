@@ -1,4 +1,3 @@
-
 plugins {
     java
     id("org.springframework.boot") version "3.3.5"
@@ -11,9 +10,9 @@ version = "0.0.1-SNAPSHOT"
 description = "Demo project for Spring Boot"
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
 }
 val springAiVersion = "1.0.0-M1"
 
@@ -24,7 +23,7 @@ dependencyManagement {
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
     maven { url = uri("https://repo.spring.io/milestone") }
     maven { url = uri("https://repo.osgeo.org/repository/release/") }
 }
@@ -76,5 +75,5 @@ dependencies {
 }
 
 tasks.withType<Test> {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }

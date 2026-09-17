@@ -1,0 +1,85 @@
+package com.beem.TastyMap.visit.service;
+
+import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.post.entity.PlaceEmbedded;
+import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
+import com.beem.TastyMap.post.dto.PostResponseDTO;
+import com.beem.TastyMap.post.service.PostService;
+import com.beem.TastyMap.visit.dto.VisitRequestDTO;
+import com.beem.TastyMap.visit.dto.VisitResponseDTO;
+import com.beem.TastyMap.visit.entity.VisitEntity;
+import com.beem.TastyMap.visit.repo.VisitRepo;
+import jakarta.persistence.EntityManager;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+public class VisitService {
+    private final VisitRepo visitRepo;
+    private final PostService postService;
+    private final EntityManager entityManager;
+    private final MessageSource messageSource;
+
+    public VisitService(VisitRepo visitRepo, PostService postService, EntityManager entityManager, MessageSource messageSource) {
+        this.visitRepo = visitRepo;
+        this.postService = postService;
+        this.entityManager = entityManager;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code) {
+        return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
+    }
+
+    @Transactional
+    public PostResponseDTO processVisitAction(PostAndVisitRequestDTO combinedDto, Long myId) {
+        saveVisit(combinedDto, myId);
+        if (combinedDto.isWantToPost()) {
+            return postService.addPost(combinedDto, myId);
+        }
+        return null;
+    }
+
+    private void saveVisit(VisitRequestDTO dto, Long myId) {
+        VisitEntity visit = new VisitEntity();
+        visit.setUser(entityManager.getReference(UserEntity.class, myId));
+
+        PlaceEmbedded place = new PlaceEmbedded();
+        place.setPlaceId(dto.getPlaceId());
+        place.setPlaceName(dto.getPlaceName());
+        place.setCity(dto.getCity());
+        place.setDistrict(dto.getDistrict());
+        place.setNeighbourhood(dto.getNeighbourhood());
+        place.setLatitude(dto.getLatitude());
+        place.setLongitude(dto.getLongitude());
+        place.setCategories(dto.getCategories());
+        place.setAveragePuan(dto.getAveragePuan());
+
+        visit.setPlaceEmbedded(place);
+        visit.setCreatedAt(LocalDateTime.now());
+        visitRepo.save(visit);
+    }
+
+    public Page<VisitResponseDTO> getVisits(Long userId, int page, int size){
+        Pageable pageable = PageRequest.of(page, size);
+        return visitRepo.findUserVisits(userId, pageable);
+    }
+
+    public void deleteVisit(Long visitId, Long userId){
+        VisitEntity visit = visitRepo.findById(visitId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("visit.not.found")));
+        if(!visit.getUser().getId().equals(userId)){
+            throw new CustomExceptions.AuthorizationException(getMessage("visit.delete.unauthorized"));
+        }
+        visit.setDelete(true);
+        visitRepo.save(visit);
+    }
+}

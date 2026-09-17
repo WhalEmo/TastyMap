@@ -4,12 +4,14 @@ import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.service.PlacesService;
 import com.beem.TastyMap.mapsReview.data.ReviewMapper;
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.data.ScoreDto;
 import com.beem.TastyMap.mapsReview.data.request.SentReviewReq;
 import com.beem.TastyMap.mapsReview.data.request.UpdateReviewReq;
 import com.beem.TastyMap.mapsReview.data.response.ReviewResponse;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.entity.QReviewEntity;
+import com.beem.TastyMap.mapsReview.data.response.UpdatedReviewRes;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import com.beem.TastyMap.mapsReview.entity.ScoreEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
@@ -17,15 +19,24 @@ import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
 import com.beem.TastyMap.mapsReview.enums.ScoreType;
 import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
 import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
-import com.beem.TastyMap.registerLogin.UserEntity;
-import com.beem.TastyMap.registerLogin.UserRepo;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.user.account.repo.UserRepo;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.beem.TastyMap.redis.RedisKeyGenerator;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.user.account.repo.UserRepo;
 import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +48,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 
 @Service
 public class ReviewService {
@@ -52,10 +62,18 @@ public class ReviewService {
     private final ApplicationEventPublisher eventPublisher;
     private final JPAQueryFactory queryFactory;
     private final ReviewQueryRepository reviewQueryRepository;
+    private final MessageSource messageSource;
 
-    public ReviewService(ReviewRepo reviewRepo, PlacesService placesService,
-                         EntityManager entityManager, UserRepo userRepo, ReviewMapper reviewMapper,
-                         ApplicationEventPublisher eventPublisher, JPAQueryFactory queryFactory, ReviewQueryRepository reviewQueryRepository) {
+    public ReviewService(ReviewRepo reviewRepo,
+                         PlacesService placesService,
+                         EntityManager entityManager,
+                         UserRepo userRepo,
+                         ReviewMapper reviewMapper,
+                         ApplicationEventPublisher eventPublisher,
+                         JPAQueryFactory queryFactory,
+                         ReviewQueryRepository reviewQueryRepository,
+                         MessageSource messageSource
+                         ) {
         this.reviewRepo = reviewRepo;
         this.placesService = placesService;
         this.entityManager = entityManager;
@@ -64,6 +82,11 @@ public class ReviewService {
         this.eventPublisher = eventPublisher;
         this.queryFactory = queryFactory;
         this.reviewQueryRepository = reviewQueryRepository;
+        this.messageSource = messageSource;
+    }
+
+    private String getMessage(String code) {
+        return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
     @Transactional
@@ -87,27 +110,26 @@ public class ReviewService {
         );
     }
 
-
     private ReviewEntity getParentReviewReference(Long parentId) {
-        if(parentId == null) {
+        if (parentId == null) {
             return null;
         }
-        if(!reviewRepo.existsById(parentId)) {
-            throw new RuntimeException("Parent review not found");
+        if (!reviewRepo.existsById(parentId)) {
+            throw new CustomExceptions.NotFoundException(getMessage("review.parent.not.found"));
         }
         return entityManager.getReference(ReviewEntity.class, parentId);
     }
 
-    private ReviewEntity getReviewEntity(Long id){
+    private ReviewEntity getReviewEntity(Long id) {
         return reviewRepo
                 .findById(id)
-                .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, getMessage("review.not.found")));
     }
 
-    private ReviewEntity getReviewByUserIdAndReviewId(Long userId, Long reviewId){
+    private ReviewEntity getReviewByUserIdAndReviewId(Long userId, Long reviewId) {
         return reviewRepo
                 .findByIdAndUserId(reviewId, userId)
-                .orElseThrow(()-> new CustomExceptions.NotFoundException("Review or user not found"));
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("review.user.not.found")));
     }
 
     @Transactional
@@ -132,8 +154,7 @@ public class ReviewService {
         createReviewRequestDtoControl(request, place.getId());
 
         UserEntity user = userRepo.findById(userId)
-                .orElseThrow(()-> new CustomExceptions.NotFoundException("User not found"));
-
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("review.user.entity.not.found")));
 
         ReviewEntity entity = new ReviewEntity(
                 user.getUsername(),
@@ -175,10 +196,11 @@ public class ReviewService {
 
 
     @Transactional
-    public Map<String, Object> deletePlaceReview(Long reviewId, Long userId){
-        ReviewEntity review =
-                getReviewByUserIdAndReviewId(userId, reviewId);
-        if(review.getStatus() != ReviewStatus.APPROVED) throw new CustomExceptions.InvalidException("Review is not APPROVED.");
+    public Map<String, Object> deletePlaceReview(Long reviewId, Long userId) {
+        ReviewEntity review = getReviewByUserIdAndReviewId(userId, reviewId);
+        if (review.getStatus() != ReviewStatus.APPROVED) {
+            throw new CustomExceptions.InvalidException(getMessage("review.not.approved"));
+        }
         review.setStatus(ReviewStatus.REJECTED);
 
         reviewRepo.rejectChildReviews(reviewId, ReviewStatus.REJECTED);
@@ -198,7 +220,7 @@ public class ReviewService {
 
         //Security
         if(review.getStatus() != ReviewStatus.APPROVED)
-            throw new CustomExceptions.ServiceException("This review not APPROVED.");
+            throw new CustomExceptions.ServiceException(getMessage("review.not.approved"));
 
         if (request.getMainRating() == null || request.getMainRating() < 0.5 || request.getMainRating() > 5.0) {
             throw new CustomExceptions.ServiceException("Rating must be between 0.5 and 5.0");
@@ -245,7 +267,6 @@ public class ReviewService {
         );
     }
 
-
     private void applyScoreUpdates(ReviewEntity review, UpdateReviewReq request) {
         if (request.getScores() == null) return;
         Map<ScoreType, ScoreEntity> existing =
@@ -256,7 +277,6 @@ public class ReviewService {
                         ));
 
         for (ScoreDto sr : request.getScores()) {
-
             ScoreEntity score = existing.get(sr.getType());
 
             if (score != null) {
@@ -285,7 +305,7 @@ public class ReviewService {
         }
     }
 
-    private void applyScoreDelete(ReviewEntity review, UpdateReviewReq request){
+    private void applyScoreDelete(ReviewEntity review, UpdateReviewReq request) {
         if (request.getScores() == null) return;
         Set<ScoreType> incomingTypes =
                 request.getScores().stream()
@@ -300,18 +320,16 @@ public class ReviewService {
     private void updateScoreRatingControl(UpdateReviewReq req){
         if(req.getScores() == null) return;
         for(ScoreDto score: req.getScores()){
-            if(score.getScore()<=0 || score.getScore()>5) throw new CustomExceptions.ServiceException("Score not between 0 and 5");
+            if(score.getScore()<=0 || score.getScore()>5) throw new CustomExceptions.ServiceException(getMessage("review.score.out.of.bounds"));
         }
     }
 
-    private void updateChildParentScoreControl(ReviewEntity entity, UpdateReviewReq request){
+    private void updateChildParentScoreControl(ReviewEntity entity, UpdateReviewReq request) {
         boolean isChildReview = entity.getParent() != null;
         boolean hasScores = request.getScores() != null && !request.getScores().isEmpty();
 
-        if(isChildReview && hasScores){
-            throw new CustomExceptions.ServiceException(
-                    "Child reviews cannot have scores."
-            );
+        if (isChildReview && hasScores) {
+            throw new CustomExceptions.ServiceException(getMessage("review.child.cannot.have.scores"));
         }
     }
 
@@ -358,11 +376,11 @@ public class ReviewService {
             ){
                 throw new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Parent review must be an approved internal review of this place"
+                        getMessage("review.parent.must.be.approved")
                 );
             }
-            if(request.getScores() != null){
-                throw new CustomExceptions.ServiceException("Child review haven't scores.");
+            if (request.getScores() != null) {
+                throw new CustomExceptions.ServiceException(getMessage("review.child.cannot.have.scores"));
             }
         }
     }
@@ -372,10 +390,8 @@ public class ReviewService {
         boolean isChildReview = request.getParentId() != null;
         boolean hasScores = request.getScores() != null && !request.getScores().isEmpty();
 
-        if(isChildReview && hasScores){
-            throw new CustomExceptions.ServiceException(
-                    "Child reviews cannot have scores."
-            );
+        if (isChildReview && hasScores) {
+            throw new CustomExceptions.ServiceException(getMessage("review.child.cannot.have.scores"));
         }
 
 
@@ -403,5 +419,4 @@ public class ReviewService {
                     );
                 }).toList();
     }
-
 }
