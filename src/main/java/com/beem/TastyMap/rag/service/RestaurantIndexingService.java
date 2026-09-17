@@ -74,7 +74,7 @@ public class RestaurantIndexingService {
         String reviewsCombined = "";
         if (reviews != null && !reviews.isEmpty()) {
             reviewsCombined = reviews.stream()
-                    .map(ReviewResult::getContent)
+                    .map(ReviewResult::content)
                     .filter(content -> content != null && !content.isBlank())
                     .collect(Collectors.joining(" | "));
         }
@@ -82,17 +82,17 @@ public class RestaurantIndexingService {
         String openingHoursText = "Çalışma saatleri bilgisi yok.";
         boolean isOpenNow = false;
 
-        if (place.getOpening_hours() != null) {
-            isOpenNow = Boolean.TRUE.equals(place.getOpening_hours().getOpen_now());
-            if (place.getOpening_hours().getWeekday_text() != null) {
-                openingHoursText = String.join(", ", place.getOpening_hours().getWeekday_text());
+        if (place.getOpeningHours() != null) {
+            isOpenNow = Boolean.TRUE.equals(place.getOpeningHours().getOpen_now());
+            if (place.getOpeningHours().getWeekday_text() != null) {
+                openingHoursText = String.join(", ", place.getOpeningHours().getWeekday_text());
             }
         }
 
         String textContent = String.format(
                 "Mekan Adı: %s. Adres: %s. Türler: %s. Çalışma Saatleri: %s. Yorumlar ve İçerik: %s",
                 place.getName(),
-                place.getFormatted_address(),
+                place.getFormattedAddress(),
                 typesText,
                 openingHoursText,
                 reviewsCombined
@@ -100,7 +100,7 @@ public class RestaurantIndexingService {
 
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("place_id", placeId);
-        metadata.put("rating", place.getRating() != null ? place.getRating() : 0.0);
+        metadata.put("rating", place.getGoogleRating() != null ? place.getGoogleRating() : 0.0);
         metadata.put("is_open_now", isOpenNow);
 
         if (place.getGeometry() != null && place.getGeometry().getLocation() != null) {
