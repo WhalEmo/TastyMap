@@ -1,7 +1,7 @@
 package com.beem.TastyMap.search.data;
 
 import com.beem.TastyMap.maps.entity.PlaceEntity;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -9,13 +9,6 @@ import java.util.List;
 @Component
 public class SearchMapper {
 
-    public VenueResult toVenueResult(PlaceEntity entity){
-        return new VenueResult(
-                entity.getId(),
-                entity.getName(),
-                entity.getVicinity()
-        );
-    }
 
     public AppUserResult toAppUserResult(UserEntity entity){
         return new AppUserResult(

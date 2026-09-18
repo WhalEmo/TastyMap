@@ -29,7 +29,7 @@ public class JWTUtill {
     public JWTUtill(){}
 
 
-    public String generateAccessToken(Long userId, String role) {
+    public String generateAccessToken(Long userId, String role, String deviceId) {
 
         Date now = new Date();
         Date exp = new Date(now.getTime() + expirationMs);
@@ -38,6 +38,7 @@ public class JWTUtill {
                 .setSubject(userId.toString())
                 .claim("role", role)
                 .claim("type", "access")
+                .claim("deviceId", deviceId)
                 .setIssuedAt(now)
                 .setExpiration(exp)
                 .signWith(
@@ -102,6 +103,9 @@ public class JWTUtill {
     }
     public Instant getIssuedAt(String token) {
         return getClaims(token).getIssuedAt().toInstant();
+    }
+    public String getDeviceId(String token) {
+        return getClaims(token).get("deviceId", String.class);
     }
 
     private Claims getClaims(String token) {

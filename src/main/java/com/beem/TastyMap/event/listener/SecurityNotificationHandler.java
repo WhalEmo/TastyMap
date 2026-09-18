@@ -3,9 +3,9 @@ package com.beem.TastyMap.event.listener;
 import com.beem.TastyMap.event.model.FcmNotificationEvent;
 import com.beem.TastyMap.event.model.SecurityAlertEvent;
 import com.beem.TastyMap.event.model.SecurityEmailEvent;
-import com.beem.TastyMap.notification.*;
-import com.beem.TastyMap.registerLogin.UserEntity;
-import com.beem.TastyMap.registerLogin.UserRepo;
+import com.beem.TastyMap.securitynotification.*;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.user.account.repo.UserRepo;
 import com.beem.TastyMap.security.Location.GeoLocationService;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -15,6 +15,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
+import java.util.Map; // MAP EKLENDİ
 
 @Component
 public class SecurityNotificationHandler {
@@ -50,8 +51,22 @@ public class SecurityNotificationHandler {
         n.setLastCity(city);
         n.setTrusted(event.isTrusted());
 
-        NotificationEntity savedNotification =   notificationRepo.saveAndFlush(n);
+        NotificationEntity savedNotification = notificationRepo.saveAndFlush(n);
         eventPublisher.publishEvent(new SecurityEmailEvent(event.getEmail(),event.getToken()));
-        eventPublisher.publishEvent(new FcmNotificationEvent(event.getUserId(), savedNotification.getId(),city));
+
+
+        Map<String, String> payloadData = Map.of(
+                "type", "SECURITY_ALERT",
+                "notificationId", savedNotification.getId().toString()
+        );
+
+        // 2. Yeni jenerik FcmNotificationEvent'imizi fırlatıyoruz
+        eventPublisher.publishEvent(new FcmNotificationEvent(
+                event.getUserId(),
+                "notification.fcm.security.title", // messages.properties dosyasındaki başlık kodun
+                "notification.fcm.security.body",  // messages.properties dosyasındaki içerik kodun
+                new Object[]{city},                // "Şehir" bilgisini çeviri dosyasında {0} olan yere basmak için
+                payloadData
+        ));
     }
 }

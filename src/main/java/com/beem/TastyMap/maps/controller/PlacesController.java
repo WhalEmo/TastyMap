@@ -4,6 +4,7 @@ import com.beem.TastyMap.maps.data.PlaceDetailsResponse;
 import com.beem.TastyMap.maps.data.PlacesResponse;
 import com.beem.TastyMap.maps.data.ScanRequest;
 import com.beem.TastyMap.maps.service.PlacesService;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,8 +24,12 @@ public class PlacesController {
 
     @GetMapping("/nearby-details")
     public PlaceDetailsResponse nearbyPlaceDetails(
-            @RequestParam(name = "place_id", required = true) String placeId
+            @RequestParam(name = "place_id", required = true) String placeId,
+            Authentication authentication
     ) {
-        return placesService.getPlaceDetails(placeId);
+        return placesService.getPlaceDetails(
+                placeId,
+                (Long) authentication.getPrincipal()
+        );
     }
 }

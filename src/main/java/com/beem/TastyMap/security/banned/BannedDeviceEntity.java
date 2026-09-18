@@ -1,6 +1,6 @@
 package com.beem.TastyMap.security.banned;
 
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 

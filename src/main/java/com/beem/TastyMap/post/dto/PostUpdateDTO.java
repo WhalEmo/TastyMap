@@ -1,0 +1,35 @@
+package com.beem.TastyMap.post.dto;
+
+import jakarta.validation.constraints.Size;
+
+public class PostUpdateDTO {
+    @Size(max = 500, message = "{validation.post.explanation.size}")
+    private String explanation;
+
+    private Integer puan;
+    private String photoUrl;
+
+    public String getExplanation() {
+        return explanation;
+    }
+
+    public void setExplanation(String explanation) {
+        this.explanation = explanation;
+    }
+
+    public Integer getPuan() {
+        return puan;
+    }
+
+    public void setPuan(Integer puan) {
+        this.puan = puan;
+    }
+
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
+    }
+}

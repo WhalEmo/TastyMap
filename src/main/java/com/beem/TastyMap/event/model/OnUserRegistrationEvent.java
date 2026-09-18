@@ -1,7 +1,5 @@
 package com.beem.TastyMap.event.model;
 
-import com.beem.TastyMap.registerLogin.UserEntity;
-
 public class OnUserRegistrationEvent {
     private final String Email;
     private final String token;

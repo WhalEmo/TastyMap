@@ -2,36 +2,57 @@ package com.beem.TastyMap.maps.data;
 
 
 import com.beem.TastyMap.maps.entity.PlaceEntity;
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
+import com.beem.TastyMap.mapsReview.data.response.UserReviewSummaryDto;
+import com.beem.TastyMap.stats.data.response.PlaceStatsDto;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PlaceDetailsResult {
     private String place_id;
     private String name;
-    private Double rating;
-    private Integer user_ratings_total;
-    private Integer price_level;
+
+    private Double googleRating;
+
+    private Integer googleReviewCount;
+
+    private Double tastyMapRating;
+
+    private Integer tastyMapReviewCount;
+
+    private Integer priceLevel;
     private List<String> types;
 
-    private String formatted_phone_number;
-    private String international_phone_number;
+    private String formattedPhoneNumber;
+    private String internationalPhoneNumber;
     private String website;
 
-    private OpeningHours opening_hours;
+    private OpeningHours openingHours;
     private Geometry geometry;
-    private List<Review> reviews;
+    private List<ReviewResult> reviews;
 
-    private String formatted_address;
+    private UserReviewSummaryDto userReview;
+
+    private String formattedAddress;
+
+    private PlaceStatsDto stats;
 
     public static PlaceDetailsResult fromEntity(PlaceEntity entity) {
         PlaceDetailsResult result = new PlaceDetailsResult();
 
         result.setPlace_id(entity.getPlaceId());
         result.setName(entity.getName());
-        result.setRating(entity.getRating());
-        result.setUser_ratings_total(entity.getUserRatingsTotal());
-        result.setPrice_level(entity.getPriceLevel());
-        result.setFormatted_address(entity.getFormattedAddress());
+
+        result.setGoogleRating(entity.getGoogleRating());
+        result.setGoogleReviewCount(entity.getGoogleReviewCount());
+
+        result.setTastyMapRating(entity.getTastyMapRating());
+        result.setTastyMapReviewCount(entity.getTastyMapReviewCount());
+
+        result.setPriceLevel(entity.getPriceLevel());
+        result.setFormattedAddress(entity.getFormattedAddress());
 
         if (entity.getTypes() != null) {
             result.setTypes(entity.getTypes().stream().toList());
@@ -46,25 +67,17 @@ public class PlaceDetailsResult {
         result.setGeometry(geo);
 
 
-        result.setFormatted_phone_number(entity.getFormattedPhoneNumber());
-        result.setInternational_phone_number(entity.getInternationalPhoneNumber());
+        result.setFormattedPhoneNumber(entity.getFormattedPhoneNumber());
+        result.setInternationalPhoneNumber(entity.getInternationalPhoneNumber());
         result.setWebsite(entity.getWebsite());
 
         if(entity.getOpeningHours() != null){
-            result.opening_hours = new OpeningHours(
+            result.openingHours = new OpeningHours(
                     entity.getOpeningHours().getOpenNow(),
                     entity.getOpeningHours().getWeekdayText()
             );
         }
 
-        if(entity.getReviews() != null){
-            result.setReviews(
-                    entity.getReviews()
-                            .stream()
-                            .map(Review::fromEntity)
-                            .toList()
-            );
-        }
 
         return result;
     }
@@ -72,12 +85,12 @@ public class PlaceDetailsResult {
     public PlaceDetailsResult() {
     }
 
-    public String getFormatted_address() {
-        return formatted_address;
+    public String getFormattedAddress() {
+        return formattedAddress;
     }
 
-    public void setFormatted_address(String formatted_address) {
-        this.formatted_address = formatted_address;
+    public void setFormattedAddress(String formattedAddress) {
+        this.formattedAddress = formattedAddress;
     }
 
     public String getPlace_id() {
@@ -96,28 +109,12 @@ public class PlaceDetailsResult {
         this.name = name;
     }
 
-    public Double getRating() {
-        return rating;
+    public Integer getPriceLevel() {
+        return priceLevel;
     }
 
-    public void setRating(Double rating) {
-        this.rating = rating;
-    }
-
-    public Integer getUser_ratings_total() {
-        return user_ratings_total;
-    }
-
-    public void setUser_ratings_total(Integer user_ratings_total) {
-        this.user_ratings_total = user_ratings_total;
-    }
-
-    public Integer getPrice_level() {
-        return price_level;
-    }
-
-    public void setPrice_level(Integer price_level) {
-        this.price_level = price_level;
+    public void setPriceLevel(Integer priceLevel) {
+        this.priceLevel = priceLevel;
     }
 
     public List<String> getTypes() {
@@ -128,20 +125,20 @@ public class PlaceDetailsResult {
         this.types = types;
     }
 
-    public String getFormatted_phone_number() {
-        return formatted_phone_number;
+    public String getFormattedPhoneNumber() {
+        return formattedPhoneNumber;
     }
 
-    public void setFormatted_phone_number(String formatted_phone_number) {
-        this.formatted_phone_number = formatted_phone_number;
+    public void setFormattedPhoneNumber(String formattedPhoneNumber) {
+        this.formattedPhoneNumber = formattedPhoneNumber;
     }
 
-    public String getInternational_phone_number() {
-        return international_phone_number;
+    public String getInternationalPhoneNumber() {
+        return internationalPhoneNumber;
     }
 
-    public void setInternational_phone_number(String international_phone_number) {
-        this.international_phone_number = international_phone_number;
+    public void setInternationalPhoneNumber(String internationalPhoneNumber) {
+        this.internationalPhoneNumber = internationalPhoneNumber;
     }
 
     public String getWebsite() {
@@ -152,12 +149,12 @@ public class PlaceDetailsResult {
         this.website = website;
     }
 
-    public OpeningHours getOpening_hours() {
-        return opening_hours;
+    public OpeningHours getOpeningHours() {
+        return openingHours;
     }
 
-    public void setOpening_hours(OpeningHours opening_hours) {
-        this.opening_hours = opening_hours;
+    public void setOpeningHours(OpeningHours openingHours) {
+        this.openingHours = openingHours;
     }
 
     public Geometry getGeometry() {
@@ -169,11 +166,59 @@ public class PlaceDetailsResult {
     }
 
 
-    public List<Review> getReviews() {
+    public List<ReviewResult> getReviews() {
         return reviews;
     }
 
-    public void setReviews(List<Review> reviews) {
+    public void setReviews(List<ReviewResult> reviews) {
         this.reviews = reviews;
+    }
+
+    public UserReviewSummaryDto getUserReview() {
+        return userReview;
+    }
+
+    public void setUserReview(UserReviewSummaryDto userReview) {
+        this.userReview = userReview;
+    }
+
+    public Double getGoogleRating() {
+        return googleRating;
+    }
+
+    public void setGoogleRating(Double googleRating) {
+        this.googleRating = googleRating;
+    }
+
+    public Integer getGoogleReviewCount() {
+        return googleReviewCount;
+    }
+
+    public void setGoogleReviewCount(Integer googleReviewCount) {
+        this.googleReviewCount = googleReviewCount;
+    }
+
+    public Double getTastyMapRating() {
+        return tastyMapRating;
+    }
+
+    public void setTastyMapRating(Double tastyMapRating) {
+        this.tastyMapRating = tastyMapRating;
+    }
+
+    public Integer getTastyMapReviewCount() {
+        return tastyMapReviewCount;
+    }
+
+    public void setTastyMapReviewCount(Integer tastyMapReviewCount) {
+        this.tastyMapReviewCount = tastyMapReviewCount;
+    }
+
+    public PlaceStatsDto getStats() {
+        return stats;
+    }
+
+    public void setStats(PlaceStatsDto stats) {
+        this.stats = stats;
     }
 }

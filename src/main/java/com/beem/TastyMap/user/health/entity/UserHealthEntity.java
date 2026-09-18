@@ -1,0 +1,61 @@
+package com.beem.TastyMap.user.health.entity;
+
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.user.health.model.HealthEnum;
+import jakarta.persistence.*;
+
+@Entity
+@Table(
+        name = "user_healthies",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_health", columnNames = {"user_id"})
+        }
+)
+public class UserHealthEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id",nullable = false)
+    private UserEntity user;
+
+    @Column(name = "diabetes")
+    private boolean hasDiabetes=false;
+
+    @Column(name = "eat_type")
+    private HealthEnum eatType = HealthEnum.NORMAL;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
+
+    public boolean isHasDiabetes() {
+        return hasDiabetes;
+    }
+
+    public void setHasDiabetes(boolean hasDiabetes) {
+        this.hasDiabetes = hasDiabetes;
+    }
+
+    public HealthEnum getEatType() {
+        return eatType;
+    }
+
+    public void setEatType(HealthEnum eatType) {
+        this.eatType = eatType;
+    }
+
+}

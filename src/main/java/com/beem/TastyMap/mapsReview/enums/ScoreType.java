@@ -1,6 +1,7 @@
 package com.beem.TastyMap.mapsReview.enums;
 
 public enum ScoreType {
+    OVERALL,
     TASTE,
     INTERIOR_DESIGN,
     SERVICE,

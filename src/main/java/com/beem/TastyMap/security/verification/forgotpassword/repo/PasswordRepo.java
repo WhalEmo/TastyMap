@@ -1,0 +1,16 @@
+package com.beem.TastyMap.security.verification.forgotpassword.repo;
+
+import com.beem.TastyMap.security.verification.forgotpassword.entity.PasswordEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+public interface PasswordRepo extends JpaRepository<PasswordEntity,Long> {
+    Optional<PasswordEntity>findByToken(String token);
+    boolean existsByUser_IdAndUsedFalseAndExpiryDateAfter(Long userId, LocalDateTime now);
+    long countByUserIdAndDeviceIdAndCreatedAtAfter(Long userId, String deviceId, LocalDateTime dateTime);
+    long countByIpAddressAndCreatedAtAfter(String ipAddress, LocalDateTime dateTime);
+    boolean existsByUser_IdAndUsedTrue(Long userId);
+
+}

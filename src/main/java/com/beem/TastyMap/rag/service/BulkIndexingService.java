@@ -2,8 +2,9 @@ package com.beem.TastyMap.rag.service;
 import com.beem.TastyMap.maps.data.PlaceDetailsResult;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.repository.PlaceRepo;
-import com.beem.TastyMap.mapsReview.ReviewRepo;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
+import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
+import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -20,7 +22,7 @@ public class BulkIndexingService {
 
     private final RestaurantIndexingService restaurantIndexingService;
     private final PlaceRepo placeRepository;
-    private final ReviewRepo reviewRepository;
+    private final ReviewQueryRepository reviewQueryRepository;
 
     private static final int BATCH_SIZE = 100; // Her pakette Qdrant'a 100 mekan gönderilecek
 
@@ -36,7 +38,7 @@ public class BulkIndexingService {
         int count = 0;
         for (PlaceEntity place : dbPlaces) {
             try {
-                List<ReviewResult> reviews = reviewRepository.findReviewResultsByPlaceId(place.getPlaceId());
+                List<ReviewResult> reviews = reviewQueryRepository.findAllForIndexingByPlaceId(place.getPlaceId());
                 PlaceDetailsResult placeDetails = PlaceDetailsResult.fromEntity(place);
 
                 Document doc = restaurantIndexingService.createDocument(placeDetails, reviews);

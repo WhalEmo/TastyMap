@@ -1,36 +1,53 @@
 package com.beem.TastyMap.maps.service;
 
 
-import com.beem.TastyMap.maps.GridUpdateEvent;
+import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.maps.listeners.events.GridUpdateEvent;
 import com.beem.TastyMap.maps.data.*;
 import com.beem.TastyMap.maps.data.geojson.FeatureCollection;
+import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsDto;
+import com.beem.TastyMap.maps.data.google.GooglePlaceDetailsResponse;
 import com.beem.TastyMap.maps.entity.GridEntity;
 import com.beem.TastyMap.maps.entity.GridStatus;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.maps.geo.GeoUtils;
 import com.beem.TastyMap.maps.geo.GridCell;
-import com.beem.TastyMap.mapsReview.ReviewRepo;
+import com.beem.TastyMap.maps.listeners.events.PlaceUpdateEvent;
+import com.beem.TastyMap.mapsReview.data.ReviewResult;
+import com.beem.TastyMap.mapsReview.repository.ReviewQueryRepository;
+import com.beem.TastyMap.mapsReview.repository.ReviewRepo;
+import com.beem.TastyMap.mapsReview.data.response.UserReviewSummaryDto;
 import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
+import com.beem.TastyMap.stats.StatsService;
+import com.beem.TastyMap.stats.data.response.PlaceStatsDto;
 import com.beem.TastyMap.redis.RedisCacheService;
 import com.beem.TastyMap.redis.RedisKeyGenerator;
 import com.beem.TastyMap.maps.repository.GridRepo;
 import com.beem.TastyMap.maps.repository.PlaceRepo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.persistence.EntityManager;
-import org.springframework.cache.annotation.Cacheable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 
 @Service
 public class PlacesService {
+
+    private static final Logger log = LoggerFactory.getLogger(PlacesService.class);
 
     private final RedisCacheService redisService;
     private final GooglePlacesService googlePlacesService;
@@ -40,6 +57,9 @@ public class PlacesService {
     private final ReviewRepo reviewRepo;
     private final ApplicationEventPublisher eventPublisher;
     private final PlaceMapper placeMapper;
+    private final ReviewQueryRepository reviewQueryRepository;
+    private final StatsService statsService;
+    private final TransactionTemplate transactionTemplate;
 
     public PlacesService(
             RedisCacheService service,
@@ -49,7 +69,10 @@ public class PlacesService {
             GridRepo gridRepo,
             ReviewRepo reviewRepo,
             ApplicationEventPublisher eventPublisher,
-            PlaceMapper placeMapper
+            PlaceMapper placeMapper,
+            ReviewQueryRepository reviewQueryRepository,
+            StatsService statsService,
+            TransactionTemplate transactionTemplate
     ) {
         this.redisService = service;
         this.googlePlacesService = googlePlacesService;
@@ -59,27 +82,43 @@ public class PlacesService {
         this.reviewRepo = reviewRepo;
         this.eventPublisher = eventPublisher;
         this.placeMapper = placeMapper;
+        this.reviewQueryRepository = reviewQueryRepository;
+        this.statsService = statsService;
+        this.transactionTemplate = transactionTemplate;
     }
 
-    @Cacheable(
-            value = "places",
-            key = "#placeId"
-    )
-    public PlaceEntity getPlaceByPlaceId(Long placeId){
-        return placeRepo
-                .findById(placeId)
-                .orElseThrow(()-> new RuntimeException("Place not found"));
+
+    @Transactional(readOnly = true)
+    public PlaceEntity getReferenceIfExists(String placeId) {
+        if (placeId == null || placeId.trim().isEmpty()) {
+            throw new CustomExceptions.NotFoundException("Place identifier cannot be empty");
+        }
+
+        return placeRepo.findByPlaceId(placeId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Place not found with placeId: " + placeId));
     }
+
 
     @Transactional
-    public PlaceEntity getReferenceIfExists(Long id) {
-        if (!placeRepo.existsById(id)) {
-            throw new RuntimeException("Place not found");
+    public PlaceDetailsResponse getPlaceDetails(String placeID, Long userId){
+        String key = RedisKeyGenerator.createPlaceDetailsKey(placeID);
+
+        PlaceDetailsResult detailsList = searchCacheToPlaceDetails(key);
+
+        if(detailsList == null){
+            detailsList = searchPlaceDetailsDataBase(placeID, key);
         }
-        return entityManager.getReference(PlaceEntity.class, id);
+
+        if(detailsList == null){
+            detailsList = searchPlaceDetailsGoogleAPI(placeID, key);
+        }
+
+        attachUserReviewIfExists(userId, detailsList);
+
+        return mapToDetailsResult(detailsList);
     }
 
-    public PlacesResponse getPlaces(ScanRequest request){
+    public PlacesResponse getPlaces(ScanRequest request) {
         List<GridCell> gridCells = GeoUtils.gridCells(
                 request.getLat(),
                 request.getLng(),
@@ -87,61 +126,101 @@ public class PlacesService {
                 request.getKeywords()
         );
 
-        List<PlaceResult> returnData = null;
-        ArrayList<PlaceResult> results = new ArrayList<>();
-        for(GridCell cell: gridCells){
+        log.info("Tarama başladı. Toplam hücre sayısı: {}", gridCells.size());
 
-            returnData = searchCacheToPlace(cell);
+        List<PlaceResult> allResults = Flux.fromIterable(gridCells)
+                .flatMap(this::resolveSingleCellAsync, 2)
+                .flatMap(Flux::fromIterable)
+                .collectList()
+                .block();
 
-            if(returnData != null){
-                results.addAll(returnData);
-                continue;
-            }
-
-            returnData = searchPlaceDataBase(cell);
-
-            if(returnData != null){
-                results.addAll(returnData);
-                continue;
-            }
-
-            returnData = searchPlaceGoogleAPI(cell);
-
-            results.addAll(returnData);
-
-
+        if (allResults == null) {
+            allResults = Collections.emptyList();
         }
 
-        FeatureCollection geoJson = placeMapper.convertToGeoJson(results);
+        // Tekilleştirme (Deduplication): Farklı grid hücrelerinden taşan aynı place_id'leri teke indir
+        Map<String, PlaceResult> uniqueMap = new LinkedHashMap<>();
+        for (PlaceResult place : allResults) {
+            if (place.getPlace_id() != null) {
+                uniqueMap.putIfAbsent(place.getPlace_id(), place);
+            }
+        }
+        List<PlaceResult> distinctResults = new ArrayList<>(uniqueMap.values());
+
+        FeatureCollection geoJson = placeMapper.convertToGeoJson(distinctResults);
 
         PlacesResponse response = new PlacesResponse();
-        response.setResults(results);
+        response.setResults(distinctResults);
         response.setGeoJson(geoJson);
         response.setStatus("Ok");
 
+        log.info("Tarama tamamlandı. Benzersiz mekan sayısı: {}", distinctResults.size());
         return response;
     }
 
-    @Transactional
-    public PlaceDetailsResponse getPlaceDetails(String placeID){
-        String key = RedisKeyGenerator.createPlaceDetailsKey(placeID);
-
-        PlaceDetailsResult detailsList = searchCacheToPlaceDetails(key);
-
-        if(detailsList != null){
-            return mapToDetailsResult(detailsList);
+    private Mono<List<PlaceResult>> resolveSingleCellAsync(GridCell cell) {
+        log.info("Grid key: {}", cell.getGridKey());
+        List<PlaceResult> cached = searchCacheToPlace(cell);
+        if (cached != null) {
+            return Mono.just(cached);
         }
 
-        detailsList = searchPlaceDetailsDataBase(placeID, key);
+        // 2. Veritabanı Kontrolü (Bloklamayan I/O thread'inde çalıştırılır)
+        return Mono.fromCallable(() -> Optional.ofNullable(searchPlaceDataBase(cell)))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(optResults -> {
+                    if (optResults.isPresent()) {
+                        return Mono.just(optResults.get());
+                    }
 
-        if(detailsList != null){
-            return mapToDetailsResult(detailsList);
+                    log.info("Grid DB'de yok veya bayatlamış, Google'a gidiliyor: {}", cell.getGridKey());
+                    return fetchFromGoogleAndPersistAsync(cell);
+                });
+    }
+
+    private Mono<List<PlaceResult>> fetchFromGoogleAndPersistAsync(GridCell cell) {
+        return googlePlacesService.getNearbyFoodPlacesAsync(cell, cell.getGridKey())
+                .publishOn(Schedulers.boundedElastic()) // DB yazma işlemi için I/O thread'ine geç
+                .map(googleResponse -> {
+                    if (googleResponse == null || googleResponse.getResults() == null) {
+                        return Collections.<PlaceResult>emptyList();
+                    }
+
+                    // Mekanları filtrele
+                    List<PlaceResult> filtered = googleResponse.getResults().stream()
+                            .filter(place -> isPlaceInGrid(cell, place))
+                            .collect(Collectors.toCollection(ArrayList::new));
+
+                    // DB ve Cache kayıt işlemini TRANSACTION ile yap (HTTP çağrısı bittiği için güvenli)
+                    savePlacesToDbAndCache(cell, filtered);
+
+                    return filtered;
+                })
+                .defaultIfEmpty(Collections.emptyList());
+    }
+
+    public void savePlacesToDbAndCache(GridCell cell, List<PlaceResult> placeResults) {
+        transactionTemplate.executeWithoutResult(status -> {
+            markAPICounter(cell);
+            GridEntity grid = getOrCreatedGrid(cell);
+
+            grid.setLastScannedAt(LocalDateTime.now());
+
+            if (placeResults.isEmpty()) {
+                grid.setStatus(GridStatus.EMPTY);
+                gridRepo.save(grid);
+                return;
+            }
+
+            grid.setStatus(GridStatus.HAS_DATA);
+            gridRepo.save(grid);
+            persistPlaces(grid, placeResults);
+        });
+        if (placeResults.isEmpty()) {
+            cachePlaceResults(cell, Collections.emptyList());
+        } else {
+            cachePlaceResults(cell, placeResults);
         }
-
-        detailsList = searchPlaceDetailsGoogleAPI(placeID, key);
-
-
-        return mapToDetailsResult(detailsList);
     }
 
     private List<PlaceResult> searchCacheToPlace(GridCell cell){
@@ -160,30 +239,61 @@ public class PlacesService {
         );
     }
 
+    @Transactional(readOnly = true)
     private List<PlaceResult> searchPlaceDataBase(GridCell cell){
-        Optional<GridEntity> gridEntity = gridRepo.findByGridAndTypes(
+        Optional<GridEntity> gridOpt = gridRepo.findByGridLatAndLng(
+                cell.getLat(),
+                cell.getLng()
+        );
+
+        if (gridOpt.isEmpty()) {
+            return null;
+        }
+
+        GridEntity grid = gridOpt.get();
+
+        List<PlaceEntity> placeEntities = placeRepo.findPlacesByGridAndTypes(
                 cell.getLat(),
                 cell.getLng(),
                 cell.getTypes()
         );
 
-        GridEntity grid = gridEntity.orElse(null);
+        if (!placeEntities.isEmpty()) {
+            eventPublisher.publishEvent(new GridUpdateEvent(grid.getId(), cell));
 
-        //google api yönlendir
-        if(grid == null){
-            return null;
+            List<PlaceResult> placeResults = placeEntities.stream()
+                    .map(PlaceResult::fromEntity)
+                    .toList();
+
+            cachePlaceResults(cell, placeResults);
+            return placeResults;
         }
 
-        eventPublisher.publishEvent(new GridUpdateEvent(grid.getId(), cell));
+        if (grid.getStatus() == GridStatus.EMPTY) {
+            if (grid.getLastScannedAt() != null &&
+                    grid.getLastScannedAt().isAfter(LocalDateTime.now().minusDays(30))) {
+                cachePlaceResults(cell, Collections.emptyList());
+                return Collections.emptyList();
+            }
+        }
 
-        List<PlaceResult> placeResults = grid.getPlaces()
-                .stream()
-                .map(PlaceResult::fromEntity)
-                .toList();
 
-        cachePlaceResults(cell, placeResults);
+        return null;
+    }
 
-        return placeResults;
+    public PlaceEntity save(PlaceEntity place) {
+        return placeRepo.save(place);
+    }
+
+
+    public void evictPlaceCache(String placeId) {
+        if (placeId == null || placeId.trim().isEmpty()) {
+            return;
+        }
+
+        String detailKey = RedisKeyGenerator.createPlaceDetailsKey(placeId);
+
+        redisService.delete(detailKey);
     }
 
     private PlaceDetailsResult searchPlaceDetailsDataBase(String placeId, String key){
@@ -198,7 +308,20 @@ public class PlacesService {
             return null;
         }
 
+        eventPublisher.publishEvent(new PlaceUpdateEvent(entity.getPlaceId()));
+
         PlaceDetailsResult detailsResult = PlaceDetailsResult.fromEntity(entity);
+
+        List<ReviewResult> reviews = reviewQueryRepository.findReviews(entity.getId(), 0, 5);
+        detailsResult.setReviews(reviews);
+
+        PlaceStatsDto stats = statsService.calculatePlaceStats(
+                entity.getId(),
+                entity.getTastyMapRating(),
+                entity.getTastyMapReviewCount()
+        );
+
+        detailsResult.setStats(stats);
 
         cachePlaceDetailsResults(key, detailsResult);
 
@@ -210,42 +333,65 @@ public class PlacesService {
 
         List<PlaceResult> placeResults = fetchAndFilterPlaces(cell);
 
-        markAPICounter(cell);
-
-        GridEntity grid = getOrCreatedGrid(cell);
-
-        if(placeResults.isEmpty()){
-            markGridAsEmpty(grid);
-            cachePlaceResults(cell, placeResults);
-            return Collections.emptyList();
-        }
-
-        markGridAsHasData(grid);
-
-        persistPlaces(grid, placeResults);
-
-        cachePlaceResults(cell, placeResults);
-
+        savePlacesToDbAndCache(cell, placeResults);
         return placeResults;
     }
 
     public PlaceDetailsResult searchPlaceDetailsGoogleAPI(String placeId, String key){
-        PlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId, key);
+        log.info("Google Places Details API çağrılıyor: {}", placeId);
+
+        GooglePlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId, key);
 
         if (!"OK".equals(response.getStatus())) {
+            log.error("Google Places Details API hatası: {} - {}", placeId, response.getStatus());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Google Places error: " + response.getStatus()
             );
         }
-        PlaceDetailsResult details = response.getResult();
+        GooglePlaceDetailsDto dto = response.getResult();
 
-        PlaceEntity place = getOrCreatedOrUpdatePlace(details);
+        PlaceEntity place = getOrCreatedOrUpdatePlace(dto);
+
+        PlaceDetailsResult details = PlaceDetailsResult.fromEntity(place);
+
+        List<ReviewResult> reviews = reviewQueryRepository.findReviews(place.getId(), 0, 5);
+        details.setReviews(reviews);
+
+        PlaceStatsDto stats = statsService.calculatePlaceStats(
+                place.getId(),
+                place.getTastyMapRating(),
+                place.getTastyMapReviewCount()
+        );
+        details.setStats(stats);
 
         cachePlaceDetailsResults(key, details);
 
         return details;
     }
+
+
+    @Transactional
+    public void syncPlaceDetailsFromGoogle(String placeId) {
+        String dummyKey = "SYNC_BG_" + placeId;
+        log.info("Google Place Details senkronizasyonu başlatıldı: {}", placeId);
+
+        GooglePlaceDetailsResponse response = googlePlacesService.getDetailPlaceInfo(placeId, dummyKey);
+        if (!"OK".equals(response.getStatus())) {
+            log.warn("Google API senkronizasyon yanıtı başarısız: {} - {}", placeId, response.getStatus());
+            return;
+        }
+
+        GooglePlaceDetailsDto dto = response.getResult();
+        PlaceEntity place = getOrCreatedOrUpdatePlace(dto);
+
+        place.setLastSyncedAt(LocalDateTime.now());
+        placeRepo.save(place);
+
+        evictPlaceCache(placeId);
+        log.info("Google Place Details senkronizasyonu tamamlandı: {}", placeId);
+    }
+
 
     private List<PlaceResult> fetchAndFilterPlaces(GridCell cell){
         PlacesResponse googleResponse = googlePlacesService.getNearbyFoodPlaces(cell, cell.getGridKey());
@@ -279,7 +425,7 @@ public class PlacesService {
                     return gridRepo.save(entity);
                 });
     }
-    private PlaceEntity getOrCreatedOrUpdatePlace(PlaceDetailsResult details){
+    private PlaceEntity getOrCreatedOrUpdatePlace(GooglePlaceDetailsDto details){
 
         Optional<PlaceEntity> existingPlaceEntity = placeRepo.findByPlaceId(details.getPlace_id());
 
@@ -289,25 +435,76 @@ public class PlacesService {
             return place;
         }
 
-        Long gridId = gridRepo
-                .findIdByGridLatAndLng(
-                        GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLat()),
-                        GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLng())
-                )
-                .orElseThrow(()-> new IllegalStateException("Grid not found"));
+        BigDecimal centerLat = GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLat());
+        BigDecimal centerLng = GeoUtils.roundToGridCenter(details.getGeometry().getLocation().getLng());
 
-        GridEntity gridRef = entityManager.getReference(GridEntity.class, gridId);
+        GridEntity gridEntity = gridRepo
+                .findByGridLatAndLng(centerLat, centerLng)
+                .orElseGet(() -> {
+                    GridEntity g = new GridEntity();
+                    g.setStatus(GridStatus.HAS_DATA);
+                    g.setCenterLat(centerLat);
+                    g.setCenterLng(centerLng);
+                    g.setLastScannedAt(LocalDateTime.now());
+                    return gridRepo.save(g);
+                });
+
 
         PlaceEntity newPlace = PlaceEntity.fromDetailsDto(details);
-        syncPlaceContent(newPlace, details);
-        newPlace.setGrid(gridRef);
 
-        return placeRepo.save(newPlace);
+        newPlace.setGrid(gridEntity);
+        newPlace = placeRepo.saveAndFlush(newPlace);
+
+
+        syncPlaceContent(newPlace, details);
+
+        return newPlace;
     }
 
     @Transactional
-    private void syncPlaceContent(PlaceEntity place, PlaceDetailsResult details){
+    private void syncPlaceContent(PlaceEntity place, GooglePlaceDetailsDto details){
+
+        if (details.getGeometry() != null && details.getGeometry().getLocation() != null) {
+            double newLat = details.getGeometry().getLocation().getLat();
+            double newLng = details.getGeometry().getLocation().getLng();
+
+            // Yeni koordinatların ait olduğu grid merkezini hesapla
+            BigDecimal targetGridLat = GeoUtils.roundToGridCenter(newLat);
+            BigDecimal targetGridLng = GeoUtils.roundToGridCenter(newLng);
+
+            // Eğer mekanın şu an bağlı olduğu grid, yeni koordinatların gridiyle uyuşmuyorsa taşı
+            GridEntity currentGrid = place.getGrid();
+            boolean gridChanged = currentGrid == null
+                    || currentGrid.getCenterLat().compareTo(targetGridLat) != 0
+                    || currentGrid.getCenterLng().compareTo(targetGridLng) != 0;
+
+            if (gridChanged) {
+                if (currentGrid != null) {
+                    String oldGridPattern = RedisKeyGenerator.createGridPattern(
+                            currentGrid.getCenterLat(),
+                            currentGrid.getCenterLng()
+                    );
+                    redisService.deleteByPattern(oldGridPattern);
+                }
+
+                GridEntity newGrid = gridRepo.findByGridLatAndLng(targetGridLat, targetGridLng)
+                        .orElseGet(() -> {
+                            GridEntity g = new GridEntity();
+                            g.setStatus(GridStatus.HAS_DATA);
+                            g.setCenterLat(targetGridLat);
+                            g.setCenterLng(targetGridLng);
+                            g.setLastScannedAt(LocalDateTime.now());
+                            return gridRepo.save(g);
+                        });
+
+                place.setGrid(newGrid);
+                log.info("Mekan konumu değiştiği için grid güncellendi: {} -> Yeni Grid: [{}, {}]",
+                        place.getName(), targetGridLat, targetGridLng);
+            }
+        }
+
         place.updateFromDetailsDto(details);
+        place = placeRepo.save(place);
 
         if(details.getReviews() != null){
             syncPlaceReviews(place, details.getReviews());
@@ -316,26 +513,31 @@ public class PlacesService {
 
 
     private void syncPlaceReviews(PlaceEntity place, List<Review> reviews){
-        Set<Long> existingReviewsCreated = reviewRepo.findAllCreatedAtsByPlaceId(place.getPlaceId());
+        if (reviews == null || reviews.isEmpty() || place.getId() == null) return;
+
+
+        Set<Long> existingTimes = reviewRepo.findAllTimesByPlaceDbId(place.getId());
 
         List<ReviewEntity> newReviews = reviews.stream()
-                .filter(review -> {
-                    return !existingReviewsCreated.contains(review.getTime());
-                })
+                .filter(review -> review.time() != null && !existingTimes.contains(review.time()))
                 .map(review -> {
                     return new ReviewEntity(
-                            review.getAuthor_name(),
-                            review.getRating(),
-                            review.getText(),
-                            review.getTime(),
+                            review.authorName(),
+                            review.rating(),
+                            review.text(),
+                            review.time(),
                             place
                     );
                 })
                 .toList();
         if (!newReviews.isEmpty()){
-            reviewRepo.saveAll(newReviews);
+            try {
+                log.info("{} mekanı için {} yeni Google yorumu kaydediliyor.", place.getPlaceId(), newReviews.size());
+                reviewRepo.saveAllAndFlush(newReviews);
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                log.warn("{} mekanı için eşzamanlı yorum kaydı atlandı (Unique Constraint): {}", place.getPlaceId(), e.getMessage());
+            }
         }
-
     }
 
     private void persistPlaces(GridEntity grid, List<PlaceResult> results) {
@@ -357,6 +559,25 @@ public class PlacesService {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         placeRepo.saveAll(entities);
+    }
+
+
+    private void attachUserReviewIfExists(Long userId, PlaceDetailsResult details) {
+        if (userId == null || details == null) {
+            if (details != null) {
+                details.setUserReview(null);
+            }
+            return;
+        }
+
+        reviewRepo.findFirstByPlace_PlaceIdAndUserIdAndParentIsNullAndStatusOrderByCreatedAtDesc(
+                details.getPlace_id(),
+                userId,
+                com.beem.TastyMap.mapsReview.enums.ReviewStatus.APPROVED
+        ).ifPresentOrElse(
+                reviewEntity -> details.setUserReview(UserReviewSummaryDto.fromEntity(reviewEntity)),
+                () -> details.setUserReview(null)
+        );
     }
 
 
@@ -390,7 +611,7 @@ public class PlacesService {
     private void markAPICounter(GridCell cell){
         redisService.set(
                 cell.getGridKey() + ":API",
-                null,
+                "CALLED",
                 3600
         );
     }
@@ -417,6 +638,16 @@ public class PlacesService {
         response.setResult(detailsResult);
         response.setStatus("Ok");
         return response;
+    }
+
+    public PlaceEntity findById(Long id) {
+        return placeRepo.findById(id)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Mekan bulunamadı. ID: " + id));
+    }
+
+    public PlaceEntity findByPlaceId(String placeId) {
+        return placeRepo.findByPlaceId(placeId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException("Mekan bulunamadı. ID: " + placeId));
     }
     
 }

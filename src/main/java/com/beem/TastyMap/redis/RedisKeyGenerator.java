@@ -28,6 +28,14 @@ public class RedisKeyGenerator {
         return key;
     }
 
+    public static String createGridPattern(BigDecimal lat, BigDecimal lng) {
+        return String.format(
+                "grid:g%.4f:%.4f:*",
+                lat.doubleValue(),
+                lng.doubleValue()
+        );
+    }
+
     public static String createPlaceDetailsKey(String placeId){
         return "place:" + placeId;
     }

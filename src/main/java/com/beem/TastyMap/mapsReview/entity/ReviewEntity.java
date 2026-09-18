@@ -3,7 +3,8 @@ package com.beem.TastyMap.mapsReview.entity;
 import com.beem.TastyMap.maps.entity.PlaceEntity;
 import com.beem.TastyMap.mapsReview.enums.ReviewSource;
 import com.beem.TastyMap.mapsReview.enums.ReviewStatus;
-import com.beem.TastyMap.registerLogin.UserEntity;
+import com.beem.TastyMap.mapsReview.enums.ScoreType;
+import com.beem.TastyMap.user.account.entity.UserEntity;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
@@ -11,7 +12,15 @@ import java.util.List;
 
 
 @Entity
-@Table(name = "place_reviews")
+@Table(
+        name = "place_reviews",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_place_review_time",
+                        columnNames = {"place_id", "time"}
+                )
+        }
+)
 public class ReviewEntity {
 
     @Id
@@ -26,6 +35,9 @@ public class ReviewEntity {
 
     private Long createdAt;
     private Long updateAt;
+
+    @Column(name = "time")
+    private Long time;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -75,30 +87,34 @@ public class ReviewEntity {
     @PreUpdate
     public void onUpdate(){
         updateAt = System.currentTimeMillis();
-        this.rating = calculateTotalRating();
     }
 
     private double calculateTotalRating(){
         if(scores == null || scores.isEmpty()) return 0;
-        return scores
-                .stream()
+        return scores.stream()
+                .filter(s -> s.getType() == ScoreType.OVERALL)
                 .mapToDouble(ScoreEntity::getScore)
-                .average()
-                .orElse(0);
+                .findFirst()
+                .orElseGet(() -> scores.stream()
+                        .mapToDouble(ScoreEntity::getScore)
+                        .average()
+                        .orElse(0.0)
+                );
     }
 
 
     public ReviewEntity() {
     }
 
-    public ReviewEntity(String authorName, Double rating, String text, Long createdAt, PlaceEntity place) {
+    public ReviewEntity(String authorName, Double rating, String text, Long time, PlaceEntity place) {
         this.authorName = authorName;
         this.rating = rating;
         this.text = text;
-        this.createdAt = createdAt;
+        this.time = time;
         this.place = place;
         this.source = ReviewSource.GOOGLE;
         this.status = ReviewStatus.APPROVED;
+        this.createdAt = System.currentTimeMillis(); // Bizim DB'ye yazılma anı
     }
 
     public ReviewEntity(String authorName, String text, ReviewSource source,
@@ -233,8 +249,13 @@ public class ReviewEntity {
     public void setVersion(Long version) {
         this.version = version;
     }
-    public void recalculateRating() {
-        this.rating = calculateTotalRating();
+
+    public Long getTime() {
+        return time;
+    }
+
+    public void setTime(Long time) {
+        this.time = time;
     }
 
 }
