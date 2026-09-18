@@ -4,11 +4,22 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.IdProjecti
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.ProjectionConstructor;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FieldProjection;
 
-@ProjectionConstructor
+import java.time.LocalDateTime;
+
 public record UserSearchDTO(
-        @IdProjection Long id,
-        @FieldProjection String username,
-        @FieldProjection String name,
-        @FieldProjection String profile
-) {
+        Long id,
+        String username,
+        String name,
+        String profile,
+        LocalDateTime searchedAt
+){
+    @ProjectionConstructor
+    public UserSearchDTO(
+            @IdProjection Long id,
+            @FieldProjection String username,
+            @FieldProjection String name,
+            @FieldProjection String profile
+    ) {
+        this(id, username, name, profile, null);
+    }
 }

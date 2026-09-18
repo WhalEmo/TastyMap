@@ -28,7 +28,6 @@ public class SearchHistoryService {
 
     @Transactional
     public void addToHistory(Long myId, Long clickedUserId) {
-        //if (myId.equals(clickedUserId)) return; // Kendini geçmişe ekleme
 
         SearchHistoryEntity history = historyRepo
                 .findBySearcherIdAndSearchedUserId(myId, clickedUserId)
@@ -42,7 +41,6 @@ public class SearchHistoryService {
         history.setSearchedAt(LocalDateTime.now());
         historyRepo.save(history);
 
-        // Limit kontrolünü çağır
         maintainHistoryLimit(myId);
     }
 
