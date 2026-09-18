@@ -41,6 +41,8 @@ public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
     WHERE r.place.placeId = :placeId
 """)
     List<ReviewResult> findReviewResultsByPlaceId(@Param("placeId") String placeId);
+
+
     boolean existsByIdAndPlaceId(Long id, Long placeId);
 
     boolean existsByIdAndPlaceIdAndSourceAndStatus(

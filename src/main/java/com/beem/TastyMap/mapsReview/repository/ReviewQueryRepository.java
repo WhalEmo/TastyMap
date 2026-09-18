@@ -128,4 +128,93 @@ public class ReviewQueryRepository {
                 .toList();
     }
 
+    public List<ReviewResult> findAllForIndexingByPlaceId(String placeId) {
+        QReviewEntity review = QReviewEntity.reviewEntity;
+        QUserEntity user = QUserEntity.userEntity;
+        QScoreEntity score = QScoreEntity.scoreEntity;
+
+        // Sayfalama olmadığı için reviewIds bulma adımını atlayıp direkt JOIN ile tüm datayı çekiyoruz
+        List<Tuple> rows = queryFactory
+                .select(
+                        review.id,
+                        user.id,
+                        review.authorName,
+                        user.username,
+                        user.profile,
+                        review.rating,
+                        review.text,
+                        review.source,
+                        review.parent.id,
+                        review.likeCount,
+                        review.createdAt,
+                        review.updateAt,
+                        score.type,
+                        score.score
+                )
+                .from(review)
+                .leftJoin(review.user, user)
+                .leftJoin(review.scores, score)
+                .where(
+                        review.place.placeId.eq(placeId),
+                        review.parent.isNull(),
+                        review.status.eq(ReviewStatus.APPROVED),
+                        review.deleted.isFalse(),
+                        // Vektör veritabanı (Qdrant) için boş yorumların bir anlamı olmaz, sadece metni olanları alıyoruz
+                        review.text.isNotNull(),
+                        review.text.trim().isNotEmpty()
+                )
+                // Qdrant için sıralama genelde fark etmez ama tarihe göre sıralı gitmesi temiz olur
+                .orderBy(review.createdAt.desc())
+                .fetch();
+
+        return mapTuplesToReviewResults(rows);
+    }
+
+    private List<ReviewResult> mapTuplesToReviewResults(List<Tuple> rows) {
+        QReviewEntity review = QReviewEntity.reviewEntity;
+        QUserEntity user = QUserEntity.userEntity;
+        QScoreEntity score = QScoreEntity.scoreEntity;
+
+        Map<Long, ReviewResultBuilder> map = new LinkedHashMap<>();
+
+        for (Tuple row : rows) {
+            Long reviewId = row.get(review.id);
+            ReviewSource source = row.get(review.source);
+
+            ReviewResultBuilder builder = map.computeIfAbsent(reviewId, k -> {
+                String author = (source == ReviewSource.GOOGLE)
+                        ? row.get(review.authorName)
+                        : row.get(user.username);
+
+                String profileUrl = (source == ReviewSource.GOOGLE)
+                        ? null
+                        : row.get(user.profile);
+
+                Long userId = (source == ReviewSource.GOOGLE) ? null : row.get(user.id);
+
+                return new ReviewResultBuilder(
+                        reviewId,
+                        userId,
+                        author != null ? author : "Anonim",
+                        profileUrl,
+                        row.get(review.rating) != null ? row.get(review.rating) : 0.0,
+                        row.get(review.text),
+                        source != null ? source : ReviewSource.GOOGLE,
+                        row.get(review.parent.id),
+                        row.get(review.likeCount) != null ? row.get(review.likeCount) : 0,
+                        row.get(review.createdAt),
+                        row.get(review.updateAt)
+                );
+            });
+
+            if (row.get(score.type) != null) {
+                builder.addScore(new ScoreDto(row.get(score.type), row.get(score.score)));
+            }
+        }
+
+        return map.values().stream()
+                .map(ReviewResultBuilder::build)
+                .toList();
+    }
+
 }
