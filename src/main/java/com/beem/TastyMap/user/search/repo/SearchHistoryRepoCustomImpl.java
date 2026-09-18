@@ -33,7 +33,8 @@ public class SearchHistoryRepoCustomImpl implements SearchHistoryRepoCustom {
                                 searchedUser.id,
                                 searchedUser.username,
                                 searchedUser.name,
-                                searchedUser.profile
+                                searchedUser.profile,
+                                history.searchedAt
                         )
                 )
                 .from(history)
