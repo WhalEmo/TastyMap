@@ -1,71 +1,42 @@
 package com.beem.TastyMap.post.like;
 
-public class PostLikeUserDTO{
+import com.beem.TastyMap.user.subscribe.model.RelationStatus;
+import com.beem.TastyMap.user.subscribe.model.SubscribeStatus;
+
+public class PostLikeUserDTO {
     private Long userId;
     private String username;
     private String profile;
-    private boolean isFollow;
-    private boolean followsMe;
-    private boolean mutual;
-
+    private RelationStatus relationStatus;
 
     public PostLikeUserDTO() {
     }
 
-    public PostLikeUserDTO(Long userId, String username, String profile, boolean isFollow, boolean followsMe, boolean mutual) {
+    public PostLikeUserDTO(Long userId, String username, String profile, SubscribeStatus myRequestStatus, SubscribeStatus theirRequestStatus) {
         this.userId = userId;
         this.username = username;
         this.profile = profile;
-        this.isFollow = isFollow;
-        this.followsMe = followsMe;
-        this.mutual = mutual;
+
+        if (myRequestStatus == SubscribeStatus.ACCEPTED) {
+            this.relationStatus = RelationStatus.FOLLOWING;
+        } else if (myRequestStatus == SubscribeStatus.PENDING) {
+            this.relationStatus = RelationStatus.PENDING;
+        } else if (theirRequestStatus == SubscribeStatus.ACCEPTED) {
+            this.relationStatus = RelationStatus.FOLLOW_BACK;
+        } else {
+            this.relationStatus = RelationStatus.NOT_FOLLOWING;
+        }
     }
 
-    public boolean isFollowsMe() {
-        return followsMe;
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
-    public void setFollowsMe(boolean followsMe) {
-        this.followsMe = followsMe;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
-    public Long getUserId() {
-        return userId;
-    }
+    public String getProfile() { return profile; }
+    public void setProfile(String profile) { this.profile = profile; }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getProfile() {
-        return profile;
-    }
-
-    public void setProfile(String profile) {
-        this.profile = profile;
-    }
-
-    public boolean isiFollow() {
-        return isFollow;
-    }
-
-    public void setiFollow(boolean iFollow) {
-        this.isFollow = iFollow;
-    }
-
-    public boolean isMutual() {
-        return mutual;
-    }
-
-    public void setMutual(boolean mutual) {
-        this.mutual = mutual;
-    }
+    public RelationStatus getRelationStatus() { return relationStatus; }
+    public void setRelationStatus(RelationStatus relationStatus) { this.relationStatus = relationStatus; }
 }

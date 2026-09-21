@@ -1,9 +1,8 @@
 package com.beem.TastyMap.post.service;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.user.account.entity.UserEntity;
-import com.beem.TastyMap.user.account.repo.UserRepo;
 import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
+import com.beem.TastyMap.post.dto.PostGridResponseDTO;
 import com.beem.TastyMap.post.dto.PostResponseDTO;
 import com.beem.TastyMap.post.dto.PostUpdateDTO;
 import com.beem.TastyMap.post.entity.PlaceEmbedded;
@@ -13,13 +12,14 @@ import com.beem.TastyMap.post.like.PostLikeEntity;
 import com.beem.TastyMap.post.like.PostLikeRepo;
 import com.beem.TastyMap.post.like.PostLikeUserDTO;
 import com.beem.TastyMap.post.repo.PostRepo;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.user.account.repo.UserRepo;
 import jakarta.persistence.EntityManager;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +54,7 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponseDTO addPost(PostAndVisitRequestDTO dto, Long myId){
+    public PostResponseDTO addPost(PostAndVisitRequestDTO dto, Long myId) {
         UserEntity userRef = entityManager.getReference(UserEntity.class, myId);
 
         var userView = userRepo.findUserProjectionById(myId)
@@ -64,7 +64,7 @@ public class PostService {
         place.setPlaceId(dto.getPlaceId());
         place.setCity(dto.getCity());
         place.setCategories(dto.getCategories());
-        place.setAveragePuan(dto.getAveragePuan());
+        place.setAveragePuan(dto.getAveragePoint());
         place.setDistrict(dto.getDistrict());
         place.setNeighbourhood(dto.getNeighbourhood());
         place.setPlaceName(dto.getPlaceName());
@@ -75,7 +75,6 @@ public class PostService {
         if (dto.getExplanation() != null) {
             post.setExplanation(dto.getExplanation().trim());
         }
-        post.setPuan(dto.getPuan());
         post.setUser(userRef);
         post.setPhotoUrl(dto.getPhotoUrl());
         post.setPlaceEmbedded(place);
@@ -85,10 +84,22 @@ public class PostService {
         return convertToResponseDTO(post, false, userView);
     }
 
-    public Page<PostResponseDTO> getPosts(Long userId, Long myId, int page, int size) {
-        accessChecker.checkAccess(userId, myId);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return postRepo.getUserPosts(userId, myId, pageable);
+    @Transactional(readOnly = true)
+    public Page<PostGridResponseDTO> getUserGridPosts(Long targetUserId, Long myId, int page, int size) {
+        accessChecker.checkAccess(targetUserId, myId);
+        Pageable pageable = PageRequest.of(page, size);
+        return postRepo.findUserGridPosts(targetUserId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public PostResponseDTO getPostDetail(Long postId, Long myId) {
+        PostEntity post = postRepo.findByIdWithUser(postId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
+
+        accessChecker.checkAccess(post.getUser().getId(), myId);
+        boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
+
+        return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
@@ -115,8 +126,8 @@ public class PostService {
         if (!dto.getPhotoUrl().equals(post.getPhotoUrl())) {
             post.setPhotoUrl(dto.getPhotoUrl());
         }
-        if (!dto.getPuan().equals(post.getPuan())) {
-            post.setPuan(dto.getPuan());
+        if (!dto.getPoint().equals(post.getPuan())) {
+            post.setPuan(dto.getPoint());
         }
         post.setUpdateDate(LocalDateTime.now());
         postRepo.save(post);
@@ -185,7 +196,7 @@ public class PostService {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
-        dto.setPuan(post.getPuan());
+        dto.setPoint(post.getPuan());
         dto.setPhotoUrl(post.getPhotoUrl());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setCommentEnabled(post.isCommentEnabled());
@@ -208,7 +219,7 @@ public class PostService {
             dto.setNeighbourhood(place.getNeighbourhood());
             dto.setLatitude(place.getLatitude());
             dto.setLongitude(place.getLongitude());
-            dto.setAveragePuan(place.getAveragePuan());
+            dto.setAveragePoint(place.getAveragePuan());
         }
 
         return dto;
@@ -218,7 +229,7 @@ public class PostService {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
-        dto.setPuan(post.getPuan());
+        dto.setPoint(post.getPuan());
         dto.setPhotoUrl(post.getPhotoUrl());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setUpdateDate(post.getUpdateDate());
@@ -242,7 +253,7 @@ public class PostService {
             dto.setNeighbourhood(place.getNeighbourhood());
             dto.setLatitude(place.getLatitude());
             dto.setLongitude(place.getLongitude());
-            dto.setAveragePuan(place.getAveragePuan());
+            dto.setAveragePoint(place.getAveragePuan());
         }
         return dto;
     }

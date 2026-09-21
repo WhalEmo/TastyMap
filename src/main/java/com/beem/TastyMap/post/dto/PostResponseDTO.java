@@ -6,7 +6,7 @@ public class PostResponseDTO {
     private boolean commentEnabled;
     private Long postId;
     private String explanation;
-    private int puan;
+    private int point;
     private String photoUrl;
     private int numberof_likes;
     private LocalDateTime createdAt;
@@ -24,7 +24,7 @@ public class PostResponseDTO {
     private String neighbourhood;
     private double latitude;
     private double longitude;
-    private double averagePuan;
+    private double averagePoint;
     private boolean isLiked;
     private int commentCount;
     private boolean isPinned;
@@ -32,11 +32,11 @@ public class PostResponseDTO {
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(boolean commentEnabled,Long postId, String explanation, int puan, String photoUrl, int numberof_likes, LocalDateTime createdAt,LocalDateTime updateDate, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePuan,boolean isLiked, int commentCount, boolean isPinned) {
+    public PostResponseDTO(boolean commentEnabled, Long postId, String explanation, int point, String photoUrl, int numberof_likes, LocalDateTime createdAt, LocalDateTime updateDate, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePoint, boolean isLiked, int commentCount, boolean isPinned) {
         this.commentEnabled=commentEnabled;
         this.postId = postId;
         this.explanation = explanation;
-        this.puan = puan;
+        this.point = point;
         this.photoUrl = photoUrl;
         this.numberof_likes = numberof_likes;
         this.createdAt = createdAt;
@@ -52,7 +52,7 @@ public class PostResponseDTO {
         this.neighbourhood = neighbourhood;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.averagePuan = averagePuan;
+        this.averagePoint = averagePoint;
         this.isLiked=isLiked;
         this.commentCount=commentCount;
         this.isPinned = isPinned;
@@ -82,12 +82,12 @@ public class PostResponseDTO {
         this.explanation = explanation;
     }
 
-    public Integer getPuan() {
-        return puan;
+    public int getPoint() {
+        return point;
     }
 
-    public void setPuan(Integer puan) {
-        this.puan = puan;
+    public void setPoint(int point) {
+        this.point = point;
     }
 
     public String getPhotoUrl() {
@@ -98,12 +98,28 @@ public class PostResponseDTO {
         this.photoUrl = photoUrl;
     }
 
+    public int getNumberof_likes() {
+        return numberof_likes;
+    }
+
+    public void setNumberof_likes(int numberof_likes) {
+        this.numberof_likes = numberof_likes;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(LocalDateTime updateDate) {
+        this.updateDate = updateDate;
     }
 
     public Long getUserId() {
@@ -178,36 +194,28 @@ public class PostResponseDTO {
         this.neighbourhood = neighbourhood;
     }
 
-    public Double getLatitude() {
+    public double getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(Double latitude) {
+    public void setLatitude(double latitude) {
         this.latitude = latitude;
     }
 
-    public Double getLongitude() {
+    public double getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(Double longitude) {
+    public void setLongitude(double longitude) {
         this.longitude = longitude;
     }
 
-    public Double getAveragePuan() {
-        return averagePuan;
+    public double getAveragePoint() {
+        return averagePoint;
     }
 
-    public void setAveragePuan(Double averagePuan) {
-        this.averagePuan = averagePuan;
-    }
-
-    public int getNumberof_likes() {
-        return numberof_likes;
-    }
-
-    public void setNumberof_likes(int numberof_likes) {
-        this.numberof_likes = numberof_likes;
+    public void setAveragePoint(double averagePoint) {
+        this.averagePoint = averagePoint;
     }
 
     public boolean isLiked() {
@@ -232,13 +240,5 @@ public class PostResponseDTO {
 
     public void setPinned(boolean pinned) {
         isPinned = pinned;
-    }
-
-    public LocalDateTime getUpdateDate() {
-        return updateDate;
-    }
-
-    public void setUpdateDate(LocalDateTime updateDate) {
-        this.updateDate = updateDate;
     }
 }

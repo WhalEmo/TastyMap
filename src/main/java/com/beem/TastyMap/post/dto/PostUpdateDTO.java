@@ -6,7 +6,7 @@ public class PostUpdateDTO {
     @Size(max = 500, message = "{validation.post.explanation.size}")
     private String explanation;
 
-    private Integer puan;
+    private Integer point;
     private String photoUrl;
 
     public String getExplanation() {
@@ -17,12 +17,12 @@ public class PostUpdateDTO {
         this.explanation = explanation;
     }
 
-    public Integer getPuan() {
-        return puan;
+    public Integer getPoint() {
+        return point;
     }
 
-    public void setPuan(Integer puan) {
-        this.puan = puan;
+    public void setPoint(Integer point) {
+        this.point = point;
     }
 
     public String getPhotoUrl() {

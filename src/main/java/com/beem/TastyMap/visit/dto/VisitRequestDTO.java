@@ -9,7 +9,7 @@ public class VisitRequestDTO {
     private String neighbourhood;
     private Double latitude;
     private Double longitude;
-    private Double averagePuan;
+    private Double averagePoint;
     private boolean isWantToPost;
 
     public String getPlaceId() {
@@ -76,12 +76,12 @@ public class VisitRequestDTO {
         this.longitude = longitude;
     }
 
-    public Double getAveragePuan() {
-        return averagePuan;
+    public Double getAveragePoint() {
+        return averagePoint;
     }
 
-    public void setAveragePuan(Double averagePuan) {
-        this.averagePuan = averagePuan;
+    public void setAveragePoint(Double averagePoint) {
+        this.averagePoint = averagePoint;
     }
 
     public boolean isWantToPost() {

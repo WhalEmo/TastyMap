@@ -6,6 +6,11 @@ public class CustomExceptions {
             super(message);
         }
     }
+    public static class AlreadyExistsException extends RuntimeException {
+        public AlreadyExistsException(String message) {
+            super(message);
+        }
+    }
     public  static class AuthenticationException extends RuntimeException {
         public AuthenticationException(String message) {
             super(message);

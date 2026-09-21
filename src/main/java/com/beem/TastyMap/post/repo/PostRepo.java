@@ -16,6 +16,7 @@ public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom 
     boolean isOwner(@Param("postId") Long postId, @Param("userId") Long userId);
 
 
+
     public interface PostStatsView {
         Long getOwnerId();
         int getNumberOfLikes();
