@@ -16,17 +16,18 @@ class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 1. Profil resimleri için dizin yönlendirmesi
+        // 1. Tüm yüklenen dosyalar (profiles, posts vb.) için genel dizin yönlendirmesi
         String absolutePath = Paths.get(uploadDir).toAbsolutePath().toUri().toString();
         if (!absolutePath.endsWith("/")) {
             absolutePath += "/";
         }
 
-        registry.addResourceHandler("/uploads/profiles/**")
+        // "/uploads/**" isteği geldiğinde diskteki "uploads/" klasörünün altına yönlendirir.
+        // Örn: /uploads/posts/photo.jpg -> <proje_dizini>/uploads/posts/photo.jpg
+        registry.addResourceHandler("/uploads/**")
                 .addResourceLocations(absolutePath)
-                // STATİK DOSYALARA ÖZEL CORS VE NGROK BAŞLIKLARI
                 .setCachePeriod(3600)
-                .resourceChain(false); // Statik dosya yönetimi için
+                .resourceChain(false);
 
         // 2. .well-known dizini yönlendirmesi
         registry.addResourceHandler("/.well-known/**")

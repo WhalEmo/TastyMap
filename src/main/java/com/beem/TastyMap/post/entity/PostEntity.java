@@ -27,9 +27,11 @@ public class PostEntity {
     @Column(length = 500)
     private String explanation;
 
-    private Integer puan;
-
-    private String photoUrl;
+    // YENİ: Çoklu fotoğraf desteği için alt tablo eşleşmesi
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "post_photos", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "photo_url")
+    private List<String> photoUrls = new ArrayList<>();
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -61,15 +63,15 @@ public class PostEntity {
     private List<CommentEntity> comments = new ArrayList<>();
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PostLikeEntity> likes=new ArrayList<>();
+    private List<PostLikeEntity> likes = new ArrayList<>();
 
-
-    public String getPhotoUrl() {
-        return photoUrl;
+    // GETTER & SETTER GÜNCELLEMELERİ
+    public List<String> getPhotoUrls() {
+        return photoUrls;
     }
 
-    public void setPhotoUrl(String photoUrl) {
-        this.photoUrl = photoUrl;
+    public void setPhotoUrls(List<String> photoUrls) {
+        this.photoUrls = photoUrls;
     }
 
     public Long getId() {
@@ -94,14 +96,6 @@ public class PostEntity {
 
     public void setExplanation(String explanation) {
         this.explanation = explanation;
-    }
-
-    public Integer getPuan() {
-        return puan;
-    }
-
-    public void setPuan(Integer puan) {
-        this.puan = puan;
     }
 
     public LocalDateTime getCreatedAt() {

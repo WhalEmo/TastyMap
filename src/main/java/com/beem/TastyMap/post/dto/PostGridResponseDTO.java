@@ -1,7 +1,10 @@
 package com.beem.TastyMap.post.dto;
 
+import java.time.LocalDateTime;
+
 public record PostGridResponseDTO(
         Long postId,
         String photoUrl,
-        boolean isPinned
+        LocalDateTime createdAt,
+        Boolean isPinned
 ) {}

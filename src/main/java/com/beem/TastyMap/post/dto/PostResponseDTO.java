@@ -1,14 +1,16 @@
 package com.beem.TastyMap.post.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class PostResponseDTO {
     private boolean commentEnabled;
     private Long postId;
     private String explanation;
-    private int point;
-    private String photoUrl;
-    private int numberof_likes;
+    private List<String> photoUrl;
+    private int likeCount;
     private LocalDateTime createdAt;
     private LocalDateTime updateDate;
 
@@ -25,20 +27,21 @@ public class PostResponseDTO {
     private double latitude;
     private double longitude;
     private double averagePoint;
+    @JsonProperty("liked")
     private boolean isLiked;
     private int commentCount;
+    @JsonProperty("pinned")
     private boolean isPinned;
 
     public PostResponseDTO() {
     }
 
-    public PostResponseDTO(boolean commentEnabled, Long postId, String explanation, int point, String photoUrl, int numberof_likes, LocalDateTime createdAt, LocalDateTime updateDate, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePoint, boolean isLiked, int commentCount, boolean isPinned) {
+    public PostResponseDTO(boolean commentEnabled, Long postId, String explanation, List<String> photoUrl, int likeCount, LocalDateTime createdAt, LocalDateTime updateDate, Long userId, String username, String profilePhotoUrl, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePoint, boolean isLiked, int commentCount, boolean isPinned) {
         this.commentEnabled=commentEnabled;
         this.postId = postId;
         this.explanation = explanation;
-        this.point = point;
         this.photoUrl = photoUrl;
-        this.numberof_likes = numberof_likes;
+        this.likeCount = likeCount;
         this.createdAt = createdAt;
         this.updateDate = updateDate;
         this.userId = userId;
@@ -82,28 +85,21 @@ public class PostResponseDTO {
         this.explanation = explanation;
     }
 
-    public int getPoint() {
-        return point;
-    }
 
-    public void setPoint(int point) {
-        this.point = point;
-    }
-
-    public String getPhotoUrl() {
+    public List<String> getPhotoUrl() {
         return photoUrl;
     }
 
-    public void setPhotoUrl(String photoUrl) {
+    public void setPhotoUrl(List<String> photoUrl) {
         this.photoUrl = photoUrl;
     }
 
-    public int getNumberof_likes() {
-        return numberof_likes;
+    public int getLikeCount() {
+        return likeCount;
     }
 
-    public void setNumberof_likes(int numberof_likes) {
-        this.numberof_likes = numberof_likes;
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -218,10 +214,12 @@ public class PostResponseDTO {
         this.averagePoint = averagePoint;
     }
 
+    @JsonProperty("liked")
     public boolean isLiked() {
         return isLiked;
     }
 
+    @JsonProperty("liked")
     public void setLiked(boolean liked) {
         isLiked = liked;
     }

@@ -1,6 +1,7 @@
 package com.beem.TastyMap.user.profile.service;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.file.FileStorageService;
 import com.beem.TastyMap.user.account.entity.UserEntity;
 import com.beem.TastyMap.user.account.repo.UserRepo;
 import com.beem.TastyMap.user.account.dto.UserResponseDTO;
@@ -25,17 +26,19 @@ public class MyProfileService {
     private final RefreshTokenRepo refreshTokenRepo;
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklistService tokenBlacklistService;
+    private final FileStorageService fileStorageService;
     private final MessageSource messageSource;
 
     public MyProfileService(UserRepo userRepo,
                             RefreshTokenRepo refreshTokenRepo,
                             PasswordEncoder passwordEncoder,
-                            TokenBlacklistService tokenBlacklistService,
+                            TokenBlacklistService tokenBlacklistService, FileStorageService fileStorageService,
                             MessageSource messageSource) {
         this.userRepo = userRepo;
         this.refreshTokenRepo = refreshTokenRepo;
         this.passwordEncoder = passwordEncoder;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.fileStorageService = fileStorageService;
         this.messageSource = messageSource;
     }
 
@@ -69,8 +72,15 @@ public class MyProfileService {
             user.setBiography(request.getBiography().trim());
         }
 
-        if (request.getProfilePhoto() != null && !request.getProfilePhoto().isBlank()) {
+        if (request.getProfilePhoto() != null && !request.getProfilePhoto().equals(user.getProfile())) {
+
+            String oldProfilePhotoUrl = user.getProfile();
+
             user.setProfile(request.getProfilePhoto());
+
+            if (oldProfilePhotoUrl != null && !oldProfilePhotoUrl.isBlank()) {
+                fileStorageService.deleteFileByUrl(oldProfilePhotoUrl);
+            }
         }
 
         userRepo.save(user);

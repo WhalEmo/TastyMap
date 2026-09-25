@@ -87,14 +87,14 @@ public class PostController {
     }
 
     @PatchMapping("/update-post/{postId}")
-    public Map<String, String> updatePost(
+    public PostResponseDTO updatePost(
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateDTO dto,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
         postService.updatePost(postId, myId, dto);
-        return Map.of("message", getMessage("post.updated.success"));
+        return  postService.updatePost(postId, myId, dto);
     }
 
     @PostMapping("/toggle-like/{postId}")

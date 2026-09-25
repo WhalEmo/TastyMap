@@ -1,6 +1,7 @@
 package com.beem.TastyMap.post.service;
 
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.file.FileStorageService;
 import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
 import com.beem.TastyMap.post.dto.PostGridResponseDTO;
 import com.beem.TastyMap.post.dto.PostResponseDTO;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -32,19 +34,21 @@ public class PostService {
     private final UserRepo userRepo;
     private final AccessChecker accessChecker;
     private final EntityManager entityManager;
+    private final FileStorageService fileStorageService;
     private final PostLikeRepo likeRepo;
     private final MessageSource messageSource;
 
     public PostService(PostRepo postRepo,
                        UserRepo userRepo,
                        AccessChecker accessChecker,
-                       EntityManager entityManager,
+                       EntityManager entityManager, FileStorageService fileStorageService,
                        PostLikeRepo likeRepo,
                        MessageSource messageSource) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
+        this.fileStorageService = fileStorageService;
         this.likeRepo = likeRepo;
         this.messageSource = messageSource;
     }
@@ -55,6 +59,9 @@ public class PostService {
 
     @Transactional
     public PostResponseDTO addPost(PostAndVisitRequestDTO dto, Long myId) {
+        if (dto.getPhotoUrl() != null && dto.getPhotoUrl().size() > 3) {
+            throw new CustomExceptions.BadRequestException(getMessage("post.photo.limit.exceeded"));
+        }
         UserEntity userRef = entityManager.getReference(UserEntity.class, myId);
 
         var userView = userRepo.findUserProjectionById(myId)
@@ -76,7 +83,7 @@ public class PostService {
             post.setExplanation(dto.getExplanation().trim());
         }
         post.setUser(userRef);
-        post.setPhotoUrl(dto.getPhotoUrl());
+        post.setPhotoUrls(dto.getPhotoUrl());
         post.setPlaceEmbedded(place);
         post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
@@ -86,7 +93,9 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public Page<PostGridResponseDTO> getUserGridPosts(Long targetUserId, Long myId, int page, int size) {
-        accessChecker.checkAccess(targetUserId, myId);
+        if(!Objects.equals(targetUserId, myId)) {
+            accessChecker.checkAccess(targetUserId, myId);
+        }
         Pageable pageable = PageRequest.of(page, size);
         return postRepo.findUserGridPosts(targetUserId, pageable);
     }
@@ -96,20 +105,30 @@ public class PostService {
         PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
-        accessChecker.checkAccess(post.getUser().getId(), myId);
+        if(!Objects.equals(post.getUser().getId(),myId)){
+            accessChecker.checkAccess(post.getUser().getId(), myId);
+        }
         boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
+
+        System.out.println("POST_ID: " + postId + " | MY_ID: " + myId + " | IS_LIKED: " + isLiked);
 
         return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
     public void deletePost(Long postId, Long myId) {
-        PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
+        PostEntity post = postRepo.findById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
-        if (!postStatus.getAuthorId().equals(myId)) {
+
+        if (!post.getUser().getId().equals(myId)) {
             throw new CustomExceptions.AuthorizationException(getMessage("post.delete.unauthorized"));
         }
-        postRepo.deleteById(postId);
+
+        if (post.getPhotoUrls() != null && !post.getPhotoUrls().isEmpty()) {
+            fileStorageService.deleteFilesByUrls(post.getPhotoUrls());
+        }
+
+        postRepo.delete(post);
         userRepo.updatePostCount(myId, -1);
     }
 
@@ -123,11 +142,8 @@ public class PostService {
         if (dto.getExplanation() != null && !dto.getExplanation().equals(post.getExplanation())) {
             post.setExplanation(dto.getExplanation().trim());
         }
-        if (!dto.getPhotoUrl().equals(post.getPhotoUrl())) {
-            post.setPhotoUrl(dto.getPhotoUrl());
-        }
-        if (!dto.getPoint().equals(post.getPuan())) {
-            post.setPuan(dto.getPoint());
+        if (!dto.getPhotoUrl().equals(post.getPhotoUrls())) {
+            post.setPhotoUrls(dto.getPhotoUrl());
         }
         post.setUpdateDate(LocalDateTime.now());
         postRepo.save(post);
@@ -159,26 +175,35 @@ public class PostService {
 
     @Transactional
     public PostLikeDTO toggleLike(Long postId, Long userId) {
-        var postView = postRepo.findStatsByCPostId(postId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
+        boolean postExists = postRepo.existsById(postId);
+        if (!postExists) {
+            throw new CustomExceptions.NotFoundException(getMessage("post.not.found"));
+        }
 
-        accessChecker.checkAccess(postView.getOwnerId(), userId);
         Optional<Long> existingLike = likeRepo.findIdByPostIdAndUserId(postId, userId);
+        boolean isLiked;
+
         if (existingLike.isPresent()) {
             likeRepo.deleteById(existingLike.get());
             postRepo.decrementLike(postId);
-            return new PostLikeDTO(false, postView.getNumberOfLikes() - 1);
+            isLiked = false;
         } else {
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
+
             PostLikeEntity like = new PostLikeEntity();
             like.setPost(postRef);
             like.setUser(userRef);
 
             likeRepo.save(like);
             postRepo.incrementLike(postId);
-            return new PostLikeDTO(true, postView.getNumberOfLikes() + 1);
+            isLiked = true;
         }
+
+        // Güncelleme sonrası veritabanındaki kesin beğeni sayısını sorgula
+        int updatedLikes = postRepo.findNumberOfLikesByPostId(postId).orElse(0);
+
+        return new PostLikeDTO(isLiked, updatedLikes);
     }
 
     @Transactional(readOnly = true)
@@ -196,11 +221,10 @@ public class PostService {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
-        dto.setPoint(post.getPuan());
-        dto.setPhotoUrl(post.getPhotoUrl());
+        dto.setPhotoUrl(post.getPhotoUrls());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setCommentEnabled(post.isCommentEnabled());
-        dto.setNumberof_likes(post.getNumberofLikes());
+        dto.setLikeCount(post.getNumberofLikes());
         dto.setCommentCount(post.getCommentCount());
         dto.setPinned(post.isPinned());
         dto.setLiked(isLiked);
@@ -229,12 +253,11 @@ public class PostService {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
-        dto.setPoint(post.getPuan());
-        dto.setPhotoUrl(post.getPhotoUrl());
+        dto.setPhotoUrl(post.getPhotoUrls());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setUpdateDate(post.getUpdateDate());
         dto.setCommentEnabled(post.isCommentEnabled());
-        dto.setNumberof_likes(post.getNumberofLikes());
+        dto.setLikeCount(post.getNumberofLikes());
         dto.setCommentCount(post.getCommentCount());
         dto.setPinned(post.isPinned());
         dto.setLiked(isLiked);
