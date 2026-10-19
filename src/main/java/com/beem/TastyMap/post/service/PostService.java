@@ -1,5 +1,6 @@
 package com.beem.TastyMap.post.service;
 
+import com.beem.TastyMap.event.model.FcmNotificationEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.file.FileStorageService;
 import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
@@ -16,6 +17,7 @@ import com.beem.TastyMap.post.repo.PostRepo;
 import com.beem.TastyMap.user.account.entity.UserEntity;
 import com.beem.TastyMap.user.account.repo.UserRepo;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -37,13 +40,14 @@ public class PostService {
     private final FileStorageService fileStorageService;
     private final PostLikeRepo likeRepo;
     private final MessageSource messageSource;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PostService(PostRepo postRepo,
                        UserRepo userRepo,
                        AccessChecker accessChecker,
                        EntityManager entityManager, FileStorageService fileStorageService,
                        PostLikeRepo likeRepo,
-                       MessageSource messageSource) {
+                       MessageSource messageSource, ApplicationEventPublisher eventPublisher) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.accessChecker = accessChecker;
@@ -51,6 +55,7 @@ public class PostService {
         this.fileStorageService = fileStorageService;
         this.likeRepo = likeRepo;
         this.messageSource = messageSource;
+        this.eventPublisher = eventPublisher;
     }
 
     private String getMessage(String code) {
@@ -133,7 +138,7 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponseDTO updatePost(Long postId, Long myId, PostUpdateDTO dto) {
+    public void updatePost(Long postId, Long myId, PostUpdateDTO dto) {
         PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
         if (!post.getUser().getId().equals(myId)) {
@@ -142,17 +147,13 @@ public class PostService {
         if (dto.getExplanation() != null && !dto.getExplanation().equals(post.getExplanation())) {
             post.setExplanation(dto.getExplanation().trim());
         }
-        if (!dto.getPhotoUrl().equals(post.getPhotoUrls())) {
-            post.setPhotoUrls(dto.getPhotoUrl());
-        }
         post.setUpdateDate(LocalDateTime.now());
+        post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
-        boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
-        return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
-    public PostResponseDTO togglePinPost(Long postId, Long myId) {
+    public void togglePinPost(Long postId, Long myId) {
         PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
@@ -169,16 +170,12 @@ public class PostService {
             post.setPinned(true);
         }
         postRepo.save(post);
-        boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
-        return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
     public PostLikeDTO toggleLike(Long postId, Long userId) {
-        boolean postExists = postRepo.existsById(postId);
-        if (!postExists) {
-            throw new CustomExceptions.NotFoundException(getMessage("post.not.found"));
-        }
+        Long postOwnerId = postRepo.findOwnerIdByPostId(postId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
         Optional<Long> existingLike = likeRepo.findIdByPostIdAndUserId(postId, userId);
         boolean isLiked;
@@ -198,16 +195,23 @@ public class PostService {
             likeRepo.save(like);
             postRepo.incrementLike(postId);
             isLiked = true;
+
+            if (!postOwnerId.equals(userId)) {
+                String likerUsername = userRepo.findUserProjectionById(userId)
+                        .map(UserRepo.UserProfileView::getUsername)
+                        .orElse("Bir kullanıcı");
+
+                sendPostLikeNotification(postOwnerId, likerUsername, postId);
+            }
         }
 
-        // Güncelleme sonrası veritabanındaki kesin beğeni sayısını sorgula
         int updatedLikes = postRepo.findNumberOfLikesByPostId(postId).orElse(0);
 
         return new PostLikeDTO(isLiked, updatedLikes);
     }
 
     @Transactional(readOnly = true)
-    public Page<PostLikeUserDTO> whosLike(
+    public Page<PostLikeUserDTO> getPostLikes(
             Long postId,
             Long myId,
             int page,
@@ -279,5 +283,22 @@ public class PostService {
             dto.setAveragePoint(place.getAveragePuan());
         }
         return dto;
+    }
+
+    private void sendPostLikeNotification(Long recipientUserId, String likerUsername, Long postId) {
+        Map<String, String> payloadData = Map.of(
+                "type", "POST_LIKE",
+                "postId", String.valueOf(postId)
+        );
+
+        FcmNotificationEvent event = new FcmNotificationEvent(
+                recipientUserId,
+                "notification.post.like.title",
+                "notification.post.like.body",
+                new Object[]{likerUsername},
+                payloadData
+        );
+
+        eventPublisher.publishEvent(event);
     }
 }

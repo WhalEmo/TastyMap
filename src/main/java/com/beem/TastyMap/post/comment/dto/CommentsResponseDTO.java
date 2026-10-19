@@ -1,9 +1,9 @@
 package com.beem.TastyMap.post.comment.dto;
 
 import com.beem.TastyMap.post.comment.entity.CommentEntity;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
-
 public class CommentsResponseDTO {
     private Long id;
     private Long parentCommentId;
@@ -12,15 +12,19 @@ public class CommentsResponseDTO {
     private LocalDateTime date;
     private LocalDateTime updateDate;
     private int numberOfLikes;
+    private int replyCount;
 
     private Long userId;
     private String username;
     private String profilePhotoUrl;
+
+    @JsonProperty("liked")
     private boolean isLiked;
+
+    @JsonProperty("pinned")
     private boolean isPinned;
 
-
-    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date,LocalDateTime updateDate, int numberOfLikes, Long userId, String username, String profilePhotoUrl,boolean isLiked,boolean isPinned) {
+    public CommentsResponseDTO(Long id, Long parentCommentId, Long post_id, String contents, LocalDateTime date, LocalDateTime updateDate, int numberOfLikes, Long userId, String username, String profilePhotoUrl, boolean isLiked, boolean isPinned, int replyCount) {
         this.id = id;
         this.parentCommentId = parentCommentId;
         this.post_id = post_id;
@@ -33,14 +37,15 @@ public class CommentsResponseDTO {
         this.profilePhotoUrl = profilePhotoUrl;
         this.isLiked = isLiked;
         this.isPinned = isPinned;
+        this.replyCount = replyCount; // YENİ EKLENEN ALAN
     }
 
     public CommentsResponseDTO(CommentEntity comment, boolean isLiked) {
         this.id = comment.getId();
         this.post_id = comment.getPost().getId();
-        this.userId=comment.getUser().getId();
-        this.username=comment.getUser().getUsername();
-        this.profilePhotoUrl=comment.getUser().getProfile();
+        this.userId = comment.getUser().getId();
+        this.username = comment.getUser().getUsername();
+        this.profilePhotoUrl = comment.getUser().getProfile();
         this.contents = comment.getContents();
         this.numberOfLikes = comment.getNumberofLikes();
         this.date = comment.getDate();
@@ -48,6 +53,7 @@ public class CommentsResponseDTO {
         this.parentCommentId = comment.getParentComment() != null ? comment.getParentComment().getId() : null;
         this.isLiked = isLiked;
         this.isPinned = comment.isPinned();
+        this.replyCount = comment.getReplyCount(); // YENİ EKLENEN ALAN (Entity'den alınır)
     }
     public CommentsResponseDTO() {}
 
@@ -123,18 +129,20 @@ public class CommentsResponseDTO {
         this.profilePhotoUrl = profilePhotoUrl;
     }
 
+    @JsonProperty("liked")
     public boolean isLiked() {
         return isLiked;
     }
-
+    @JsonProperty("liked")
     public void setLiked(boolean liked) {
         isLiked = liked;
     }
 
+    @JsonProperty("pinned")
     public boolean isPinned() {
         return isPinned;
     }
-
+    @JsonProperty("pinned")
     public void setPinned(boolean pinned) {
         isPinned = pinned;
     }
@@ -145,5 +153,13 @@ public class CommentsResponseDTO {
 
     public void setUpdateDate(LocalDateTime updateDate) {
         this.updateDate = updateDate;
+    }
+
+    public int getReplyCount() {
+        return replyCount;
+    }
+
+    public void setReplyCount(int replyCount) {
+        this.replyCount = replyCount;
     }
 }

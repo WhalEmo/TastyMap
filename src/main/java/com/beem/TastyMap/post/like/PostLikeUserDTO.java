@@ -12,12 +12,14 @@ public class PostLikeUserDTO {
     public PostLikeUserDTO() {
     }
 
-    public PostLikeUserDTO(Long userId, String username, String profile, SubscribeStatus myRequestStatus, SubscribeStatus theirRequestStatus) {
+    public PostLikeUserDTO(Long userId, String username, String profile, SubscribeStatus myRequestStatus, SubscribeStatus theirRequestStatus,Long myId) {
         this.userId = userId;
         this.username = username;
         this.profile = profile;
 
-        if (myRequestStatus == SubscribeStatus.ACCEPTED) {
+        if (userId.equals(myId)) {
+            this.relationStatus = RelationStatus.SELF;
+        } else if (myRequestStatus == SubscribeStatus.ACCEPTED) {
             this.relationStatus = RelationStatus.FOLLOWING;
         } else if (myRequestStatus == SubscribeStatus.PENDING) {
             this.relationStatus = RelationStatus.PENDING;

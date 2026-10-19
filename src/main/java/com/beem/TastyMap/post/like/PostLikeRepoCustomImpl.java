@@ -36,7 +36,8 @@ public class PostLikeRepoCustomImpl implements PostLikeRepoCustom {
                         u.username,
                         u.profile,
                         s1.status,
-                        s2.status
+                        s2.status,
+                        com.querydsl.core.types.dsl.Expressions.constant(myId)
                 ))
                 .from(pl)
                 .join(pl.user, u)

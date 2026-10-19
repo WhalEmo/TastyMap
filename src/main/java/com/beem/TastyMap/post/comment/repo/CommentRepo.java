@@ -52,12 +52,21 @@ Optional<CommentEntity> findByIdWithUser(@Param("commentId") Long commentId);
     void decrementLike(@Param("commentId") Long commentId);
 
 
-    @Query("SELECT c.user.id as authorId, c.post.id as postId FROM CommentEntity c WHERE c.id = :id")
+    @Query("SELECT c.user.id as authorId, c.post.id as postId, c.parentComment.id as parentCommentId FROM CommentEntity c WHERE c.id = :id")
     Optional<CommentDeleteView> findDeleteViewByCommentId(@Param("id") Long id);
 
     public interface CommentDeleteView {
         Long getAuthorId();
         Long getPostId();
+        Long getParentCommentId();
     }
+
+    @Modifying
+    @Query("UPDATE CommentEntity c SET c.replyCount = c.replyCount + 1 WHERE c.id = :commentId")
+    void incrementReplyCount(Long commentId);
+
+    @Modifying
+    @Query("UPDATE CommentEntity c SET c.replyCount = c.replyCount - 1 WHERE c.id = :commentId")
+    void decrementReplyCount(Long commentId);
 
 }

@@ -109,7 +109,7 @@ public class SecurityConfig {
                 "https://*.ngrok-free.dev",
                 "https://coleman-nonethic-marinda.ngrok-free.dev"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type",
@@ -127,6 +127,8 @@ public class SecurityConfig {
         configuration.setAllowCredentials(true);
 
         configuration.setExposedHeaders(List.of("Set-Cookie"));
+
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

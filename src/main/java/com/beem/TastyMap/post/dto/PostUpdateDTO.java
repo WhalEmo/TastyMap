@@ -7,7 +7,7 @@ import java.util.List;
 public class PostUpdateDTO {
     @Size(max = 500, message = "{validation.post.explanation.size}")
     private String explanation;
-    private List<String> photoUrl;
+    private boolean commentEnabled;
 
     public String getExplanation() {
         return explanation;
@@ -18,11 +18,11 @@ public class PostUpdateDTO {
     }
 
 
-    public List<String> getPhotoUrl() {
-        return photoUrl;
+    public boolean isCommentEnabled() {
+        return commentEnabled;
     }
 
-    public void setPhotoUrl(List<String> photoUrl) {
-        this.photoUrl = photoUrl;
+    public void setCommentEnabled(boolean commentEnabled) {
+        this.commentEnabled = commentEnabled;
     }
 }

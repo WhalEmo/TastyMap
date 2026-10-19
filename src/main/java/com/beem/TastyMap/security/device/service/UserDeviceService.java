@@ -32,6 +32,10 @@ public class UserDeviceService {
         String city = geoLocationService.getCity(ip);
         LocalDateTime now = LocalDateTime.now();
 
+        if (fcmToken != null && !fcmToken.isBlank()) {
+            userDeviceRepo.nullifyTokenFromOtherDevices(fcmToken, user.getId(), deviceId);
+        }
+
         UserDeviceEntity device;
 
         if (deviceDto != null && deviceDto.getId() != null) {

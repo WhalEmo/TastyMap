@@ -87,14 +87,13 @@ public class PostController {
     }
 
     @PatchMapping("/update-post/{postId}")
-    public PostResponseDTO updatePost(
+    public void updatePost(
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateDTO dto,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
         postService.updatePost(postId, myId, dto);
-        return  postService.updatePost(postId, myId, dto);
     }
 
     @PostMapping("/toggle-like/{postId}")
@@ -106,23 +105,23 @@ public class PostController {
         return postService.toggleLike(postId, myId);
     }
 
-    @GetMapping("/whos-like/{postId}")
-    public Page<PostLikeUserDTO> whosLike(
+    @GetMapping("/liked-users/{postId}")
+    public Page<PostLikeUserDTO> getPostLikes(
             @PathVariable Long postId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        return postService.whosLike(postId, myId, page, size);
+        return postService.getPostLikes(postId, myId, page, size);
     }
 
     @PutMapping("/toggle-pin/{postId}")
-    public PostResponseDTO togglePin(
+    public void togglePin(
             @PathVariable Long postId,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        return postService.togglePinPost(postId, myId);
+        postService.togglePinPost(postId, myId);
     }
 }

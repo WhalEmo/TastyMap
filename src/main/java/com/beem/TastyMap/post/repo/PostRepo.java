@@ -10,6 +10,9 @@ import java.util.Optional;
 
 public interface PostRepo extends JpaRepository<PostEntity,Long>,PostRepoCustom {
 
+    @Query("SELECT p.user.id FROM PostEntity p WHERE p.id = :postId")
+    Optional<Long> findOwnerIdByPostId(@Param("postId") Long postId);
+
     long countByUserIdAndIsPinnedTrue(Long userId);
 
     @Query("SELECT COUNT(p) > 0 FROM PostEntity p WHERE p.id = :postId AND p.user.id = :userId")

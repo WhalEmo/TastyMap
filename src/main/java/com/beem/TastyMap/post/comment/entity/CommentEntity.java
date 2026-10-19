@@ -39,6 +39,9 @@ public class CommentEntity {
     @JoinColumn(name = "parent_comment_id")
     private CommentEntity parentComment;
 
+    @Column(name = "reply_count", nullable = false)
+    private int replyCount = 0;
+
     @Column(name = "number_of_likes",nullable = false)
     private int numberofLikes = 0;
 
@@ -143,5 +146,13 @@ public class CommentEntity {
 
     public void setUpdateDate(LocalDateTime updateDate) {
         this.updateDate = updateDate;
+    }
+
+    public int getReplyCount() {
+        return replyCount;
+    }
+
+    public void setReplyCount(int replyCount) {
+        this.replyCount = replyCount;
     }
 }
