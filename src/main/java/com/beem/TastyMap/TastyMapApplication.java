@@ -7,7 +7,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableAsync
 @EnableScheduling
-@SpringBootApplication
+@SpringBootApplication(
+		exclude = {
+				org.springframework.ai.autoconfigure.vectorstore.qdrant.QdrantVectorStoreAutoConfiguration.class
+		}
+)
 public class TastyMapApplication {
 
 	public static void main(String[] args) {

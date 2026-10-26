@@ -2,12 +2,15 @@ package com.beem.TastyMap.redis;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 
@@ -114,6 +117,45 @@ public class RedisCacheService {
             }
         } catch (Exception e) {
             log.warn("Redis deleteByPattern hatası (pattern: {}): {}", pattern, e.getMessage());
+        }
+    }
+
+    public <T> void appendToListWithLimit(String key, T item, int maxSize, long ttlSeconds) {
+        try {
+            String json = objectMapper.writeValueAsString(item);
+            ListOperations<String, String> listOps = redis.opsForList();
+
+            listOps.rightPush(key, json);
+
+            listOps.trim(key, -maxSize, -1);
+
+            // Oturumu canlı tutmak için her mesajda TTL'i yenile
+            redis.expire(key, Duration.ofSeconds(ttlSeconds));
+        } catch (Exception e) {
+            log.error("Redis appendToListWithLimit hatası (key: {}): {}", key, e.getMessage());
+        }
+    }
+
+    public <T> List<T> getList(String key, Class<T> clazz) {
+        try {
+            List<String> rawList = redis.opsForList().range(key, 0, -1);
+            if (rawList == null || rawList.isEmpty()) {
+                return Collections.emptyList();
+            }
+            return rawList.stream()
+                    .map(json -> {
+                        try {
+                            return objectMapper.readValue(json, clazz);
+                        } catch (Exception e) {
+                            log.error("Redis JSON parse hatası: {}", e.getMessage());
+                            return null;
+                        }
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        } catch (Exception e) {
+            log.error("Redis getList hatası (key: {}): {}", key, e.getMessage());
+            return Collections.emptyList();
         }
     }
 

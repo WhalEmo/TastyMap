@@ -1,15 +1,11 @@
 package com.beem.TastyMap.rag.data.response;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.io.Serializable;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class RecommendationRes {
-    private Long userId;
-    private String aiMessage;    // Yapay zekanın ürettiği metin
-    private boolean hasMore;      // Frontend buton koysun mu? (true/false)
-    private int remainingCount;  // Kalan mekan sayısı
+public record RecommendationRes(
+        Long userId,
+        String aiMessage,
+        boolean hasMore,
+        int remainingCount
+) implements Serializable {
 }

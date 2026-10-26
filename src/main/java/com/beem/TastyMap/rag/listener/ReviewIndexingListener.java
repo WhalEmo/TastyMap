@@ -4,17 +4,20 @@ import com.beem.TastyMap.maps.listeners.events.PlaceUpdateEvent;
 import com.beem.TastyMap.rag.service.RestaurantIndexingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class ReviewIndexingListener {
 
     private final RestaurantIndexingService restaurantIndexingService;
+
+    public ReviewIndexingListener(RestaurantIndexingService restaurantIndexingService) {
+        this.restaurantIndexingService = restaurantIndexingService;
+    }
 
     @Async
     @TransactionalEventListener

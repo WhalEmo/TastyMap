@@ -5,7 +5,6 @@ import com.beem.TastyMap.user.health.entity.UserHealthEntity;
 import com.beem.TastyMap.user.health.repo.UserAllergiesRepo;
 import com.beem.TastyMap.user.health.repo.UserHealthRepo;
 import com.beem.TastyMap.visit.dto.VisitResponseDTO;
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
@@ -13,11 +12,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-@RequiredArgsConstructor
 public class RagPromptBuilder {
 
     private final UserAllergiesRepo userAllergiesRepo;
     private final UserHealthRepo userHealthRepo;
+
+    public RagPromptBuilder(UserAllergiesRepo userAllergiesRepo, UserHealthRepo userHealthRepo) {
+        this.userAllergiesRepo = userAllergiesRepo;
+        this.userHealthRepo = userHealthRepo;
+    }
 
 
     public String buildHealthAndDietInstruction(UserHealthEntity health) {
@@ -90,6 +93,7 @@ public class RagPromptBuilder {
     /**
      * AI'ya gönderilecek nihai Sistem Prompt'unu hazırlar (Pagination desteği eklendi).
      */
+    /*
     public String buildSystemPrompt(UserDataCollectorService.UserContextData userData,
                                     boolean ignoreAllergies,
                                     List<Document> documents,
@@ -97,9 +101,9 @@ public class RagPromptBuilder {
                                     boolean isExhausted,
                                     int remainingCount) {
 
-        String allergyInstruction = buildAllergyInstruction(userData.getAllergies(), ignoreAllergies);
-        String healthAndDietInstruction = buildHealthAndDietInstruction(userData.getHealthInfo().orElse(null));
-        String visitsInstruction = buildUserVisitsInstruction(userData.getRecentVisits());
+        String allergyInstruction = buildAllergyInstruction(userData.allergies(), ignoreAllergies);
+        String healthAndDietInstruction = buildHealthAndDietInstruction(userData.healthInfo().orElse(null));
+        String visitsInstruction = buildUserVisitsInstruction(userData.recentVisits());
         String context = buildContextText(documents);
 
         String paginationInstruction = isExhausted
@@ -134,5 +138,86 @@ public class RagPromptBuilder {
         
         Kullanıcı Sorusu: %s
         """,healthAndDietInstruction, allergyInstruction, visitsInstruction, paginationInstruction, context, userQuery);
+    }
+
+     */
+
+    /**
+     * AI'ya gönderilecek nihai Sistem Prompt'unu hazırlar.
+     */
+    /*
+    public String buildSystemPromptV2(UserDataCollectorService.UserContextData userData,
+                                    boolean ignoreAllergies,
+                                    List<Document> documents,
+                                    String userQuery,
+                                    boolean isExhausted,
+                                    int remainingCount) {
+
+        String allergyInstruction = buildAllergyInstruction(userData.allergies(), ignoreAllergies);
+        String healthAndDietInstruction = buildHealthAndDietInstruction(userData.healthInfo().orElse(null));
+        String visitsInstruction = buildUserVisitsInstruction(userData.recentVisits());
+        String context = buildContextText(documents);
+
+        String paginationInstruction = isExhausted
+                ? "DURUM BİLGİSİ: Bu aramada konuma uygun gösterilebilecek SON mekanları sunuyorsun. Mekanları tanıttıktan sonra kriterlerdeki mekanların bittiğini, isterse farklı bir arama yapabileceğini nazikçe belirt."
+                : String.format("DURUM BİLGİSİ: Önerilerini sunduktan sonra, kullanıcının istemesi halinde bu konumda %d tane daha alternatif mekan gösterebileceğini kısaca hatırlat.", remainingCount);
+
+        return String.format("""
+        Sen TastyMap uygulamasının uzman gastronomi, restoran ve mekan keşif asistanısın.
+
+        GÖREV TANIMI VE KAPSAM:
+        - Görevin; restoranlar, kafeler, kahveciler, pastaneler, ders çalışmaya/vakit geçirmeye uygun mekanlar, menüler ve mutfak kültürü hakkında öneri vermektir.
+        - Kullanıcının sakinlik, ders çalışma, priz, Wi-Fi, kahve veya yemek gibi mekan ortamına dair istekleri doğrudan senin uzmanlık alanındadır.
+        - SADECE yemek, kafe ve mekan sektörüyle tamamen alakasız konularda (kodlama, tıp, siyaset, spor vb.) nazikçe şu yanıtı ver: "Ben TastyMap'in lezzet ve mekan asistanıyım! Yalnızca restoran, kafe ve mekan önerileri konusunda yardımcı olabilirim. Bugün nasıl bir mekan arıyorsunuz?"
+
+        ÖNERİ VE SUNUM KURALLARI:
+        1. SADECE aşağıda verilen Context içerisindeki gerçek mekanları kullan. Asla hayali mekan veya özellik uydurma.
+        2. Context içinde sana sağlanan mekanları dikkatlice incele. Kullanıcının arayışına (örn: kahve, sakin ortam, yemek türü vb.) hitap eden mekanları tek tek tanıt.
+        3. Mekanları tanıtırken Context'te yer alan 'Kullanıcı Puan Ortalamaları' (Atmosfer, Lezzet, Servis vb.) ve müşteri yorumlarından faydalanarak neden uygun olduklarını gerekçelendir.
+        4. Her mekan için net bir başlık aç ve düzenli madde işaretleriyle sun.
+
+        SAĞLIK VE BESLENME TERCİHLERİ:
+        %s
+
+        ALERJİ TALİMATI:
+        %s
+
+        ZİYARET GEÇMİŞİ TALİMATI:
+        %s
+
+        SAYFALAMA VE KALAN MEKAN DURUMU:
+        %s
+
+        AŞAĞIDA KULLANICININ ARAMASINA UYGUN MEKANLAR (CONTEXT) BULUNMAKTADIR:
+        ---
+        %s
+        ---
+
+        Kullanıcı Sorusu: %s
+        """, healthAndDietInstruction, allergyInstruction, visitsInstruction, paginationInstruction, context, userQuery);
+    }
+
+    */
+
+    public String buildHealthAndDietInstruction2(UserHealthEntity health) {
+        if (health == null) {
+            return ""; // Boşsa prompt'u kirletme
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        if (health.getEatType() != null) {
+            switch (health.getEatType()) {
+                case VEGAN -> sb.append("- KESİN FİLTRE: Kullanıcı VEGAN beslenmektedir. Et, tavuk, balık, süt ürünleri, yumurta odaklı mekanları (ciğerci, köfteci, kebapçı vb.) KESİNLİKLE ELE!\n");
+                case VEGETARIAN -> sb.append("- KESİN FİLTRE: Kullanıcı VEJETARYEN beslenmektedir. Et, tavuk, balık odaklı mekanları KESİNLİKLE ELE!\n");
+                default -> {} // Normal ise yazmaya gerek yok
+            }
+        }
+
+        if (health.isHasDiabetes()) {
+            sb.append("- SAĞLIK UYARISI: Kullanıcının DİYABETİ vardır. Tatlı/şeker odaklı yerler önerirken mutlaka dikkatli olması gerektiğini belirt.\n");
+        }
+
+        return sb.toString().isBlank() ? "" : "SAĞLIK VE BESLENME KURALLARI:\n" + sb;
     }
 }
