@@ -3,12 +3,15 @@ package com.beem.TastyMap.rag.service;
 import com.beem.TastyMap.maps.data.PlaceDetailsResult;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.enums.ScoreType;
+import com.beem.TastyMap.rag.component.QdrantDocumentMapper;
 import com.beem.TastyMap.rag.data.document.RestaurantDocument;
 import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
+import com.beem.TastyMap.rag.data.document.VenueCategory;
 import com.beem.TastyMap.rag.data.dto.IndexedPlaceDTO;
 import com.beem.TastyMap.rag.data.dto.IndexedReviewDTO;
 import com.beem.TastyMap.rag.data.dto.IndexedScoreDTO;
 import com.beem.TastyMap.rag.data.dto.PlaceSummaryExtraction;
+import com.beem.TastyMap.rag.data.enums.AiProvider;
 import com.beem.TastyMap.rag.factory.AiProviderFactory;
 import com.beem.TastyMap.rag.repository.PlaceIndexingQueryRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,31 +37,28 @@ public class RestaurantIndexingService {
 
     private static final Logger log = LoggerFactory.getLogger(RestaurantIndexingService.class);
 
-    private final ChatClient chatClient;
     private final VectorStore vectorStore;
     private final PlaceIndexingQueryRepository placeIndexingQueryRepository;
     private final AiProviderFactory aiProviderFactory;
+    private final QdrantDocumentMapper qdrantDocumentMapper;
 
     private static final int CHUNK_SIZE = 100;
     private static final int MAX_REVIEWS_FOR_EMBEDDING = 10;
     private static final int MAX_REVIEW_CHAR_LENGTH = 300;
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+
     public RestaurantIndexingService(
             VectorStore vectorStore,
             PlaceIndexingQueryRepository placeIndexingQueryRepository,
-            ChatClient.Builder chatClientBuilder, AiProviderFactory aiProviderFactory
+            AiProviderFactory aiProviderFactory,
+            QdrantDocumentMapper qdrantDocumentMapper
     ) {
         this.vectorStore = vectorStore;
         this.placeIndexingQueryRepository = placeIndexingQueryRepository;
-        chatClient = chatClientBuilder
-                .defaultOptions(
-                        OllamaOptions.create()
-                                .withTemperature(0.0f)
-                                .withTopP(0.1f)
-                                .withNumPredict(350)
-                )
-                .build();
         this.aiProviderFactory = aiProviderFactory;
+        this.qdrantDocumentMapper = qdrantDocumentMapper;
     }
 
 
@@ -94,108 +94,59 @@ public class RestaurantIndexingService {
             }
             // 4. Qdrant'a toplu bas
             if (!documents.isEmpty()) {
-                indexPlacesBatch(documents);
-                totalProcessed += documents.size();
+                int writtenCount = safeIndexPlacesBatch(documents);
+                totalProcessed += writtenCount;
                 log.info("Paket #{} tamamlandı. (İşlenen: {}, Son DB ID: {})",
                         chunkNumber, totalProcessed, chunk.get(chunk.size() - 1).id());
             }
 
-            // 5. Cursor güncelle
             lastSeenId = chunk.get(chunk.size() - 1).id();
             chunkNumber++;
         }
         log.info("Toplu indeksleme başarıyla bitti! Qdrant'a aktarılan toplam mekan sayısı: {}", totalProcessed);
     }
 
-
-    private Document buildDocumentFromDto(IndexedPlaceDTO place, Set<String> types) {
-        String qdrantDocId = UUID.nameUUIDFromBytes(place.placeId().getBytes(StandardCharsets.UTF_8)).toString();
-
-        StringBuilder textBuilder = new StringBuilder();
-        textBuilder.append("Restoran: ").append(place.name()).append("\n");
-
-        String typesJoined = (types != null && !types.isEmpty()) ? String.join(", ", types) : "";
-        if (!typesJoined.isBlank()) {
-            textBuilder.append("Kategoriler: ").append(typesJoined).append("\n");
+    private int safeIndexPlacesBatch(List<Document> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return 0;
         }
-        if (place.formattedAddress() != null) {
-            textBuilder.append("Adres: ").append(place.formattedAddress()).append("\n");
-        }
+        try {
+            indexPlacesBatch(documents);
+            return documents.size();
+        } catch (Exception batchEx) {
+            log.warn("⚠️ Paket toplu yazılamadı ({} döküman). Tekil kurtarma (Fallback) moduna geçiliyor... Hata Özeti: {}",
+                    documents.size(), batchEx.getMessage());
 
-        String scoreSummary = calculateAverageScores(place.reviews());
-        if (!scoreSummary.isBlank()) {
-            textBuilder.append("Kullanıcı Puan Ortalamaları: ").append(scoreSummary).append("\n");
-        }
+            int successCount = 0;
+            List<String> failedPlaces = new ArrayList<>();
 
-        String cleanedReviews = extractCleanReviewsFromDto(place.reviews());
-        if (!cleanedReviews.isBlank()) {
-            textBuilder.append("Müşteri Yorumları: ").append(cleanedReviews).append("\n");
-        }
+            for (Document doc : documents) {
+                try {
+                    indexPlacesBatch(List.of(doc));
+                    successCount++;
+                } catch (Exception singleEx) {
+                    String placeName = Optional.ofNullable(doc.getMetadata().get("name"))
+                            .map(String::valueOf).orElse("Bilinmeyen Mekan");
+                    String placeId = Optional.ofNullable(doc.getMetadata().get("place_id"))
+                            .map(String::valueOf).orElse(doc.getId());
+                    String dbId = Optional.ofNullable(doc.getMetadata().get("db_id"))
+                            .map(String::valueOf).orElse("-");
 
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("db_id", String.valueOf(place.id()));
-        metadata.put("place_id", place.placeId());
-        metadata.put("name", place.name() != null ? place.name() : "");
-        metadata.put("google_rating", place.googleRating() != null ? place.googleRating() : 0.0);
-        metadata.put("tastymap_rating", place.tastymapRating() != null ? place.tastymapRating() : 0.0);
-        metadata.put("types", typesJoined);
-        metadata.put("is_open_now", Boolean.TRUE.equals(place.isOpenNow()));
+                    log.error("❌ [ZEHİRLİ DÖKÜMAN ATLANDI] -> Ad: '{}', PlaceId: '{}', DB ID: '{}', Hata: {}",
+                            placeName, placeId, dbId, singleEx.getMessage());
 
-        if (place.latitude() != null && place.longitude() != null) {
-            metadata.put("latitude", place.latitude());
-            metadata.put("longitude", place.longitude());
-        }
-
-        Map<String, Object> safeMetadata = new HashMap<>();
-        metadata.forEach((key, val) -> {
-            if (val instanceof Long l) {
-                safeMetadata.put(key, l.intValue()); // Qdrant Long sevmez, Integer kabul eder
-            } else {
-                safeMetadata.put(key, val);
-            }
-        });
-
-        return new Document(qdrantDocId, textBuilder.toString().trim(), safeMetadata);
-    }
-
-    private String calculateAverageScores(List<IndexedReviewDTO> reviews) {
-        if (reviews == null || reviews.isEmpty()) return "";
-
-        Map<ScoreType, List<Double>> scoreMap = new EnumMap<>(ScoreType.class);
-        for (IndexedReviewDTO review : reviews) {
-            if (review.scores() != null) {
-                for (IndexedScoreDTO score : review.scores()) {
-                    if (score != null && score.type() != null) {
-                        scoreMap.computeIfAbsent(score.type(), k -> new ArrayList<>()).add(score.score());
-                    }
+                    failedPlaces.add(String.format("'%s' (ID: %s)", placeName, dbId));
                 }
             }
+
+            log.info("🔄 Kurtarma Tamamlandı: {}/{} döküman başarıyla yazıldı. Atlananlar ({} adet): {}",
+                    successCount, documents.size(), failedPlaces.size(), failedPlaces);
+
+            return successCount;
         }
-
-        if (scoreMap.isEmpty()) return "";
-
-        return scoreMap.entrySet().stream()
-                .map(entry -> {
-                    double avg = entry.getValue().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-                    return String.format("%s: %.1f/5", entry.getKey().name(), avg);
-                })
-                .collect(Collectors.joining(", "));
     }
 
-    /**
-     * TEKİL İNDEKSLEME: Tek bir mekan eklendiğinde veya yorum güncellendiğinde çalışır.
-     */
-    public void indexPlaceWithReviews(PlaceDetailsResult place, List<ReviewResult> reviews) {
-        if (place == null || place.getPlace_id() == null || place.getPlace_id().isBlank()) {
-            log.warn("Place ID bulunamadığı için Qdrant indekslemesi atlandı.");
-            return;
-        }
 
-        Document doc = createDocument(place, reviews);
-        vectorStore.add(List.of(doc));
-
-        log.info("Restoran indeksi başarıyla güncellendi: {}", place.getPlace_id());
-    }
 
     /**
      * TOPLU (BATCH) İNDEKSLEME: 100'erli paketler halinde Qdrant'a toplu veri gönderir.
@@ -219,84 +170,6 @@ public class RestaurantIndexingService {
         }
     }
 
-    /**
-     * YARDIMCI METOD: PlaceDetailsResult nesnesini Qdrant Document nesnesine çevirir.
-     */
-    public Document createDocument(PlaceDetailsResult place, List<ReviewResult> reviews) {
-        String originalPlaceId = place.getPlace_id();
-
-        // 1. Qdrant için geçerli deterministik UUID
-        String qdrantDocId = UUID.nameUUIDFromBytes(originalPlaceId.getBytes(StandardCharsets.UTF_8)).toString();
-
-        String typesText = (place.getTypes() != null && !place.getTypes().isEmpty())
-                ? String.join(", ", place.getTypes())
-                : "Belirtilmemiş";
-
-        String reviewsCombined = extractCleanReviews(reviews);
-
-        StringBuilder textBuilder = new StringBuilder();
-        textBuilder.append("Restoran: ").append(place.getName()).append("\n");
-        textBuilder.append("Kategoriler: ").append(typesText).append("\n");
-        if (place.getFormattedAddress() != null) {
-            textBuilder.append("Adres: ").append(place.getFormattedAddress()).append("\n");
-        }
-        if (!reviewsCombined.isBlank()) {
-            textBuilder.append("Müşteri Yorumları ve Öne Çıkanlar: ").append(reviewsCombined).append("\n");
-        }
-
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("place_id", originalPlaceId);
-        metadata.put("name", place.getName() != null ? place.getName() : "");
-        metadata.put("google_rating", place.getGoogleRating() != null ? place.getGoogleRating() : 0.0);
-        metadata.put("tastymap_rating", place.getTastyMapRating() != null ? place.getTastyMapRating() : 0.0);
-
-        // List yerine düz String veriyoruz (M1 sürümü List kabul etmez)
-        metadata.put("types", typesText);
-
-        if (place.getOpeningHours() != null) {
-            metadata.put("is_open_now", Boolean.TRUE.equals(place.getOpeningHours().getOpen_now()));
-        } else {
-            metadata.put("is_open_now", false);
-        }
-
-        // Koordinatları düz Double olarak ekliyoruz (Nested map koymuyoruz)
-        if (place.getGeometry() != null && place.getGeometry().getLocation() != null) {
-            metadata.put("latitude", place.getGeometry().getLocation().getLat());
-            metadata.put("longitude", place.getGeometry().getLocation().getLng());
-        }
-
-        return new Document(qdrantDocId, textBuilder.toString().trim(), metadata);
-    }
-
-    private String extractCleanReviews(List<ReviewResult> reviews) {
-        if (reviews == null || reviews.isEmpty()) {
-            return "";
-        }
-
-        return reviews.stream()
-                .map(ReviewResult::content)
-                .filter(c -> c != null && !c.isBlank())
-                .limit(MAX_REVIEWS_FOR_EMBEDDING)
-                .map(c -> c.length() > MAX_REVIEW_CHAR_LENGTH ? c.substring(0, MAX_REVIEW_CHAR_LENGTH) + "..." : c)
-                .map(c -> c.replaceAll("\\s+", " ").trim())
-                .collect(Collectors.joining(" | "));
-    }
-
-
-
-    private String extractCleanReviewsFromDto(List<IndexedReviewDTO> reviews) {
-        if (reviews == null || reviews.isEmpty()) return "";
-
-        return reviews.stream()
-                .map(IndexedReviewDTO::text)
-                .filter(t -> t != null && !t.isBlank())
-                .distinct()
-                .limit(MAX_REVIEWS_FOR_EMBEDDING)
-                .map(t -> t.length() > MAX_REVIEW_CHAR_LENGTH ? t.substring(0, MAX_REVIEW_CHAR_LENGTH) + "..." : t)
-                .map(t -> t.replaceAll("\\s+", " ").trim())
-                .collect(Collectors.joining(" | "));
-    }
-
     private String extractCleanReviewsFromDtoV2(List<IndexedReviewDTO> reviews) {
         if (reviews == null || reviews.isEmpty()) return "";
 
@@ -317,40 +190,63 @@ public class RestaurantIndexingService {
     }
 
 
+    private PlaceSummaryExtraction extractInsightsWithLLM(String placeName, List<String> types, String rawReviews) {
+        String reviewsText = (rawReviews != null && !rawReviews.isBlank())
+                ? rawReviews
+                : "Ayrıntılı müşteri yorumu bulunmuyor. Mekan adı ve türünden çıkarım yap.";
 
-    private PlaceSummaryExtraction extractInsightsWithLLM(String placeName, String rawReviews) {
-        if (rawReviews == null || rawReviews.isBlank()) {
-            return null;
-        }
+        String typesText = (types != null && !types.isEmpty())
+                ? String.join(", ", types)
+                : "Belirtilmemiş";
 
         String systemText = """
-        Sen bir mekan analiz motorusun. Sana verilen mekan adı ve müşteri yorumlarını incele.
-        SADECE yorumlarda açıkça geçen gerçekleri ayıkla ve JSON üret.
+        Sen bir gastronomi ve mekan analiz motorusun. Mekan adı ve müşteri yorumlarını inceleyip yapılandırılmış JSON üret.
         
-        KESİN KURALLAR:
-        1. Yorumlarda doğrudan bahsedilmeyen hiçbir bilgiyi ekleme (uydurma yasaktır).
-        2. Yorumda geçmeyen alanları boş dizi [] olarak bırak.
-        3. Özellikleri kısa, net kelime öbekleri halinde yaz.
-        4. Yanıtın SADECE geçerli bir JSON objesi olsun. Başına veya sonuna hiçbir açıklama, selamlama veya markdown etiketi koyma.
-        
-        ÖRNEK JSON ŞEMASI:
+        KATEGORİ SEÇENEKLERİ (venue_category için sadece bu değerlerden birini seç):
+        - CAFE: Kahve odaklı mekanlar, 3. nesil kahveciler, çay evleri.
+        - RESTAURANT: Genel yemek, ev yemekleri, dünya mutfağı.
+        - MEAT_AND_GRILL: Döner, kebap, etliekmek, tantuni, köfte, ocakbaşı, ciğerci/ciğer, lahmacun/pide, dürüm, sakatat, çorbacı, ızgara et/tavuk. (DİKKAT: Mekan adında veya lezzetlerinde ciğer, lahmacun, dürüm, köfte, kebap geçiyorsa RESTAURANT DEĞİL, kesinlikle MEAT_AND_GRILL seçilmelidir).
+        - BAKERY_AND_DESSERT: Pastane, fırın, unlu mamulleri, börekçi, tatlıcı, waffle, dondurmacı. (KURAL: Mekan adında unlu mamul, pastane, fırın, börek geçiyorsa BAKERY_AND_DESSERT seçilmelidir).
+        - SEAFOOD: Balık ve deniz ürünleri restoranları.
+        - FAST_FOOD: Burger, pizza, çiğköfte, sokak lezzetleri.
+        - NON_DINING: İnternet kafe, espor/oyun merkezi, playstation salonu, bilardo/okey salonu, kıraathane, çocuk parkı, kurs/akademi.
+
+        KRİTİK KURALLAR:
+        1. is_dining: Mekan NON_DINING (oyun salonu, espor, okey salonu ve benzeri) ise içinde tost/içecek satılsa dahi KESİNLİKLE FALSE olmalıdır. Restoran, kafe, pastane, tatlıcı ve fırınlar için KESİNLİKLE TRUE olmalıdır.
+        2. is_vegan_friendly: Yorumlarda vegan ürün/tatlı VEYA bitkisel süt alternatifleri (yulaf sütü, soya sütü, badem sütü, hindistan cevizi sütü) açıkça geçiyorsa TRUE, aksi halde FALSE.
+        3. is_vegetarian_friendly: Mekanda etsiz doyurucu yemek alternatifleri, zengin meze seçenekleri varsa VEYA mekan vegan ise TRUE. Saf kebapçı/ciğercilerde belirgin vejetaryen meze/yemek vurgusu yoksa FALSE.
+        4. is_gluten_free_friendly: Yorumlarda açıkça 'glutensiz' veya 'çölyak' vurgusu varsa TRUE, aksi halde FALSE.
+        5. dietary_tags: Yorumlarda açıkça geçen beslenme etiketleri (Örn: ["yulaf sütü", "glutensiz ekmek", "vegan lazanya"]). Yoksa boş liste [].
+        6. highlighted_foods, atmosphere, service_notes, cautions: Yorumlardan çıkarılan özet maddeler. Yorumda açıkça geçmeyen hiçbir lezzeti uydurma. Yoksa boş liste [].
+        7. Yorumda açıkça geçmeyen hiçbir şeyi uydurma.
+        8. SADECE geçerli bir JSON objesi döndür. Markdown etiketi (```json) kullanma.
+
+        ÖRNEK ÇIKTI FORMATI:
         {
-          "highlighted_foods": ["yemek1", "içecek1"],
-          "atmosphere": ["sessiz", "loş"],
-          "service_notes": ["hızlı servis"],
-          "cautions": ["sıra bekleniyor"]
+          "is_dining": true,
+          "venue_category": "CAFE",
+          "is_vegan_friendly": true,
+          "is_vegetarian_friendly": true,
+          "is_gluten_free_friendly": false,
+          "dietary_tags": ["yulaf sütü", "bitkisel süt"],
+          "highlighted_foods": ["filtre kahve", "cheesecake"],
+          "atmosphere": ["sakin", "çalışmaya uygun"],
+          "service_notes": ["güler yüzlü personel"],
+          "cautions": ["priz az"]
         }
         """;
 
-        String userText = "Mekan: " + placeName + "\n" +
-                "Müşteri Yorumları:\n" + rawReviews;
+        String userText = "Mekan Adı: " + placeName + "\n" +
+                "Mekan Türü/Kategori: " + typesText + "\n" +
+                "Müşteri Yorumları:\n" + reviewsText;
 
         try {
-            // SystemMessage ve UserMessage doğrudan verildiğinde StringTemplate (ST4) devre dışı kalır!
             Prompt prompt = new Prompt(List.of(
                     new SystemMessage(systemText),
                     new UserMessage(userText)
             ));
+
+            ChatClient chatClient = aiProviderFactory.getClient(AiProvider.OLLAMA_INDEXER);
 
             String rawResponse = chatClient.prompt(prompt)
                     .call()
@@ -362,13 +258,14 @@ public class RestaurantIndexingService {
                 return null;
             }
 
-            // Model bazen ```json ... ``` ile sarabilir, temizleyip Jackson'a veriyoruz
-            String cleanJson = rawResponse.replaceAll("(?s)```json\\s*", "")
-                    .replaceAll("(?s)```\\s*", "")
-                    .trim();
+            String cleanJson = rawResponse.trim();
+            int firstBrace = cleanJson.indexOf('{');
+            int lastBrace = cleanJson.lastIndexOf('}');
+            if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+                cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+            }
 
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(cleanJson, PlaceSummaryExtraction.class);
+            return OBJECT_MAPPER.readValue(cleanJson, PlaceSummaryExtraction.class);
 
         } catch (Exception e) {
             log.error("[LLM HATA - {}]: {}", placeName, e.getMessage());
@@ -380,14 +277,12 @@ public class RestaurantIndexingService {
     private Document buildDocumentFromDtoV2(IndexedPlaceDTO place, Set<String> types) {
         String qdrantDocId = UUID.nameUUIDFromBytes(place.placeId().getBytes(StandardCharsets.UTF_8)).toString();
 
-        // 1. Google gürültü tiplerini ayıkla
         List<String> meaningfulTypes = filterMeaningfulTypes(types);
         String rawReviews = extractCleanReviewsFromDtoV2(place.reviews());
 
-        // 2. Yorum varsa LLM ile çıkarım yap
-        PlaceSummaryExtraction insights = extractInsightsWithLLM(place.name(), rawReviews);
+        PlaceSummaryExtraction insights = extractInsightsWithLLM(place.name(), meaningfulTypes, rawReviews);
 
-        // 3. BGE-M3 için anlamsal metin (Content) inşası
+        // 1. BGE-M3 Anlamsal Metin
         StringBuilder semanticText = new StringBuilder();
         semanticText.append("Mekan: ").append(place.name()).append("\n");
 
@@ -396,6 +291,13 @@ public class RestaurantIndexingService {
         }
 
         if (insights != null) {
+            if (insights.venueCategory() != null) {
+                semanticText.append("İşletme Türü: ").append(insights.venueCategory()).append("\n");
+            }
+            if (insights.dietaryTags() != null && !insights.dietaryTags().isEmpty()) {
+                semanticText.append("Diyet ve Beslenme Alternatifleri: ")
+                        .append(String.join(", ", insights.dietaryTags())).append("\n");
+            }
             if (insights.highlightedFoods() != null && !insights.highlightedFoods().isEmpty()) {
                 semanticText.append("Öne Çıkan Lezzetler: ").append(String.join(", ", insights.highlightedFoods())).append("\n");
             }
@@ -409,11 +311,10 @@ public class RestaurantIndexingService {
                 semanticText.append("Dikkat Edilmesi Gerekenler: ").append(String.join(", ", insights.cautions())).append("\n");
             }
         } else if (!rawReviews.isBlank()) {
-            // LLM hata verirse veya boş dönerse fallback
             semanticText.append("Yorum Notları: ").append(rawReviews).append("\n");
         }
 
-        // 4. Qdrant Payload (Metadata)
+        // 2. Qdrant Payload (Metadata)
         RestaurantMetadata metadata = new RestaurantMetadata();
         metadata.setDbId(place.id());
         metadata.setPlaceId(place.placeId());
@@ -423,6 +324,43 @@ public class RestaurantIndexingService {
         metadata.setTypes(meaningfulTypes);
         metadata.setLatitude(place.latitude());
         metadata.setLongitude(place.longitude());
+
+        if (insights != null) {
+            metadata.setVenueCategoryFromString(insights.venueCategory());
+
+            if (metadata.getVenueCategory() == VenueCategory.NON_DINING) {
+                metadata.setDining(false);
+            } else {
+                metadata.setDining(insights.safeIsDining());
+            }
+
+            if (insights.safeIsVeganFriendly()) {
+                metadata.setVegetarianFriendly(true);
+            } else {
+                metadata.setVegetarianFriendly(insights.safeIsVegetarianFriendly());
+            }
+
+            metadata.setVeganFriendly(insights.safeIsVeganFriendly());
+            metadata.setGlutenFreeFriendly(insights.safeIsGlutenFreeFriendly());
+            if (insights.dietaryTags() != null) {
+                metadata.setDietaryTags(insights.dietaryTags());
+            }
+
+            if (insights.highlightedFoods() != null) {
+                metadata.setHighlightedFoods(insights.highlightedFoods());
+            }
+            if (insights.atmosphere() != null) {
+                metadata.setAtmosphere(insights.atmosphere());
+            }
+            if (insights.serviceNotes() != null) {
+                metadata.setServiceNotes(insights.serviceNotes());
+            }
+            if (insights.cautions() != null) {
+                metadata.setCautions(insights.cautions());
+            }
+        }
+
+        log.info("MetaData: {}", metadata);
 
         return new Document(qdrantDocId, semanticText.toString().trim(), metadata.toMap());
     }
@@ -445,14 +383,129 @@ public class RestaurantIndexingService {
             return;
         }
 
-        String border = "=".repeat(60);
-        String placeId = doc.getMetadata() != null ? String.valueOf(doc.getMetadata().get("place_id")) : "Bilinmiyor";
+        RestaurantMetadata metadata = qdrantDocumentMapper.fromMetadataMap(doc.getMetadata());
 
-        log.info("\n{}\n[QDRANT INDEX CONTENT] -> Place ID: {}\n{}\n{}\n{}",
+        String border = "=".repeat(75);
+        String subBorder = "-".repeat(75);
+
+        String locationStr = (metadata.getLatitude() != null && metadata.getLongitude() != null)
+                ? String.format("Lat: %.6f, Lon: %.6f", metadata.getLatitude(), metadata.getLongitude())
+                : "Yok";
+
+        log.info("\n{}\n" +
+                        "📍 [QDRANT INDEX DOC] -> {} (DB ID: {}, Place ID: {})\n" +
+                        "{}\n" +
+                        "🏷️  Kategori: [{}] | Yeme-İçme Mi: [{}]\n" +
+                        "🥗 Diyet Bayrakları -> Vegan: [{}] | Vejetaryen: [{}] | Glutensiz: [{}]\n" +
+                        "🏷️  Diyet Etiketleri -> {}\n" +
+                        "⭐ Puan: {} | Konum: [{}]\n" +
+                        "{}\n" +
+                        "📄 [BGE-M3 ANLAMSAL İÇERİK]:\n{}\n" +
+                        "{}",
                 border,
-                placeId,
-                border,
+                metadata.getName(), metadata.getDbId(), metadata.getPlaceId(),
+                subBorder,
+                metadata.getVenueCategory() != null ? metadata.getVenueCategory().getKey() : "BELİRTİLMEMİŞ",
+                Boolean.TRUE.equals(metadata.getDining()) ? "EVET" : "HAYIR (NON_DINING)",
+                Boolean.TRUE.equals(metadata.getVeganFriendly()) ? "EVET" : "HAYIR",
+                Boolean.TRUE.equals(metadata.getVegetarianFriendly()) ? "EVET" : "HAYIR",
+                Boolean.TRUE.equals(metadata.getGlutenFreeFriendly()) ? "EVET" : "HAYIR",
+                metadata.getDietaryTags() != null ? metadata.getDietaryTags() : Collections.emptyList(),
+                metadata.getGoogleRating(), locationStr,
+                subBorder,
                 doc.getContent(),
-                border);
+                border
+        );
     }
+
+    public void testIndexSamplePlaces(Long lastSeenId, int limit) {
+        log.info("🧪 Test İndeksleme Başlatıldı (Limit: {})...", limit);
+
+        List<IndexedPlaceDTO> sample = placeIndexingQueryRepository.fetchNextChunk(lastSeenId, limit);
+        if (sample == null || sample.isEmpty()) {
+            log.warn("Test için veritabanında mekan bulunamadı!");
+            return;
+        }
+
+        List<Long> chunkIds = sample.stream().map(IndexedPlaceDTO::id).toList();
+        Map<Long, Set<String>> typesMap = placeIndexingQueryRepository.fetchTypesForPlaceIds(chunkIds);
+
+        for (IndexedPlaceDTO dto : sample) {
+            try {
+                Set<String> types = typesMap.getOrDefault(dto.id(), Collections.emptySet());
+                Document doc = buildDocumentFromDtoV2(dto, types);
+                logGeneratedContent(doc);
+                // Test aşamasında Qdrant'a yazmak istersen:
+                // vectorStore.add(List.of(doc));
+            } catch (Exception e) {
+                log.error("Test sırasında hata (PlaceId: {}): {}", dto.placeId(), e.getMessage(), e);
+            }
+        }
+        log.info("🧪 Test İndeksleme Tamamlandı!");
+    }
+
+
+    public void runSyntheticExtractionTests() {
+        log.info("🧪 Sentetik Zorlu Senaryo Testleri Başlatılıyor...");
+
+        record TestCase(String name, List<String> types, String reviews, String expectation) {}
+
+        List<TestCase> cases = List.of(
+                new TestCase(
+                        "Ateş Ocakbaşı & Meze Evi",
+                        List.of("restaurant"),
+                        "Kebapları ve pirzolası harikaydı. Eşim et yemiyor ama onun için közde patlıcan, gavurdağı ve güveçte mantar söyledik, mezeleri çok zengin ve doyurucuydu.",
+                        "Beklenti: MEAT_AND_GRILL, is_dining: true, vegetarian: true, vegan: false"
+                ),
+                new TestCase(
+                        "Botanica Vegan Bistro",
+                        List.of("restaurant", "food"),
+                        "Menüdeki her şey tamamen bitkisel. Soya kıymalı lazanyası ve kaju kremalı vegan cheesecake'i muhteşemdi. Hayvansal hiçbir ürün kullanmıyorlar.",
+                        "Beklenti: RESTAURANT, is_dining: true, vegan: true, vegetarian: true, tag: [vegan cheesecake]"
+                ),
+                new TestCase(
+                        "Nordic Roast Coffee Lab",
+                        List.of("cafe"),
+                        "V60 demlemeleri çok başarılı. Kahvemi yulaf sütü ile aldım, yanında da unsuz ve glutensiz fındıklı brownie denedim, çölyak olanlar için ayrı kapalı kutuda sunuyorlar.",
+                        "Beklenti: CAFE, is_dining: true, vegan: true, gluten: true, tags: [yulaf sütü, glutensiz brownie]"
+                ),
+                new TestCase(
+                        "Hacı Bey İşkembe & Kelle Paça Salonu",
+                        List.of("restaurant"),
+                        "Kelle paça ve ayak paçası Konya'nın en iyisi. Arkadaşım mercimek çorbası içti ama çorbalar et suyuyla yapıldığı için et yemeyenlere göre değil.",
+                        "Beklenti: MEAT_AND_GRILL, is_dining: true, vegan: false, vegetarian: false"
+                ),
+                new TestCase(
+                        "Matrix Espor & Playstation Cafe",
+                        List.of("point_of_interest"),
+                        "RTX 4080 sistemler ve PS5 kolları sıfır gibiydi. Oyun oynarken karışık tost ve kola söyledik, hızlı getirdiler. 5 saat oyun attık.",
+                        "Beklenti: NON_DINING, is_dining: false"
+                ),
+                new TestCase(
+                        "Glutensiz Yaşam Fırın & Cafe",
+                        List.of("bakery"),
+                        "Mutfaklarına kesinlikle buğday unu girmiyor, çapraz bulaşma riski sıfır. Glutensiz ekmekleri ve çölyak dostu simitleri taptazeydi.",
+                        "Beklenti: BAKERY_AND_DESSERT, is_dining: true, gluten: true, tags: [glutensiz ekmek, çölyak dostu]"
+                )
+        );
+
+        for (TestCase tc : cases) {
+            log.info("\n--------------------------------------------------");
+            log.info("🧪 TEST: {}", tc.name());
+            log.info("🎯 {}", tc.expectation());
+
+            PlaceSummaryExtraction result = extractInsightsWithLLM(tc.name(), tc.types(), tc.reviews());
+
+            if (result != null) {
+                log.info("Sonuç -> Kategori: [{}], Dining: [{}], Vegan: [{}], Vejetaryen: [{}], Glutensiz: [{}], Etiketler: {}",
+                        result.venueCategory(), result.isDining(), result.isVeganFriendly(),
+                        result.isVegetarianFriendly(), result.isGlutenFreeFriendly(), result.dietaryTags());
+            } else {
+                log.error("❌ Model boş veya hatalı yanıt döndü!");
+            }
+        }
+        log.info("\n🧪 Sentetik Testler Tamamlandı!");
+    }
+
+
 }

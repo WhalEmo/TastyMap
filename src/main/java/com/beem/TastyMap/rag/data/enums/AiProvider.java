@@ -2,7 +2,8 @@ package com.beem.TastyMap.rag.data.enums;
 
 public enum AiProvider {
     GROQ,
-    OLLAMA;
+    OLLAMA,
+    OLLAMA_INDEXER;
 
     public static AiProvider fromString(String value) {
         if (value == null) return GROQ;

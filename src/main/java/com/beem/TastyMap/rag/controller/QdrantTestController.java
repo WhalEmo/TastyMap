@@ -193,7 +193,7 @@ public class QdrantTestController {
             @RequestParam("query") String query,
             @RequestParam(value = "lat", defaultValue = "37.945083") double lat,
             @RequestParam(value = "lon", defaultValue = "32.517995") double lon,
-            @RequestParam(value = "radiusKm", defaultValue = "5.0") double radiusKm,
+            @RequestParam(value = "radiusKm", required = false) Double radiusKm,
             @RequestParam(value = "isNamedEntity", defaultValue = "false") boolean isNamedEntity
     ) {
         UserQueryEvent event = new UserQueryEvent(
@@ -208,9 +208,9 @@ public class QdrantTestController {
         );
 
         UserHealthProfile profile = new UserHealthProfile(
-                HealthEnum.VEGAN,
+                HealthEnum.NORMAL,
                 false,
-                Set.of("fıstık")
+                Set.of("gluten")
         );
 
         SearchResult result = restaurantSearchService.findFreshPlacesV2(

@@ -58,4 +58,20 @@ public class RecommendationController {
         service.indexAllPlacesFromOurDb();
         return ResponseEntity.ok("Veritabanındaki tüm mekanların Qdrant toplu indeksleme (batch) işlemi başlatıldı.");
     }
+
+    @PostMapping("/admin/test-index-sample")
+    public ResponseEntity<String> testIndexSamplePlaces(
+            @RequestParam(defaultValue = "0") Long lastSeenId,
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        service.testIndexSamplePlaces(lastSeenId, limit);
+        return ResponseEntity.ok(String.format("İlk %d mekan için test indeksleme ve loglama işlemi tamamlandı.", limit));
+    }
+
+    @PostMapping("/admin/test-synthetic")
+    public ResponseEntity<String> runSyntheticTests() {
+        service.runSyntheticExtractionTests();
+        return ResponseEntity.ok("Sentetik test senaryoları çalıştırıldı. Konsol loglarını kontrol edebilirsiniz.");
+    }
+
 }

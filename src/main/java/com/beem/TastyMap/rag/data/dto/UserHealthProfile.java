@@ -26,6 +26,15 @@ public record UserHealthProfile(
         return eatType == HealthEnum.VEGETARIAN || eatType == HealthEnum.VEGAN;
     }
 
+    public boolean isCeliac() {
+        if (allergies == null || allergies.isEmpty()) {
+            return false;
+        }
+        return allergies.stream()
+                .map(String::toLowerCase)
+                .anyMatch(a -> a.contains("gluten") || a.contains("çölyak") || a.contains("colyak") || a.contains("celiac"));
+    }
+
     @Override
     public String toString() {
         String allergyStr = (allergies == null || allergies.isEmpty()) ? "Yok" : String.join(", ", allergies);

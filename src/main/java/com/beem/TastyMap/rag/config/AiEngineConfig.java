@@ -63,6 +63,9 @@ public class AiEngineConfig {
     @Value("${spring.ai.openai.chat.options.max-tokens:512}")
     private Integer groqMaxTokens;
 
+    @Value("${tastymap.ai.indexer.model:${spring.ai.ollama.chat.options.model}}")
+    private String indexerModelName;
+
     // ========================================================
     // 1. OLLAMA MOTORU (Özel ObjectMapper & RestClient)
     // ========================================================
@@ -137,6 +140,20 @@ public class AiEngineConfig {
         return new OpenAiChatModel(groqOpenAiApi, options);
     }
 
+    @Bean(name = "ollamaIndexerChatModel")
+    public OllamaChatModel ollamaIndexerChatModel(OllamaApi ollamaApi) {
+        OllamaOptions indexerOptions = OllamaOptions.create()
+                .withModel(indexerModelName)
+                .withTemperature(0.0f)
+                .withTopP(0.1f)
+                .withRepeatPenalty(1.1f)
+                .withNumCtx(2048)
+                .withNumPredict(350)
+                .withFormat("json");
+
+        return new OllamaChatModel(ollamaApi, indexerOptions);
+    }
+
     // ========================================================
     // 3. CHAT CLIENT TANIMLARI (AiProviderFactory İçin)
     // ========================================================
@@ -148,6 +165,11 @@ public class AiEngineConfig {
     @Bean(name = "ollamaChatClient")
     public ChatClient ollamaChatClient(@Qualifier("ollamaChatModel") OllamaChatModel ollamaChatModel) {
         return ChatClient.builder(ollamaChatModel).build();
+    }
+
+    @Bean(name = "ollamaIndexerChatClient")
+    public ChatClient ollamaIndexerChatClient(@Qualifier("ollamaIndexerChatModel") OllamaChatModel indexerModel) {
+        return ChatClient.builder(indexerModel).build();
     }
 
     // ========================================================

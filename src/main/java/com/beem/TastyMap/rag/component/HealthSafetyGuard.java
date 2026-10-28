@@ -2,6 +2,7 @@ package com.beem.TastyMap.rag.component;
 
 import com.beem.TastyMap.rag.data.document.RestaurantDocument;
 import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
+import com.beem.TastyMap.rag.data.document.VenueCategory;
 import com.beem.TastyMap.rag.data.dto.UserHealthProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,10 @@ public class HealthSafetyGuard {
         Set<String> dishesTokens = tokenize(dishesSection);
         Set<String> combinedTokens = new HashSet<>(placeNameTokens);
         combinedTokens.addAll(dishesTokens);
+
+        if (Boolean.FALSE.equals(meta.getDining()) || meta.getVenueCategory() == VenueCategory.NON_DINING) {
+            return "Yeme-İçme Dışı Mekan";
+        }
 
         for (String nonDining : DietarySafetyRegistry.NON_DINING_EXCLUSIONS) {
             if (matchesPhraseOrToken(nonDining, placeName, placeNameTokens)) {

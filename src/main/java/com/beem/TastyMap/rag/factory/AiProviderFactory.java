@@ -22,10 +22,12 @@ public class AiProviderFactory {
     public AiProviderFactory(
             @Qualifier("groqChatClient") ChatClient groqClient,
             @Qualifier("ollamaChatClient") ChatClient ollamaClient,
+            @Qualifier("ollamaIndexerChatClient") ChatClient ollamaIndexerClient,
             @Value("${tastymap.ai.active-provider:groq}") String configuredProvider
     ) {
         this.clientRegistry.put(AiProvider.GROQ, groqClient);
         this.clientRegistry.put(AiProvider.OLLAMA, ollamaClient);
+        this.clientRegistry.put(AiProvider.OLLAMA_INDEXER, ollamaIndexerClient);
 
         this.defaultProvider = AiProvider.fromString(configuredProvider);
         log.info("AiProviderFactory ayağa kalktı. Varsayılan Sağlayıcı: {}", this.defaultProvider);

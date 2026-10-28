@@ -5,6 +5,7 @@ import com.beem.TastyMap.rag.component.QdrantDocumentMapper;
 import com.beem.TastyMap.rag.component.RestaurantReRanker;
 import com.beem.TastyMap.rag.data.document.RestaurantDocument;
 import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
+import com.beem.TastyMap.rag.data.document.VenueCategory;
 import com.beem.TastyMap.rag.data.dto.SearchResult;
 import com.beem.TastyMap.rag.data.dto.UserHealthProfile;
 import com.beem.TastyMap.rag.data.event.UserQueryEvent;
@@ -131,46 +132,8 @@ public class RestaurantSearchService {
                     .setWithPayload(Points.WithPayloadSelector.newBuilder().setEnable(true).build());
 
             // 3. Filtreleri İnşa Et
-            Points.Filter.Builder filterBuilder = Points.Filter.newBuilder();
-            boolean hasFilter = false;
-
-            // 3a. Coğrafi Filtre (Native Geo-Radius)
-            if (!isNamedEntity && event.latitude() != null && event.longitude() != null) {
-                double radiusKm = (event.radiusKm() != null && event.radiusKm() > 0) ? event.radiusKm() : CITY_WIDE_RADIUS_KM;
-                float radiusMeters = (float) (radiusKm * 1000.0);
-
-                filterBuilder.addMust(Points.Condition.newBuilder()
-                        .setField(Points.FieldCondition.newBuilder()
-                                .setKey("location")
-                                .setGeoRadius(Points.GeoRadius.newBuilder()
-                                        .setCenter(Points.GeoPoint.newBuilder()
-                                                .setLat(event.latitude())
-                                                .setLon(event.longitude())
-                                                .build())
-                                        .setRadius(radiusMeters)
-                                        .build())
-                                .build())
-                        .build());
-                hasFilter = true;
-            }
-
-            // 3b. Hafıza Filtresi: Daha önce önerilmiş mekanları doğrudan DB seviyesinde dışla (must_not)
-            if (alreadyPresentedPlaceIds != null && !alreadyPresentedPlaceIds.isEmpty()) {
-                List<Points.PointId> excludePointIds = alreadyPresentedPlaceIds.stream()
-                        .map(id -> Points.PointId.newBuilder().setUuid(id).build())
-                        .toList();
-
-                filterBuilder.addMustNot(Points.Condition.newBuilder()
-                        .setHasId(Points.HasIdCondition.newBuilder()
-                                .addAllHasId(excludePointIds)
-                                .build())
-                        .build());
-                hasFilter = true;
-            }
-
-            if (hasFilter) {
-                searchBuilder.setFilter(filterBuilder.build());
-            }
+            Points.Filter filter = buildQdrantFilter(event, alreadyPresentedPlaceIds, isNamedEntity, healthProfile);
+            searchBuilder.setFilter(filter);
 
             // 4. Qdrant'a gRPC üzerinden sorguyu at
             List<Points.ScoredPoint> scoredPoints = qdrantClient.searchAsync(searchBuilder.build()).get();
@@ -218,6 +181,132 @@ public class RestaurantSearchService {
             log.error("findFreshPlacesV2 yürütülürken hata oluştu: {}", e.getMessage(), e);
             // Hata durumunda güvenli fallback olarak V1'e yönlendirilebilir
             return findFreshPlaces(event, alreadyPresentedPlaceIds);
+        }
+    }
+
+    private Points.Filter buildQdrantFilter(
+            UserQueryEvent event,
+            Set<String> alreadyPresentedPlaceIds,
+            boolean isNamedEntity,
+            UserHealthProfile healthProfile
+    ) {
+        Points.Filter.Builder filterBuilder = Points.Filter.newBuilder();
+
+
+        filterBuilder.addMust(Points.Condition.newBuilder()
+                .setField(Points.FieldCondition.newBuilder()
+                        .setKey("is_closed")
+                        .setMatch(Points.Match.newBuilder().setBoolean(false).build())
+                        .build())
+                .build());
+
+
+
+        // 2. İsim araması değilse, sadece yeme-içme mekanlarını getir
+        if (!isNamedEntity) {
+            filterBuilder.addMust(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("is_dining")
+                            .setMatch(Points.Match.newBuilder().setBoolean(true).build())
+                            .build())
+                    .build());
+        }
+
+        // 3. Coğrafi Mesafe (Native GeoRadius)
+        if (!isNamedEntity && event.latitude() != null && event.longitude() != null) {
+            double radiusKm = (event.radiusKm() != null && event.radiusKm() > 0) ? event.radiusKm() : CITY_WIDE_RADIUS_KM;
+            float radiusMeters = (float) (radiusKm * 1000.0);
+
+            filterBuilder.addMust(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("location")
+                            .setGeoRadius(Points.GeoRadius.newBuilder()
+                                    .setCenter(Points.GeoPoint.newBuilder()
+                                            .setLat(event.latitude())
+                                            .setLon(event.longitude())
+                                            .build())
+                                    .setRadius(radiusMeters)
+                                    .build())
+                            .build())
+                    .build());
+        }
+
+        // 4. Daha önce önerilenleri doğrudan dışla (must_not)
+        if (alreadyPresentedPlaceIds != null && !alreadyPresentedPlaceIds.isEmpty()) {
+            List<Points.PointId> excludePointIds = alreadyPresentedPlaceIds.stream()
+                    .map(id -> Points.PointId.newBuilder().setUuid(id).build())
+                    .toList();
+
+            filterBuilder.addMustNot(Points.Condition.newBuilder()
+                    .setHasId(Points.HasIdCondition.newBuilder()
+                            .addAllHasId(excludePointIds)
+                            .build())
+                    .build());
+        }
+
+        applyDietaryConstraints(filterBuilder, event.userQuery().toLowerCase(Locale.ROOT), healthProfile);
+
+        return filterBuilder.build();
+    }
+
+    private void applyDietaryConstraints(
+            Points.Filter.Builder filterBuilder,
+            String queryLower,
+            UserHealthProfile healthProfile
+    ) {
+        boolean isVeganSearch = queryLower.contains("vegan") ||
+                (healthProfile != null && Boolean.TRUE.equals(healthProfile.isVegan()));
+
+        boolean isVegetarianSearch = !isVeganSearch && (queryLower.contains("vejetaryen") || queryLower.contains("vejeteryan") ||
+                (healthProfile != null && Boolean.TRUE.equals(healthProfile.isVegetarian())));
+
+        boolean isGlutenFreeSearch = queryLower.contains("gluten") || queryLower.contains("çölyak") || queryLower.contains("colyak") ||
+                (healthProfile != null && Boolean.TRUE.equals(healthProfile.isCeliac()));
+
+        if (isVeganSearch) {
+            log.info("🥗 [SearchFilter] Vegan kısıtı devrede. Et ve balık mekanları eleniyor.");
+            filterBuilder.addMust(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("is_vegan_friendly")
+                            .setMatch(Points.Match.newBuilder().setBoolean(true).build())
+                            .build())
+                    .build());
+
+            // Ocakbaşı ve kebapçıları kesin olarak engelle
+            filterBuilder.addMustNot(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("venue_category")
+                            .setMatch(Points.Match.newBuilder().setKeyword(VenueCategory.MEAT_AND_GRILL.getKey()).build())
+                            .build())
+                    .build());
+        }
+        // --- VEJETARYEN FİLTRESİ ---
+        else if (isVegetarianSearch) {
+            log.info("🥦 [SearchFilter] Vejetaryen kısıtı devrede.");
+            filterBuilder.addMust(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("is_vegetarian_friendly")
+                            .setMatch(Points.Match.newBuilder().setBoolean(true).build())
+                            .build())
+                    .build());
+
+            filterBuilder.addMustNot(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("venue_category")
+                            .setMatch(Points.Match.newBuilder().setKeyword(VenueCategory.MEAT_AND_GRILL.getKey()).build())
+                            .build())
+                    .build());
+        }
+
+        // --- GLUTENSİZ / ÇÖLYAK FİLTRESİ ---
+        if (isGlutenFreeSearch) {
+            log.info("🌾 [SearchFilter] Glutensiz kısıtı devrede.");
+            filterBuilder.addMust(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("is_gluten_free_friendly")
+                            .setMatch(Points.Match.newBuilder().setBoolean(true).build())
+                            .build())
+                    .build());
         }
     }
 
