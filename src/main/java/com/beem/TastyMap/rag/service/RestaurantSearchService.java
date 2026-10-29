@@ -308,6 +308,16 @@ public class RestaurantSearchService {
                             .build())
                     .build());
         }
+
+        if (healthProfile != null && healthProfile.hasDiabetes() && !healthSafetyGuard.isExplicitSweetSearch(queryLower)) {
+            log.info("🩺 [SearchFilter] Diyabet kısıtı devrede. Tatlı/Pastane odaklı mekanlar eleniyor.");
+            filterBuilder.addMustNot(Points.Condition.newBuilder()
+                    .setField(Points.FieldCondition.newBuilder()
+                            .setKey("venue_category")
+                            .setMatch(Points.Match.newBuilder().setKeyword(VenueCategory.BAKERY_AND_DESSERT.getKey()).build())
+                            .build())
+                    .build());
+        }
     }
 
     private boolean isWithinDistance(Document doc, double userLat, double userLon, double maxKm) {

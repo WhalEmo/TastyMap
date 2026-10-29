@@ -1,5 +1,6 @@
 package com.beem.TastyMap.rag.service;
 
+import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
 import com.beem.TastyMap.rag.data.dto.ChatHistoryMessage;
 import com.beem.TastyMap.rag.data.enums.MessageRole;
 import com.beem.TastyMap.rag.entity.ChatMessageEntity;
@@ -8,6 +9,8 @@ import com.beem.TastyMap.rag.repository.ChatMessageRepository;
 import com.beem.TastyMap.rag.repository.ChatSessionRepository;
 import com.beem.TastyMap.redis.RedisCacheService;
 import com.beem.TastyMap.redis.RedisKeyGenerator;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -16,9 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class ChatMemoryManager {
@@ -28,20 +29,72 @@ public class ChatMemoryManager {
     private final RedisCacheService redisService;
     private final ChatSessionRepository sessionRepo;
     private final ChatMessageRepository messageRepo;
+    private final ObjectMapper objectMapper;
 
     private static final int MAX_CONTEXT_MESSAGES = 6;     // LLM bağlamına verilecek son mesaj penceresi
     private static final long SESSION_TTL_SECONDS = 86400; // 24 Saat (Oturum her konuştuğunda yenilenir)
 
     public ChatMemoryManager(RedisCacheService redisService,
                              ChatSessionRepository sessionRepo,
-                             ChatMessageRepository messageRepo) {
+                             ChatMessageRepository messageRepo,
+                             ObjectMapper objectMapper) {
         this.redisService = redisService;
         this.sessionRepo = sessionRepo;
         this.messageRepo = messageRepo;
+        this.objectMapper = objectMapper;
     }
 
     private String getRedisKey(String sessionId) {
         return RedisKeyGenerator.createChatSessionKey(sessionId);
+    }
+
+    public List<RestaurantMetadata> extractLastPresentedPlaces(List<ChatHistoryMessage> history) {
+        if (history == null || history.isEmpty()) return Collections.emptyList();
+
+        for (int i = history.size() - 1; i >= 0; i--) {
+            ChatHistoryMessage msg = history.get(i);
+            if (msg.role() == MessageRole.ASSISTANT && msg.metadata() != null) {
+                Object placesObj = msg.metadata().get("presentedPlaces");
+                if (placesObj != null) {
+                    try {
+                        return objectMapper.convertValue(
+                                placesObj,
+                                new TypeReference<List<RestaurantMetadata>>() {}
+                        );
+                    } catch (Exception e) {
+                        log.warn("[extractLastPresentedPlaces] presentedPlaces parse edilirken hata: {}", e.getMessage());
+                    }
+                }
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    public Set<String> extractAllPresentedIds(List<ChatHistoryMessage> history) {
+        Set<String> placeIds = new HashSet<>();
+        if (history == null || history.isEmpty()) return placeIds;
+
+        for (ChatHistoryMessage message: history) {
+            if (message.role() == MessageRole.ASSISTANT && message.metadata() != null) {
+                Object placesObj = message.metadata().get("presentedPlaces");
+                if (placesObj != null) {
+                    try {
+                        List<RestaurantMetadata> list = objectMapper.convertValue(
+                                placesObj,
+                                new TypeReference<List<RestaurantMetadata>>() {}
+                        );
+                        for (RestaurantMetadata metadata: list) {
+                            if (metadata != null && metadata.getQdrantId() != null) {
+                                placeIds.add(metadata.getQdrantId());
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("[extractAllPresentedIds] presentedPlaces parse edilirken hata: {}", e.getMessage());
+                    }
+                }
+            }
+        }
+        return placeIds;
     }
 
     /**
@@ -85,6 +138,20 @@ public class ChatMemoryManager {
         }
 
         return history;
+    }
+
+    @Transactional
+    public void recordAssistantMessage(
+            String sessionId,
+            Long userId,
+            String content,
+            List<RestaurantMetadata> places
+    ) {
+        Map<String, Object> metadata = (places != null && !places.isEmpty())
+                ? Map.of("presentedPlaces", places)
+                : Collections.emptyMap();
+
+        recordMessage(sessionId, userId, MessageRole.ASSISTANT, content, metadata);
     }
 
     /**

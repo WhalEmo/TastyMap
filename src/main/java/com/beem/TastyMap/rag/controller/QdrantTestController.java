@@ -210,7 +210,7 @@ public class QdrantTestController {
         UserHealthProfile profile = new UserHealthProfile(
                 HealthEnum.NORMAL,
                 false,
-                Set.of("gluten")
+                Set.of()
         );
 
         SearchResult result = restaurantSearchService.findFreshPlacesV2(

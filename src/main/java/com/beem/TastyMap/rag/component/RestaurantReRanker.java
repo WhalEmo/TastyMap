@@ -2,11 +2,14 @@ package com.beem.TastyMap.rag.component;
 
 import com.beem.TastyMap.rag.data.document.RestaurantDocument;
 import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
+import com.beem.TastyMap.rag.data.document.VenueCategory;
 import com.beem.TastyMap.rag.data.dto.UserHealthProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -15,6 +18,7 @@ public class RestaurantReRanker {
 
     private static final Logger log = LoggerFactory.getLogger(RestaurantReRanker.class);
 
+    private static final Locale TR = Locale.forLanguageTag("tr");
     private static final Set<String> STOP_WORDS = Set.of(
             "bana", "guzel", "güzel", "mekan", "mekân", "oner", "öner", "oneri", "öneri",
             "tavsiye", "fena", "baska", "başka", "nerede", "nereye", "gidilir", "yiyebilirim",
@@ -45,34 +49,43 @@ public class RestaurantReRanker {
         double relevanceBoost = 0.0;
         double healthBoost = 0.0;
 
-        String lowerContent = content.toLowerCase(Locale.forLanguageTag("tr"));
-        String lowerName = meta.getName() != null ? meta.getName().toLowerCase(Locale.forLanguageTag("tr")) : "";
-        String lowerQuery = userQuery != null ? userQuery.toLowerCase(Locale.forLanguageTag("tr")) : "";
+        List<String> foods = meta.getHighlightedFoods() != null ? meta.getHighlightedFoods() : Collections.emptyList();
+        List<String> atmosphere = meta.getAtmosphere() != null ? meta.getAtmosphere() : Collections.emptyList();
 
-        String dishesSection = extractDishesSection(lowerContent);
+        if (!foods.isEmpty()) richnessScore += 0.5;
+        if (!atmosphere.isEmpty()) richnessScore += 0.5;
 
-        boolean isNonDining = DietarySafetyRegistry.NON_DINING_EXCLUSIONS.stream().anyMatch(lowerName::contains);
+
+        boolean isNonDining = Boolean.FALSE.equals(meta.getDining()) ||
+                meta.getVenueCategory() == VenueCategory.NON_DINING;
 
         if (!isNonDining) {
-            for (String rawWord : lowerQuery.split("\\s+")) {
-                String word = rawWord.replaceAll("[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ]", "").trim();
+            String lowerName = meta.getName() != null ? meta.getName().toLowerCase(TR) : "";
+            List<String> foodsLower = foods.stream().map(f -> f.toLowerCase(TR)).toList();
 
-                if (word.length() < 3 || STOP_WORDS.contains(word)) {
-                    continue;
-                }
+            // A) Kullanıcı Sorgusuyla Mekan / Yemek Eşleşmesi
+            if (userQuery != null && !userQuery.isBlank()) {
+                String lowerQuery = userQuery.toLowerCase(TR);
+                for (String rawWord : lowerQuery.split("\\s+")) {
+                    String word = rawWord.replaceAll("[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ]", "").trim();
 
-                String altWord = DietarySafetyRegistry.WORD_ROOT_ALIASES.getOrDefault(word, word);
+                    if (word.length() < 3 || STOP_WORDS.contains(word)) {
+                        continue;
+                    }
 
-                if (lowerName.contains(word) || lowerName.contains(altWord)) {
-                    relevanceBoost = Math.max(relevanceBoost, 0.18);
-                }
-                else if (!dishesSection.isEmpty() && (dishesSection.contains(word) || dishesSection.contains(altWord))) {
-                    relevanceBoost = Math.max(relevanceBoost, 0.12);
+                    String altWord = DietarySafetyRegistry.WORD_ROOT_ALIASES.getOrDefault(word, word);
+
+                    if (lowerName.contains(word) || lowerName.contains(altWord)) {
+                        relevanceBoost = Math.max(relevanceBoost, 0.18);
+                    } else if (foodsLower.stream().anyMatch(f -> f.contains(word) || f.contains(altWord))) {
+                        relevanceBoost = Math.max(relevanceBoost, 0.14);
+                    }
                 }
             }
 
+            // B) Sağlık ve Diyet Uyumu Kümülatif Boostu
             if (healthProfile != null && healthProfile.isRestricted()) {
-                healthBoost = calculateHealthBoost(lowerName, lowerContent, dishesSection, healthProfile);
+                healthBoost = calculateHealthBoost(meta, lowerName, foodsLower, healthProfile);
             }
         }
 
@@ -132,6 +145,64 @@ public class RestaurantReRanker {
         }
 
         return boost;
+    }
+
+    private double calculateHealthBoost(
+            RestaurantMetadata meta,
+            String lowerName,
+            List<String> foodsLower,
+            UserHealthProfile profile
+    ) {
+        double totalBoost = 0.0;
+        List<String> tagsLower = meta.getDietaryTags() != null
+                ? meta.getDietaryTags().stream().map(t -> t.toLowerCase(TR)).toList()
+                : Collections.emptyList();
+
+        // 1. VEGAN / VEJETARYEN KATKISI
+        if (profile.isVegan()) {
+            boolean nameMatch = lowerName.contains("vegan") || lowerName.contains("bitkisel");
+            boolean foodMatch = foodsLower.stream().anyMatch(f -> f.contains("vegan") || f.contains("bitkisel"));
+            boolean tagMatch = tagsLower.stream().anyMatch(t -> t.contains("vegan"));
+
+            if (nameMatch) {
+                totalBoost += 0.25; // Doğrudan vegan mekan
+            } else if (Boolean.TRUE.equals(meta.getVeganFriendly()) || foodMatch || tagMatch) {
+                totalBoost += 0.15; // Menüsünde vegan seçenek olan
+            }
+        } else if (profile.isVegetarian() && Boolean.TRUE.equals(meta.getVegetarianFriendly())) {
+            totalBoost += 0.12;
+        }
+
+        // 2. GLUTENSİZ / ÇÖLYAK KATKISI
+        boolean hasGlutenRestriction = (profile.allergies() != null && profile.allergies().stream()
+                .anyMatch(a -> a.equalsIgnoreCase("gluten") || a.equalsIgnoreCase("çölyak"))) ||
+                profile.isCeliac();
+
+        if (hasGlutenRestriction) {
+            boolean nameMatch = lowerName.contains("glutensiz") || lowerName.contains("gluten-free");
+            boolean foodMatch = foodsLower.stream().anyMatch(f -> f.contains("glutensiz") || f.contains("çölyak"));
+            boolean tagMatch = tagsLower.stream().anyMatch(t -> t.contains("glutensiz"));
+
+            if (nameMatch) {
+                totalBoost += 0.25; // Örn: Nane'i 7 Glutensiz Cafe
+            } else if (Boolean.TRUE.equals(meta.getGlutenFreeFriendly()) || foodMatch || tagMatch) {
+                totalBoost += 0.15;
+            }
+        }
+
+        // 3. DİYABET KATKISI (Şekersiz / Düşük Karbonhidratlı Seçenekler)
+        if (profile.hasDiabetes()) {
+            boolean hasSugarFreeOption = tagsLower.stream().anyMatch(t -> t.contains("şekersiz") || t.contains("diyabetik")) ||
+                    foodsLower.stream().anyMatch(f -> f.contains("şekersiz") || f.contains("stevia") || f.contains("hurma"));
+
+            if (hasSugarFreeOption) {
+                totalBoost += 0.15; // Diyabete uygun alternatif sunuyor
+            }
+        }
+
+        // 4. KORUYUCU TAVAN (CAP)
+        // Çoklu kısıtları karşılayan mekan ödüllendirilir ama skor 0.45'i geçemez
+        return Math.min(totalBoost, 0.45);
     }
 
 }

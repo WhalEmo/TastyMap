@@ -71,18 +71,15 @@ public class HealthSafetyGuard {
 
     private String evaluateSafety(RestaurantDocument doc, UserHealthProfile profile, String lowerQuery) {
         RestaurantMetadata meta = doc.getMetadata();
-        String placeName = meta.getName() != null ? meta.getName().toLowerCase(TR) : "";
-        String content = doc.getRawContent() != null ? doc.getRawContent().toLowerCase(TR) : "";
-        String dishesSection = extractDishesSection(content);
-
-        Set<String> placeNameTokens = tokenize(placeName);
-        Set<String> dishesTokens = tokenize(dishesSection);
-        Set<String> combinedTokens = new HashSet<>(placeNameTokens);
-        combinedTokens.addAll(dishesTokens);
+        if (meta == null) {
+            return null;
+        }
 
         if (Boolean.FALSE.equals(meta.getDining()) || meta.getVenueCategory() == VenueCategory.NON_DINING) {
             return "Yeme-İçme Dışı Mekan";
         }
+        String placeName = meta.getName() != null ? meta.getName().toLowerCase(TR) : "";
+        Set<String> placeNameTokens = tokenize(placeName);
 
         for (String nonDining : DietarySafetyRegistry.NON_DINING_EXCLUSIONS) {
             if (matchesPhraseOrToken(nonDining, placeName, placeNameTokens)) {
@@ -94,19 +91,40 @@ public class HealthSafetyGuard {
             return null;
         }
 
+        List<String> foodsList = meta.getHighlightedFoods() != null ? meta.getHighlightedFoods() : Collections.emptyList();
+        List<String> cautionsList = meta.getCautions() != null ? meta.getCautions() : Collections.emptyList();
+
+        Set<String> foodTokens = foodsList.stream()
+                .flatMap(food -> tokenize(food.toLowerCase(TR)).stream())
+                .collect(Collectors.toSet());
+
+        Set<String> cautionTokens = cautionsList.stream()
+                .flatMap(c -> tokenize(c.toLowerCase(TR)).stream())
+                .collect(Collectors.toSet());
+
+        Set<String> combinedTokens = new HashSet<>(placeNameTokens);
+        combinedTokens.addAll(foodTokens);
+        combinedTokens.addAll(cautionTokens);
+
+        String foodsCombinedText = String.join(" ", meta.getHighlightedFoods()).toLowerCase(TR);
+
         boolean isDedicatedPlantBased = placeNameTokens.contains("vegan") ||
                 placeNameTokens.contains("vejetaryen") ||
                 placeNameTokens.contains("vejeteryan") ||
-                placeNameTokens.contains("bitkisel");
+                placeNameTokens.contains("bitkisel") ||
+                Boolean.TRUE.equals(meta.getVeganFriendly());
 
         // A) VEGAN KONTROLÜ
         if (profile.isVegan()) {
+            if (meta.getVenueCategory() == VenueCategory.MEAT_AND_GRILL) {
+                return "VEGAN kısıtlaması (Kategori: MEAT_AND_GRILL)";
+            }
             if (!isDedicatedPlantBased) {
                 String meatViolation = findViolation(
                         placeName,
                         placeNameTokens,
-                        dishesSection,
-                        dishesTokens,
+                        foodsCombinedText,
+                        foodTokens,
                         MEAT_EXCLUSIONS
                 );
                 if (meatViolation != null) {
@@ -116,8 +134,8 @@ public class HealthSafetyGuard {
                 String dairyViolation = findViolation(
                         placeName,
                         placeNameTokens,
-                        dishesSection,
-                        dishesTokens,
+                        foodsCombinedText,
+                        foodTokens,
                         DAIRY_AND_EGG_EXCLUSIONS
                 );
                 if (dairyViolation != null) {
@@ -128,12 +146,15 @@ public class HealthSafetyGuard {
 
         // B) VEJETARYEN KONTROLÜ (Vegan kuralından daha esnek ama saf sakatat/et elenir)
         else if (profile.isVegetarian()) {
+            if (meta.getVenueCategory() == VenueCategory.MEAT_AND_GRILL) {
+                return "VEJETARYEN kısıtlaması (Kategori: MEAT_AND_GRILL)";
+            }
             if (!isDedicatedPlantBased) {
                 String meatViolation = findViolation(
                         placeName,
                         placeNameTokens,
-                        dishesSection,
-                        dishesTokens,
+                        foodsCombinedText,
+                        foodTokens,
                         MEAT_EXCLUSIONS
                 );
                 if (meatViolation != null) {
@@ -144,6 +165,9 @@ public class HealthSafetyGuard {
 
         // C) DİYABET KONTROLÜ (Kullanıcı açıkça tatlı aramadıysa tatlıcıları düşür)
         if (profile.hasDiabetes() && !isExplicitSweetSearch(lowerQuery)) {
+            if (meta.getVenueCategory() == VenueCategory.BAKERY_AND_DESSERT) {
+                return "DİYABET koruması (Kategori: Tatlı/Pastane odaklı mekan)";
+            }
             for (String sweetWord : DIABETES_EXCLUSIONS) {
                 if (matchesPhraseOrToken(sweetWord, placeName, placeNameTokens)) {
                     return "DİYABET koruması (İhlal: Tatlı odaklı mekan '" + sweetWord + "')";
@@ -151,14 +175,13 @@ public class HealthSafetyGuard {
             }
         }
 
-        // D) ALERJEN KONTROLÜ
         if (profile.allergies() != null && !profile.allergies().isEmpty()) {
+            String fullSearchText = placeName + " " + foodsCombinedText + " " + String.join(" ", meta.getCautions()).toLowerCase(TR);
             for (String userAllergy : profile.allergies()) {
-
                 List<String> riskyWords = ALLERGEN_KEYWORD_MAP.getOrDefault(userAllergy, List.of(userAllergy));
                 for (String risk : riskyWords) {
                     String cleanRisk = risk.toLowerCase(TR);
-                    if (matchesPhraseOrToken(cleanRisk, placeName + " " + dishesSection, combinedTokens)) {
+                    if (matchesPhraseOrToken(cleanRisk, fullSearchText, combinedTokens)) {
                         return "ALERJİ koruması [" + userAllergy + "] (İhlal: '" + cleanRisk + "')";
                     }
                 }
@@ -198,12 +221,13 @@ public class HealthSafetyGuard {
         return tokens.contains(keyword);
     }
 
-    private boolean isExplicitSweetSearch(String query) {
+    public boolean isExplicitSweetSearch(String query) {
         if (query == null || query.isBlank()) return false;
         Set<String> queryTokens = tokenize(query);
         return queryTokens.contains("tatlı") || queryTokens.contains("tatli") ||
                 queryTokens.contains("waffle") || queryTokens.contains("baklava") ||
-                queryTokens.contains("pasta") || queryTokens.contains("dondurma");
+                queryTokens.contains("pasta") || queryTokens.contains("dondurma") ||
+                queryTokens.contains("künefe") || queryTokens.contains("kunefe");
     }
 
     private String extractDishesSection(String content) {

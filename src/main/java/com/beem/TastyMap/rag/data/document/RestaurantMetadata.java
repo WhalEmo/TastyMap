@@ -8,6 +8,9 @@ import java.util.*;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RestaurantMetadata {
 
+    @JsonProperty("qdrant_id")
+    private String qdrantId;
+
     @JsonProperty("name")
     private String name = "Bilinmeyen Mekan";
 
@@ -73,6 +76,9 @@ public class RestaurantMetadata {
 
     @JsonProperty("cautions")
     private List<String> cautions = new ArrayList<>();
+
+    public String getQdrantId() { return qdrantId; }
+    public void setQdrantId(String qdrantId) { this.qdrantId = qdrantId; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -206,6 +212,7 @@ public class RestaurantMetadata {
 
     public Map<String, Object> toMap() {
         Map<String, Object> map = new HashMap<>();
+        map.put("qdrant_id", qdrantId != null ? qdrantId : "");
         map.put("name", name);
         map.put("place_id", placeId);
         map.put("db_id", dbId != null ? String.valueOf(dbId) : "");
@@ -309,6 +316,50 @@ public class RestaurantMetadata {
         }
         if (cautions != null && !cautions.isEmpty()) {
             sb.append(" | Uyarılar: ").append(cautions);
+        }
+
+        return sb.toString();
+    }
+
+    public String toPresentationMarkdown() {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("### **").append(name != null ? name : "Mekan").append("**");
+
+        List<String> badges = new ArrayList<>();
+        if (distanceKm != null) {
+            badges.add(String.format("📍 %.1f km", distanceKm));
+        }
+        if (googleRating != null && googleRating > 0) {
+            badges.add(String.format("%.1f ⭐", googleRating));
+        }
+        if (Boolean.TRUE.equals(isClosed)) {
+            badges.add("Şu an Kapalı");
+        }
+
+        if (!badges.isEmpty()) {
+            sb.append(" (").append(String.join(" | ", badges)).append(")");
+        }
+        sb.append("\n");
+
+        if (highlightedFoods != null && !highlightedFoods.isEmpty()) {
+            sb.append(String.format("  - **Öne Çıkan Lezzetler:** %s\n", String.join(", ", highlightedFoods)));
+        }
+
+        if (atmosphere != null && !atmosphere.isEmpty()) {
+            sb.append(String.format("  - **Ortam:** %s\n", String.join(", ", atmosphere)));
+        }
+
+        if (serviceNotes != null && !serviceNotes.isEmpty()) {
+            sb.append(String.format("  - **Hizmet ve Özellikler:** %s\n", String.join(", ", serviceNotes)));
+        }
+
+        if (dietaryTags != null && !dietaryTags.isEmpty()) {
+            sb.append(String.format("  - **Diyet Seçenekleri:** %s\n", String.join(", ", dietaryTags)));
+        }
+
+        if (cautions != null && !cautions.isEmpty()) {
+            sb.append(String.format("  - **Dikkat Edilmesi Gereken:** %s\n", String.join(", ", cautions)));
         }
 
         return sb.toString();

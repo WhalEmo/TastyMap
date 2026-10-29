@@ -40,6 +40,8 @@ public class QdrantDocumentMapper {
                 .orElse("");
 
         String id = point.getId().hasUuid() ? point.getId().getUuid() : String.valueOf(point.getId().getNum());
+        meta.setQdrantId(id);
+
         return new RestaurantDocument(id, rawContent, meta);
     }
 
