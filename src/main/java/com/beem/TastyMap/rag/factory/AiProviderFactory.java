@@ -21,11 +21,13 @@ public class AiProviderFactory {
 
     public AiProviderFactory(
             @Qualifier("groqChatClient") ChatClient groqClient,
+            @Qualifier("evrenChatClient") ChatClient evrenClient,
             @Qualifier("ollamaChatClient") ChatClient ollamaClient,
             @Qualifier("ollamaIndexerChatClient") ChatClient ollamaIndexerClient,
             @Value("${tastymap.ai.active-provider:groq}") String configuredProvider
     ) {
         this.clientRegistry.put(AiProvider.GROQ, groqClient);
+        this.clientRegistry.put(AiProvider.EVREN, evrenClient);
         this.clientRegistry.put(AiProvider.OLLAMA, ollamaClient);
         this.clientRegistry.put(AiProvider.OLLAMA_INDEXER, ollamaIndexerClient);
 

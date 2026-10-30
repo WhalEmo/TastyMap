@@ -200,11 +200,11 @@ public class QdrantTestController {
                 UUID.randomUUID().toString(),
                 1L,
                 query,
-                false,
-                false,
                 lat,
                 lon,
-                radiusKm
+                radiusKm,
+                false,
+                "GROQ"
         );
 
         UserHealthProfile profile = new UserHealthProfile(

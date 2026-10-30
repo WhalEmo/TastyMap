@@ -141,7 +141,7 @@ public class ChatMemoryManager {
     }
 
     @Transactional
-    public void recordAssistantMessage(
+    public ChatMessageEntity recordAssistantMessage(
             String sessionId,
             Long userId,
             String content,
@@ -151,7 +151,7 @@ public class ChatMemoryManager {
                 ? Map.of("presentedPlaces", places)
                 : Collections.emptyMap();
 
-        recordMessage(sessionId, userId, MessageRole.ASSISTANT, content, metadata);
+        return recordMessage(sessionId, userId, MessageRole.ASSISTANT, content, metadata);
     }
 
     /**
@@ -165,9 +165,11 @@ public class ChatMemoryManager {
      * Metadata destekli aşırı yüklenmiş (overloaded) kayıt metodu.
      */
     @Transactional
-    public void recordMessage(String sessionId, Long userId, MessageRole role, String content, Map<String, Object> metadata) {
+    public ChatMessageEntity recordMessage(String sessionId, Long userId, MessageRole role, String content, Map<String, Object> metadata) {
         Instant now = Instant.now();
         Map<String, Object> safeMeta = metadata != null ? metadata : Collections.emptyMap();
+
+        ChatMessageEntity savedEntity = saveToDatabase(sessionId, userId, role, content, safeMeta);
 
         // 1. Redis'e Yaz (Sliding Window & TTL)
         String key = getRedisKey(sessionId);
@@ -180,30 +182,20 @@ public class ChatMemoryManager {
                 SESSION_TTL_SECONDS
         );
 
-        // 2. MySQL'e Kaydet
-        saveToDatabase(sessionId, userId, role, content, safeMeta);
+        return savedEntity;
     }
 
-    private void saveToDatabase(String sessionId, Long userId, MessageRole role, String content, Map<String, Object> metadata) {
-        try {
-            // Oturum yoksa ilk mesajın özetiyle başlık oluşturarak başlat
-            ChatSessionEntity session = sessionRepo.findById(sessionId).orElseGet(() -> {
-                String cleanTitle = (content != null) ? content.replaceAll("\\s+", " ").trim() : "";
+    private ChatMessageEntity saveToDatabase(String sessionId, Long userId, MessageRole role, String content, Map<String, Object> metadata) {
+        ChatSessionEntity session = sessionRepo.findById(sessionId).orElseGet(() -> {
+            String cleanTitle = (content != null) ? content.replaceAll("\\s+", " ").trim() : "";
+            String title = cleanTitle.isBlank() ? "Yeni Sohbet" :
+                    (cleanTitle.length() > 40 ? cleanTitle.substring(0, 40) + "..." : cleanTitle);
 
-                String title = cleanTitle.isBlank() ? "Yeni Sohbet" :
-                        (cleanTitle.length() > 40 ? cleanTitle.substring(0, 40) + "..." : cleanTitle);
-
-                ChatSessionEntity newSession = new ChatSessionEntity(userId, title);
-                newSession.setId(sessionId);
-                return sessionRepo.save(newSession);
-            });
-
-            // İlişkili nesne referansı ile kayıt
-            ChatMessageEntity messageEntity = new ChatMessageEntity(session, role, content, metadata);
-            messageRepo.save(messageEntity);
-
-        } catch (Exception e) {
-            log.error("Mesaj DB'ye kaydedilirken hata oluştu (Session: {}): {}", sessionId, e.getMessage());
-        }
+            ChatSessionEntity newSession = new ChatSessionEntity(userId, title);
+            newSession.setId(sessionId);
+            return sessionRepo.saveAndFlush(newSession);
+        });
+        ChatMessageEntity messageEntity = new ChatMessageEntity(session, role, content, metadata);
+        return messageRepo.saveAndFlush(messageEntity);
     }
 }

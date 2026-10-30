@@ -1,19 +1,21 @@
 package com.beem.TastyMap.rag.listener;
 
-import com.beem.TastyMap.rag.component.PlaceMetadataExtractor;
 import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
 import com.beem.TastyMap.rag.data.dto.*;
+import com.beem.TastyMap.rag.data.enums.AiProvider;
 import com.beem.TastyMap.rag.data.enums.MessageRole;
+import com.beem.TastyMap.rag.data.enums.UserIntentAction;
 import com.beem.TastyMap.rag.data.event.UserQueryEvent;
 import com.beem.TastyMap.rag.data.response.AiStreamPayload;
 import com.beem.TastyMap.rag.data.response.AiStreamPayload.StreamEventType;
+import com.beem.TastyMap.rag.entity.ChatMessageEntity;
 import com.beem.TastyMap.rag.factory.AiProviderFactory;
+import com.beem.TastyMap.rag.service.AiQuotaService;
 import com.beem.TastyMap.rag.service.ChatMemoryManager;
 import com.beem.TastyMap.rag.service.RestaurantSearchService;
 import com.beem.TastyMap.rag.service.UserDataCollectorService;
 import com.beem.TastyMap.rag.util.CostTracker;
 import com.beem.TastyMap.rag.websocket.AiStreamWebSocketHandler;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +30,7 @@ import reactor.core.publisher.Flux;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class  AiRecommendationV3{
@@ -37,73 +40,77 @@ public class  AiRecommendationV3{
     private static final Duration STREAM_TIMEOUT = Duration.ofSeconds(35);
     private static final int DEFAULT_HISTORY_ROUNDS = 2; // Son 2 soru-cevap (4 mesaj)
     private static final double DEFAULT_RADIUS_KM = 5.0;
+    private static final Locale TR = Locale.forLanguageTag("tr");
 
     private final AiProviderFactory aiProviderFactory;
+    private final AiQuotaService aiQuotaService;
     private final ChatMemoryManager chatMemoryManager;
     private final AiStreamWebSocketHandler webSocketHandler;
     private final RestaurantSearchService restaurantSearchService;
-    private final PlaceMetadataExtractor metadataExtractor;
     private final UserDataCollectorService userDataCollectorService;
     private final ObjectMapper objectMapper;
 
     private static final String INTENT_SYSTEM_PROMPT = """
-        Sen TastyMap sisteminin niyet analiz motorusun.
-        Kullanıcının mesajını ve varsa SAĞLIK / DİYET KISITLAMALARINI incele ve YALNIZCA geçerli bir JSON nesnesi formatında yanıt ver.
-        Açıklama, markdown veya selamlama EKLEME.
+        Sen TastyMap sisteminin Niyet Analiz Motorusun.
+        Kullanıcının mesajını, aktif bağlamdaki mekanları ve sağlık kısıtlarını inceleyip YALNIZCA geçerli bir JSON nesnesi dön. Açıklama veya markdown ekleme.
 
         JSON ŞEMASI:
-        - search_needed (boolean): Mekan araması gerekiyor mu?
-        - is_named_entity (boolean): Belirli bir mekan/dükkan adı mı aranıyor?
-        - semantic_query (string): Vektör tabanında aranacak temiz ve hedefe yönelik anahtar kelimeler
-        - direct_reply (string): Arama gerekmiyorsa verilecek doğrudan samimi yanıt (arama varsa "")
+        {
+          "action": "CONTEXT_QA | NAMED_ENTITY_SEARCH | NEW_SEARCH | FETCH_MORE | CHITCHAT",
+          "target_place_name": "sorulan mekan adı (varsa, yoksa \"\")",
+          "semantic_query": "vektör araması için hedefe yönelik temiz kelimeler (yoksa \"\")",
+          "direct_reply": "sadece CHITCHAT ise samimi kısa cevap, yoksa \"\""
+        }
 
-        KRİTİK KURALLAR:
-        1. Kullanıcı doğrudan belirli bir dükkan soruyorsa (örn: "Ay Işığı Kafe", "Döner House"):
-           search_needed=true, is_named_entity=true, semantic_query="Mekan Adı", direct_reply=""
-        2. SAĞLIK & DİYET ENJEKSİYONU:
-           - Kullanıcı VEGAN ise ve genel yiyecek arıyorsa (örn: "hamburger", "pizza", "tatlı"), `semantic_query` alanına mutlaka vegan alternatifleri ekle (örn: "vegan burger bitkisel", "vegan pizza").
-           - Kullanıcı VEJETARYEN ise et yemekleri yerine etsiz/vejetaryen anahtar kelimelerini semantic_query içine yerleştir.
-           - Kullanıcının ÇÖLYAK / GLUTEN alerjisi varsa unlu/hamur işi sorgularında `semantic_query`'ye "glutensiz" ibaresini ekle.
-           - Kullanıcının DİYABETİ varsa ve spesifik tatlı istemediyse tatlı araması üretme.
-        3. Kullanıcı genel kategori/lezzet/ortam arıyorsa (örn: "sessiz kafe", "yakında dönerci", "ders çalışmalık yer"):
-           search_needed=true, is_named_entity=false, semantic_query="aranacak kelimeler", direct_reply=""
-        4. Kullanıcı sadece selam veriyor, hal hatır soruyor veya genel sohbet ediyorsa:
-           search_needed=false, is_named_entity=false, semantic_query="", direct_reply="Samimi ve kısa cevabın"
+        AKSIYON KURALLARI:
+        1. CONTEXT_QA: Kullanıcı ekranda açık olan [AKTİF BAĞLAMDAKİ MEKANLAR] listesindeki bir yer hakkında detay soruyorsa (priz, saat, otopark, ortam vb.).
+        2. NAMED_ENTITY_SEARCH: Kullanıcı ekranda olmayan belirli bir işletmeyi arıyorsa (örn: 'Karahan Döner').
+        3. FETCH_MORE: Kullanıcı alternatif veya başka öneri istiyorsa (örn: 'başka ne var', 'farklı yer').
+        4. NEW_SEARCH: Kullanıcı genel yemek/kategori arıyorsa (örn: 'sessiz kafe', 'güzel kebapçı').
+        5. CHITCHAT: Selamlama, teşekkür veya genel sohbet.
+
+        SORGU ZENGİNLEŞTİRME KURALI:
+        NEW_SEARCH durumunda kullanıcının bir diyet/sağlık kısıtı varsa (Vegan, Çölyak vb.), `semantic_query` alanına bu kısıtı mutlaka anahtar kelime olarak ekle (Örn: 'mantı' -> 'glutensiz mantı').
         """;
 
     private static final String PRESENTATION_SYSTEM_PROMPT = """
-        Sen TastyMap'in samimi ve uzman mekan rehberisin.
+    Sen TastyMap'in samimi, enerjik ve uzman gastronomi rehberisin.
 
-        KURALLAR:
-        1. YALNIZCA sana verilen mekan listesindeki bilgileri (lezzet, ambiyans, dikkat edilecekler, mesafe) kullan. Listede olmayan mekan veya bilgi uydurma.
-        2. Her mekanı akıcı ve net bir paragrafla tanıt. Mekan adını kalın (**Mekan Adı**) yaz.
-        3. Mekanın öne çıkan lezzetlerini ve ortamını vurgula.
-        4. KULLANICI SAĞLIK DUYARLILIĞI: Kullanıcının diyet türü (vegan, vejetaryen) veya alerjisi belirtilmişse, önerdiğin mekanların bu duruma uygun yönlerini mutlaka belirt. Çapraz bulaşma riski olabilecek alerjilerde (özellikle gluten, fıstık vb.) sipariş öncesi mekanla teyitleşmesini dostça tavsiye et.
-        5. "Dikkat Edilmesi Gerekenler" kısmında olumsuz bir not varsa kullanıcıyı dostça uyar.
-        6. Giriş ve kapanış cümlelerin samimi ve enerjik olsun.
-        """;
+    TEMEL KURALLAR:
+    1. YALNIZCA sana verilen mekan bilgilerini kullan. Asla listede olmayan mekan veya özellik uydurma.
+    2. Her mekanı akıcı bir paragrafla tanıt. Mekan adını mutlaka kalın (**Mekan Adı**) yaz.
+    3. Mekanın öne çıkan lezzetlerini ve ortamını vurgula.
+    4. SAĞLIK VE DİYET:
+       - Promptta 'KULLANICI SAĞLIK PROFİLİ' başlığı VARSA bunu hayati kabul et; mekanları bu kısıtlara göre titizlikle değerlendir ve gerekirse uyar.
+       - Bu başlık YOKSA alerji, kısıt veya çapraz bulaşma konusuna KESİNLİKLE değinme.
+    5. 'Dikkat Edilmesi Gerekenler' alanında olumsuz bir not varsa kullanıcıyı samimi bir dille uyar; yoksa olumsuzluk uydurma.
+    6. Giriş ve kapanış cümlelerin samimi ve davetkar olsun.
+    """;
 
     private static final String CONTEXT_QA_SYSTEM_PROMPT = """
         Sen TastyMap gastronomi asistanısın.
-        Kullanıcı önerilen bir mekan hakkında detay soruyor.
-        Sana verilen [MEKAN BİLGİSİ] alanındaki verileri (ortam, lezzetler, hizmet detayları, uyarılar) kullanarak soruya doğrudan ve samimi cevap ver.
-        Bilmediğin bir detay varsa dürüstçe bilmediğini söyle, kesinlikle uydurma.
+        Kullanıcı önerilen bir mekan hakkında spesifik bir soru soruyor.
+
+        KURALLAR:
+        1. Sana verilen [MEKAN BİLGİSİ] içindeki ortam, lezzet, hizmet detayları ve uyarıları temel alarak soruya doğrudan ve samimi cevap ver.
+        2. Bilgi verilen metinde açıkça yer almıyorsa "Bu konuda net bir bilgi bulunmuyor, mekana gitmeden önce teyit etmenizi öneririm" de. Asla bilgi uydurma.
+        3. Cevabın gereksiz yere uzun olmasın; doğrudan kullanıcının merak ettiği konuya odaklan.
         """;
 
     public AiRecommendationV3(
             AiProviderFactory aiProviderFactory,
+            AiQuotaService aiQuotaService,
             ChatMemoryManager chatMemoryManager,
             AiStreamWebSocketHandler webSocketHandler,
             RestaurantSearchService restaurantSearchService,
-            PlaceMetadataExtractor metadataExtractor,
             UserDataCollectorService userDataCollectorService,
             ObjectMapper objectMapper
     ) {
         this.aiProviderFactory = aiProviderFactory;
+        this.aiQuotaService = aiQuotaService;
         this.chatMemoryManager = chatMemoryManager;
         this.webSocketHandler = webSocketHandler;
         this.restaurantSearchService = restaurantSearchService;
-        this.metadataExtractor = metadataExtractor;
         this.userDataCollectorService = userDataCollectorService;
         this.objectMapper = objectMapper;
     }
@@ -116,6 +123,12 @@ public class  AiRecommendationV3{
 
         long startTime = System.currentTimeMillis();
         log.info("[V3 Worker] RAG İsteği Başladı -> User: {}, Session: {}, Query: '{}'", userId, sessionId, event.userQuery());
+
+        if (!aiQuotaService.hasAvailableQuota(userId)) {
+            log.warn("⛔ [V3 Worker] Kullanıcı {} günlük AI kotasını doldurdu. İstek reddedildi.", userId);
+            notifyUser(userId, StreamEventType.ERROR, "Günlük AI arama kotanız doldu. Lütfen yarın tekrar deneyin.", false, 0);
+            return;
+        }
 
         notifyUser(userId, StreamEventType.STATUS, "İsteğiniz inceleniyor... 🔍", false, 0);
 
@@ -131,17 +144,23 @@ public class  AiRecommendationV3{
         List<RestaurantMetadata> newlyFoundPlaces = new ArrayList<>();
         StringBuilder fullResponse = new StringBuilder();
 
-        try {
-            ChatClient client = aiProviderFactory.getDefaultClient();
+        AiProvider selectedProvider = (event.provider() != null && !event.provider().isBlank())
+                ? AiProvider.fromString(event.provider())
+                : aiProviderFactory.getDefaultProvider();
+        ChatClient client = aiProviderFactory.getClient(selectedProvider);
 
-            // 1. Aşama: Niyet Analizi
-            ExecutionTokenUsage intentTokens = new ExecutionTokenUsage();
-            UserIntentAnalysis intent = analyzeUserIntent(client, event.userQuery(), healthProfile, activePlaces, intentTokens);
+        AtomicReference<String> activeModelName = new AtomicReference<>(selectedProvider.name().toLowerCase());
+        ExecutionTokenUsage intentTokens = new ExecutionTokenUsage();
+        ExecutionTokenUsage stage2Tokens = new ExecutionTokenUsage();
+
+        try {
+            UserIntentAnalysis intent = analyzeUserIntent(client, event.userQuery(), healthProfile, activePlaces, intentTokens, activeModelName);
 
             switch (intent.action()) {
                 case CONTEXT_QA -> {
                     log.info("🧠 [Router] CONTEXT_QA tetiklendi. Hedef Mekan: '{}'", intent.targetPlaceName());
-                    handleContextQa(client, userId, event.userQuery(), intent.targetPlaceName(), activePlaces, fullResponse, intentTokens);
+                    handleContextQa(client, userId, event.userQuery(), intent.targetPlaceName(), activePlaces, fullResponse, stage2Tokens, activeModelName);
+                    newlyFoundPlaces = activePlaces;
                 }
                 case CHITCHAT -> {
                     log.info("💬 [Router] CHITCHAT tetiklendi.");
@@ -151,29 +170,62 @@ public class  AiRecommendationV3{
                     log.info("🔄 [Router] FETCH_MORE tetiklendi. Önceki mekanlar dışlanıyor.");
                     newlyFoundPlaces = executeSearchAndStream(
                             client, event, sessionId, userId, intent.semanticQuery(), false, healthProfile,
-                            allPresentedIds, fullResponse, intentTokens
+                            allPresentedIds, fullResponse, stage2Tokens, activeModelName
                     );
                 }
                 case NAMED_ENTITY_SEARCH -> {
                     log.info("🎯 [Router] NAMED_ENTITY_SEARCH tetiklendi: '{}'", intent.targetPlaceName());
                     newlyFoundPlaces = executeSearchAndStream(
                             client, event, sessionId, userId, intent.semanticQuery(), true, healthProfile,
-                            Collections.emptySet(), fullResponse, intentTokens
+                            Collections.emptySet(), fullResponse, stage2Tokens, activeModelName
                     );
                 }
                 case NEW_SEARCH -> {
                     log.info("🔍 [Router] NEW_SEARCH tetiklendi: '{}'", intent.semanticQuery());
                     newlyFoundPlaces = executeSearchAndStream(
                             client, event, sessionId, userId, intent.semanticQuery(), false, healthProfile,
-                            Collections.emptySet(), fullResponse, intentTokens
+                            Collections.emptySet(), fullResponse, stage2Tokens, activeModelName
                     );
                 }
             }
 
             notifyUser(userId, StreamEventType.COMPLETED, "", false, 0);
-            chatMemoryManager.recordAssistantMessage(sessionId, userId, fullResponse.toString(), newlyFoundPlaces);
+            ChatMessageEntity savedAssistantMessage = chatMemoryManager.recordAssistantMessage(
+                    sessionId, userId, fullResponse.toString(), newlyFoundPlaces
+            );
+            Long messageId = (savedAssistantMessage != null) ? savedAssistantMessage.getId() : null;
+
+            if (intent.action() != UserIntentAction.CHITCHAT && !fullResponse.isEmpty()) {
+                if (stage2Tokens.outputTokens.get() == 0) {
+                    int estimatedOutput = Math.max(1, fullResponse.length() / 4);
+                    stage2Tokens.outputTokens.set(estimatedOutput);
+                    log.warn("⚠️ [Cost Tracker] 2. Aşama için Usage dönmedi, çıktı tahminlendi: {} token", estimatedOutput);
+                }
+
+                if (stage2Tokens.inputTokens.get() == 0) {
+                    int estimatedInput = 250 + (newlyFoundPlaces.size() * 150);
+                    stage2Tokens.inputTokens.set(estimatedInput);
+                    log.warn("⚠️ [Cost Tracker] 2. Aşama girdi token'ı tahminlendi: {} token", estimatedInput);
+                }
+            }
 
             long totalDuration = System.currentTimeMillis() - startTime;
+            int totalPromptTokens = (int) (intentTokens.inputTokens.get() + stage2Tokens.inputTokens.get());
+            int totalCompletionTokens = (int) (intentTokens.outputTokens.get() + stage2Tokens.outputTokens.get());
+
+            CostTracker.logSummary("TOPLAM İSTEK MALİYETİ", totalPromptTokens, totalCompletionTokens);
+
+            aiQuotaService.recordUsageAndDeductQuota(
+                    userId,
+                    sessionId,
+                    messageId,
+                    selectedProvider,
+                    activeModelName.get(),
+                    totalPromptTokens,
+                    totalCompletionTokens,
+                    totalDuration
+            );
+
             log.info("[V3 Worker] İşlem Tamamlandı. Toplam Süre: {} ms, Sunulan: {}", totalDuration, newlyFoundPlaces.size());
 
         } catch (Exception e) {
@@ -187,7 +239,8 @@ public class  AiRecommendationV3{
             String userQuery,
             UserHealthProfile healthProfile,
             List<RestaurantMetadata> activePlaces,
-            ExecutionTokenUsage tokenUsage
+            ExecutionTokenUsage tokenUsage,
+            AtomicReference<String> activeModelName
     ) {
         log.info("[V3 Worker] 1. Aşama: Niyet ve arama analizi yapılıyor...");
 
@@ -218,118 +271,122 @@ public class  AiRecommendationV3{
                 ? response.getResult().getOutput().getContent()
                 : "";
 
-        if (response != null && response.getMetadata() != null && response.getMetadata().getUsage() != null) {
-            var usage = response.getMetadata().getUsage();
-            tokenUsage.inputTokens.set(usage.getPromptTokens() != null ? usage.getPromptTokens() : 0);
-            tokenUsage.outputTokens.set(usage.getGenerationTokens() != null ? usage.getGenerationTokens() : 0);
-            CostTracker.logSummary("1. Aşama (Niyet Analizi)", tokenUsage.inputTokens.get(), tokenUsage.outputTokens.get());
+        if (response != null && response.getMetadata() != null) {
+            if (response.getMetadata().getUsage() != null) {
+                var usage = response.getMetadata().getUsage();
+                tokenUsage.inputTokens.set(usage.getPromptTokens() != null ? usage.getPromptTokens() : 0);
+                tokenUsage.outputTokens.set(usage.getGenerationTokens() != null ? usage.getGenerationTokens() : 0);
+                CostTracker.logSummary("1. Aşama (Niyet Analizi)", tokenUsage.inputTokens.get(), tokenUsage.outputTokens.get());
+            }
+            if (response.getMetadata().getModel() != null) {
+                activeModelName.set(response.getMetadata().getModel());
+            }
         }
 
         log.info("[V3 Worker] Niyet Çıktısı: {}", rawOutput);
         return parseIntentResponse(rawOutput, userQuery);
     }
 
-    private List<PresentedPlaceSummary> executeSearchAndStream(
+    private List<RestaurantMetadata> executeSearchAndStream(
             ChatClient client,
             UserQueryEvent event,
             String sessionId,
             Long userId,
-            UserIntentAnalysis intent,
+            String searchQuery,
+            boolean isNamedEntity,
             UserHealthProfile healthProfile,
-            Set<String> alreadyPresentedIds,
-            List<ChatHistoryMessage> fullHistory,
+            Set<String> excludeIds,
             StringBuilder fullResponse,
-            ExecutionTokenUsage intentTokens
+            ExecutionTokenUsage stage2Tokens,
+            AtomicReference<String> activeModelName
     ) {
-        String searchQuery = (intent.semanticQuery() != null && !intent.semanticQuery().isBlank())
-                ? intent.semanticQuery()
-                : event.userQuery();
-
-        log.info("🔍 [V3 Worker] Qdrant Arama Tetikleniyor -> Query: '{}', Lat: {}, Lon: {}",
-                searchQuery, event.latitude(), event.longitude());
+        String cleanQuery = (searchQuery != null && !searchQuery.isBlank()) ? searchQuery : event.userQuery();
 
         UserQueryEvent searchEvent = new UserQueryEvent(
-                sessionId,
-                userId,
-                searchQuery,
-                event.ignoreAllergies(),
-                event.isOpenNow(),
-                event.latitude(),
-                event.longitude(),
-                event.radiusKm() != null ? event.radiusKm() : DEFAULT_RADIUS_KM
+                sessionId, userId, cleanQuery, event.latitude(), event.longitude(),
+                event.radiusKm() != null ? event.radiusKm() : DEFAULT_RADIUS_KM, event.ignoreHealthProfile(),
+                event.provider()
         );
 
+        log.info("🔍 [V3 Worker] Qdrant Arama Tetikleniyor -> Query: '{}', Lat: {}, Lon: {}, ExcludeCount: {}",
+                cleanQuery, event.latitude(), event.longitude(), excludeIds.size());
+
         SearchResult searchResult = restaurantSearchService.findFreshPlacesV2(
-                searchEvent, alreadyPresentedIds, intent.isNamedEntity(), healthProfile
+                searchEvent, excludeIds, isNamedEntity, healthProfile
         );
 
         if (searchResult.documents() == null || searchResult.documents().isEmpty()) {
-            String notFoundMsg = "Üzgünüm, belirttiğiniz kriterlere uygun yakınlarda bir mekan bulamadım. Yarıçapı genişletmeyi deneyebilirsiniz.";
+            String notFoundMsg = "Üzgünüm, belirttiğiniz kriterlere uygun yakınlarda bir mekan bulamadım.";
             fullResponse.append(notFoundMsg);
             notifyUser(userId, StreamEventType.TOKEN, notFoundMsg, false, 0);
             return Collections.emptyList();
         }
 
-        List<PresentedPlaceSummary> places = searchResult.documents().stream()
-                .map(metadataExtractor::fromDocument)
-                .toList();
+        List<RestaurantMetadata> places = searchResult.documents().stream()
+                        .map(document -> {
+                            RestaurantMetadata meta = objectMapper.convertValue(document.getMetadata(), RestaurantMetadata.class);
+                            if (meta.getQdrantId() == null || meta.getQdrantId().isBlank()) {
+                                meta.setQdrantId(document.getId());
+                            }
+                            return meta;
+                        }).toList();
 
         log.info("[V3 Worker] {} mekan bulundu. Canlı Streaming başlatılıyor...", places.size());
         notifyUser(userId, StreamEventType.STATUS, "Mekanlar bulundu, öneriler hazırlanıyor... ✨", false, 0);
 
-        String historyMd = buildChatHistoryMarkdown(fullHistory, DEFAULT_HISTORY_ROUNDS);
-        String presentationPrompt = formatPlacesForPresentation(event.userQuery(), places, historyMd, healthProfile);
+        StringBuilder sb = new StringBuilder();
 
-        ExecutionTokenUsage stage2Tokens = new ExecutionTokenUsage();
+        sb.append("GÜNCEL KULLANICI SORUSU: \"").append(event.userQuery()).append("\"\n\n");
+        if (healthProfile != null && healthProfile.isRestricted()) {
+            sb.append("KULLANICI SAĞLIK PROFİLİ: ").append(healthProfile).append("\n\n");
+        }
+        sb.append("BULUNAN MEKANLAR:\n\n");
+        for (RestaurantMetadata p : places) {
+            sb.append(p.toPresentationMarkdown()).append("\n");
+        }
+
+        sb.append("\nTALİMAT: YALNIZCA yukarıdaki mekanları samimi, iştah açıcı ve akıcı bir dille kullanıcıya tanıt.");
+
 
         Flux<ChatResponse> responseStream = client.prompt()
                 .system(PRESENTATION_SYSTEM_PROMPT)
-                .user(presentationPrompt)
+                .user(sb.toString())
                 .stream()
                 .chatResponse();
 
-        responseStream
-                .doOnNext(chatResponse -> {
-                    String token = chatResponse.getResult().getOutput().getContent();
-                    if (token != null && !token.isEmpty()) {
-                        fullResponse.append(token);
-                        notifyUser(userId, StreamEventType.TOKEN, token, false, 0);
-                    }
-                    if (chatResponse.getMetadata() != null && chatResponse.getMetadata().getUsage() != null) {
-                        var usage = chatResponse.getMetadata().getUsage();
-                        if (usage.getPromptTokens() != null && usage.getPromptTokens() > 0) {
-                            stage2Tokens.inputTokens.set(usage.getPromptTokens());
-                        }
-                        if (usage.getGenerationTokens() != null && usage.getGenerationTokens() > 0) {
-                            stage2Tokens.outputTokens.set(usage.getGenerationTokens());
-                        }
-                    }
-                })
-                .blockLast(STREAM_TIMEOUT);
+        streamToUser(responseStream, userId, fullResponse, stage2Tokens, activeModelName);
 
         CostTracker.logSummary("2. Aşama (Streaming)", stage2Tokens.inputTokens.get(), stage2Tokens.outputTokens.get());
-
-        long totalIn = intentTokens.inputTokens.get() + stage2Tokens.inputTokens.get();
-        long totalOut = intentTokens.outputTokens.get() + stage2Tokens.outputTokens.get();
-        CostTracker.logSummary("TOPLAM İSTEK MALİYETİ", totalIn, totalOut);
-
         return places;
     }
 
-    private void streamToUser(Flux<ChatResponse> stream, Long userId, StringBuilder fullResponse, ExecutionTokenUsage tokenUsage) {
+    private void streamToUser(
+            Flux<ChatResponse> stream,
+            Long userId,
+            StringBuilder fullResponse,
+            ExecutionTokenUsage tokenUsage,
+            AtomicReference<String> activeModelName
+    ) {
         stream.doOnNext(chatResponse -> {
-            String token = chatResponse.getResult().getOutput().getContent();
-            if (token != null && !token.isEmpty()) {
-                fullResponse.append(token);
-                notifyUser(userId, StreamEventType.TOKEN, token, false, 0);
-            }
-            if (chatResponse.getMetadata() != null && chatResponse.getMetadata().getUsage() != null) {
-                var usage = chatResponse.getMetadata().getUsage();
-                if (usage.getPromptTokens() != null && usage.getPromptTokens() > 0) {
-                    tokenUsage.inputTokens.set(usage.getPromptTokens());
+            if (chatResponse.getResult() != null && chatResponse.getResult().getOutput() != null) {
+                String token = chatResponse.getResult().getOutput().getContent();
+                if (token != null && !token.isEmpty()) {
+                    fullResponse.append(token);
+                    notifyUser(userId, StreamEventType.TOKEN, token, false, 0);
                 }
-                if (usage.getGenerationTokens() != null && usage.getGenerationTokens() > 0) {
-                    tokenUsage.outputTokens.set(usage.getGenerationTokens());
+            }
+            if (chatResponse.getMetadata() != null) {
+                if (chatResponse.getMetadata().getModel() != null) {
+                    activeModelName.set(chatResponse.getMetadata().getModel());
+                }
+                if (chatResponse.getMetadata().getUsage() != null) {
+                    var usage = chatResponse.getMetadata().getUsage();
+                    if (usage.getPromptTokens() != null && usage.getPromptTokens() > 0) {
+                        tokenUsage.inputTokens.set(usage.getPromptTokens());
+                    }
+                    if (usage.getGenerationTokens() != null && usage.getGenerationTokens() > 0) {
+                        tokenUsage.outputTokens.set(usage.getGenerationTokens());
+                    }
                 }
             }
         }).blockLast(STREAM_TIMEOUT);
@@ -342,7 +399,8 @@ public class  AiRecommendationV3{
             String targetPlaceName,
             List<RestaurantMetadata> activePlaces,
             StringBuilder fullResponse,
-            ExecutionTokenUsage intentTokens
+            ExecutionTokenUsage stage2Tokens,
+            AtomicReference<String> activeModelName
     ) {
         if (activePlaces == null || activePlaces.isEmpty()) {
             String fallback = "Bahsettiğiniz mekanı sohbet geçmişimde bulamadım, tekrar aratmamı ister misiniz?";
@@ -351,10 +409,10 @@ public class  AiRecommendationV3{
             return;
         }
 
-        String searchName = (targetPlaceName != null) ? targetPlaceName.toLowerCase(Locale.ROOT) : "";
+        String searchName = (targetPlaceName != null) ? targetPlaceName.toLowerCase(TR) : "";
         RestaurantMetadata targetPlace = activePlaces.stream()
-                .filter(p -> p.getName() != null && (p.getName().toLowerCase(Locale.ROOT).contains(searchName)
-                        || searchName.contains(p.getName().toLowerCase(Locale.ROOT))))
+                .filter(p -> p.getName() != null && (p.getName().toLowerCase(TR).contains(searchName)
+                        || searchName.contains(p.getName().toLowerCase(TR))))
                 .findFirst()
                 .orElse(activePlaces.get(0));
 
@@ -365,19 +423,15 @@ public class  AiRecommendationV3{
                 %s
                 """, userQuery, targetPlace.toPresentationMarkdown());
 
-        ExecutionTokenUsage qaTokens = new ExecutionTokenUsage();
-
         Flux<ChatResponse> responseStream = client.prompt()
                 .system(CONTEXT_QA_SYSTEM_PROMPT)
                 .user(promptContent)
                 .stream()
                 .chatResponse();
 
-        streamToUser(responseStream, userId, fullResponse, qaTokens);
+        streamToUser(responseStream, userId, fullResponse, stage2Tokens, activeModelName);
 
-        CostTracker.logSummary("2. Aşama (Context QA Streaming)", qaTokens.inputTokens.get(), qaTokens.outputTokens.get());
-        CostTracker.logSummary("TOPLAM İSTEK MALİYETİ", intentTokens.inputTokens.get() + qaTokens.inputTokens.get(),
-                intentTokens.outputTokens.get() + qaTokens.outputTokens.get());
+        CostTracker.logSummary("2. Aşama (Context QA Streaming)", stage2Tokens.inputTokens.get(), stage2Tokens.outputTokens.get());
     }
 
     private void handleDirectReply(Long userId, UserIntentAnalysis intent, StringBuilder fullResponse) {
@@ -386,63 +440,6 @@ public class  AiRecommendationV3{
                 : "Merhaba! Size en lezzetli mekanları bulmak için buradayım. Ne arzu edersiniz?";
         fullResponse.append(reply);
         notifyUser(userId, StreamEventType.TOKEN, reply, false, 0);
-    }
-
-    private String formatPlacesForPresentation(
-            String userQuery,
-            List<PresentedPlaceSummary> places,
-            String historyMarkdown,
-            UserHealthProfile healthProfile
-    ) {
-        StringBuilder sb = new StringBuilder();
-
-        if (!historyMarkdown.isBlank()) {
-            sb.append(historyMarkdown).append("\n");
-        }
-
-        sb.append("GÜNCEL KULLANICI SORUSU: \"").append(userQuery).append("\"\n\n");
-
-        if (healthProfile != null && healthProfile.isRestricted()) {
-            sb.append("DİKKAT - KULLANICI SAĞLIK PROFİLİ: ").append(healthProfile).append("\n");
-        }
-        sb.append("\n");
-
-        sb.append("BULUNAN YENİ MEKANLAR:\n\n");
-
-        for (PresentedPlaceSummary p : places) {
-            sb.append(p.toMarkdown()).append("\n");
-        }
-        String healthSentence = healthProfile != null && healthProfile.isRestricted()
-                ? "ve varsa kullanıcının sağlık kısıtlamalarını " : "";
-
-        sb.append("\nTALİMAT: Geçmiş bağlamını ").append(healthSentence).append("dikkate alarak, YALNIZCA yukarıdaki mekanları samimi ve akıcı bir dille kullanıcıya tanıt.");
-        return sb.toString();
-    }
-
-    private String buildChatHistoryMarkdown(List<ChatHistoryMessage> fullHistory, int lastRounds) {
-        if (fullHistory == null || fullHistory.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("ÖNCEKİ SOHBET GEÇMİŞİ (Kısa Özet):\n");
-
-        int messageCount = lastRounds * 2;
-        int start = Math.max(0, fullHistory.size() - messageCount);
-
-        for (int i = start; i < fullHistory.size(); i++) {
-            ChatHistoryMessage msg = fullHistory.get(i);
-            String roleLabel = (msg.role() == MessageRole.USER) ? "Kullanıcı" : "Asistan";
-            String cleanContent = msg.content() != null ? msg.content().trim() : "";
-
-            if (msg.role() == MessageRole.ASSISTANT && cleanContent.length() > 120) {
-                cleanContent = cleanContent.substring(0, 120).replaceAll("\\s+", " ") + "...";
-            }
-
-            sb.append(String.format("- **%s:** %s\n", roleLabel, cleanContent));
-        }
-        sb.append("\n");
-        return sb.toString();
     }
 
 

@@ -1,10 +1,8 @@
 package com.beem.TastyMap.rag.controller;
 
-import com.beem.TastyMap.rag.config.KafkaConfig;
 import com.beem.TastyMap.rag.data.event.UserQueryEvent;
 import com.beem.TastyMap.rag.data.request.RecommendationReq;
 import com.beem.TastyMap.rag.listener.AiRecommendationV3;
-import com.beem.TastyMap.rag.listener.AiRecommendationWorkerV2;
 import com.beem.TastyMap.rag.service.RestaurantIndexingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -39,11 +37,11 @@ public class RecommendationController {
                 request.sessionId(),
                 myId,
                 request.query(),
-                request.ignoreAllergies(),
-                request.isOpenNow(),
                 request.latitude(),
                 request.longitude(),
-                request.radiusKm()
+                request.radiusKm(),
+                request.ignoreHealthProfile(),
+                request.provider()
         );
 
         //kafkaTemplate.send(KafkaConfig.RESTAURANT_AI_REQUESTS_TOPIC, myId.toString(), event);

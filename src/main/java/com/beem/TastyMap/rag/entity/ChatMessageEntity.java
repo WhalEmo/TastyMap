@@ -33,6 +33,9 @@ public class ChatMessageEntity {
     @Column(name = "metadata", columnDefinition = "TEXT")
     private Map<String, Object> metadata = Collections.emptyMap();
 
+    @OneToOne(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private AiTokenUsageEntity tokenUsage;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -92,5 +95,13 @@ public class ChatMessageEntity {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public AiTokenUsageEntity getTokenUsage() {
+        return tokenUsage;
+    }
+
+    public void setTokenUsage(AiTokenUsageEntity tokenUsage) {
+        this.tokenUsage = tokenUsage;
     }
 }

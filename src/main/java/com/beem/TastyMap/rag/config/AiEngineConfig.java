@@ -66,6 +66,22 @@ public class AiEngineConfig {
     @Value("${tastymap.ai.indexer.model:${spring.ai.ollama.chat.options.model}}")
     private String indexerModelName;
 
+    // --- Evren ---
+    @Value("${tastymap.ai.evren.api-key:}")
+    private String evrenApiKey;
+
+    @Value("${tastymap.ai.evren.base-url:https://evren-llmapi.ssyz.org.tr/v1}")
+    private String evrenBaseUrl;
+
+    @Value("${tastymap.ai.evren.model:qwen/qwen3.8-flash-next}")
+    private String evrenChatModelName;
+
+    @Value("${tastymap.ai.evren.temperature:0.2}")
+    private Float evrenTemperature;
+
+    @Value("${tastymap.ai.evren.max-tokens:512}")
+    private Integer evrenMaxTokens;
+
     // ========================================================
     // 1. OLLAMA MOTORU (Özel ObjectMapper & RestClient)
     // ========================================================
@@ -140,6 +156,36 @@ public class AiEngineConfig {
         return new OpenAiChatModel(groqOpenAiApi, options);
     }
 
+    @Bean
+    public OpenAiApi evrenOpenAiApi() {
+        ObjectMapper evrenMapper = new ObjectMapper();
+        evrenMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        evrenMapper.findAndRegisterModules();
+
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(evrenMapper);
+
+        RestClient.Builder customClientBuilder = RestClient.builder()
+                .baseUrl(evrenBaseUrl)
+                .defaultHeader("Authorization", "Bearer " + evrenApiKey)
+                .messageConverters(converters -> {
+                    converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
+                    converters.add(0, converter);
+                });
+
+        return new OpenAiApi(evrenBaseUrl, evrenApiKey, customClientBuilder, WebClient.builder());
+    }
+
+    @Bean(name = "evrenChatModel")
+    public OpenAiChatModel evrenChatModel(OpenAiApi evrenOpenAiApi) {
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .withModel(evrenChatModelName)
+                .withTemperature(evrenTemperature)
+                .withMaxTokens(evrenMaxTokens)
+                .build();
+
+        return new OpenAiChatModel(evrenOpenAiApi, options);
+    }
+
     @Bean(name = "ollamaIndexerChatModel")
     public OllamaChatModel ollamaIndexerChatModel(OllamaApi ollamaApi) {
         OllamaOptions indexerOptions = OllamaOptions.create()
@@ -170,6 +216,11 @@ public class AiEngineConfig {
     @Bean(name = "ollamaIndexerChatClient")
     public ChatClient ollamaIndexerChatClient(@Qualifier("ollamaIndexerChatModel") OllamaChatModel indexerModel) {
         return ChatClient.builder(indexerModel).build();
+    }
+
+    @Bean(name = "evrenChatClient")
+    public ChatClient evrenChatClient(@Qualifier("evrenChatModel") OpenAiChatModel evrenChatModel) {
+        return ChatClient.builder(evrenChatModel).build();
     }
 
     // ========================================================
