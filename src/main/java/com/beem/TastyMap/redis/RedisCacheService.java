@@ -86,6 +86,17 @@ public class RedisCacheService {
         }
     }
 
+    public <T> boolean setQuietly(String key, T value, long ttlSeconds) {
+        try {
+            String json = objectMapper.writeValueAsString(value);
+            redis.opsForValue().set(key, json, Duration.ofSeconds(ttlSeconds));
+            return true;
+        } catch (Exception e) {
+            log.warn("Redis SET hatası (key: {}): {}", key, e.getMessage());
+            return false;
+        }
+    }
+
     public Boolean expire(String key, long TTL) {
         try {
             return redis.expire(key, Duration.ofSeconds(TTL));

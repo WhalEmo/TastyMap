@@ -4,7 +4,6 @@ import com.beem.TastyMap.rag.component.HealthSafetyGuard;
 import com.beem.TastyMap.rag.component.QdrantDocumentMapper;
 import com.beem.TastyMap.rag.component.RestaurantReRanker;
 import com.beem.TastyMap.rag.data.document.RestaurantDocument;
-import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
 import com.beem.TastyMap.rag.data.document.VenueCategory;
 import com.beem.TastyMap.rag.data.dto.SearchResult;
 import com.beem.TastyMap.rag.data.dto.UserHealthProfile;
@@ -14,7 +13,6 @@ import io.qdrant.client.grpc.Points;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +31,7 @@ public class RestaurantSearchService {
     private static final double CITY_WIDE_RADIUS_KM = 15.0;
 
     private final VectorStore vectorStore;
-    private final EmbeddingModel embeddingModel;
+    private final CachedEmbeddingService cachedEmbeddingService;
     private final QdrantClient qdrantClient;
     private final QdrantDocumentMapper documentMapper;
     private final HealthSafetyGuard healthSafetyGuard;
@@ -44,14 +42,14 @@ public class RestaurantSearchService {
 
     public RestaurantSearchService(
             VectorStore vectorStore,
-            EmbeddingModel embeddingModel,
+            CachedEmbeddingService cachedEmbeddingService,
             QdrantClient qdrantClient,
             QdrantDocumentMapper documentMapper,
             HealthSafetyGuard healthSafetyGuard,
             RestaurantReRanker reRanker
     ) {
         this.vectorStore = vectorStore;
-        this.embeddingModel = embeddingModel;
+        this.cachedEmbeddingService = cachedEmbeddingService;
         this.qdrantClient = qdrantClient;
         this.documentMapper = documentMapper;
         this.healthSafetyGuard = healthSafetyGuard;
@@ -117,12 +115,7 @@ public class RestaurantSearchService {
         log.info("📍 [SearchService] Konum Filtresi -> Lat: {}, Lon: {}, Yarıçap: {} km, İsim Araması Mı: {}",
                 event.latitude(), event.longitude(), event.radiusKm(), isNamedEntity);
         try {
-            // 1. Kullanıcı sorgusunu BGE-M3 ile 1024 boyutlu float vektöre dönüştür
-            float[] queryVectorFloats = embeddingModel.embed(event.userQuery());
-            List<Float> vectorList = new ArrayList<>(queryVectorFloats.length);
-            for (float f : queryVectorFloats) {
-                vectorList.add(f);
-            }
+            List<Float> vectorList = cachedEmbeddingService.getOrComputeEmbedding(event.userQuery());
 
             // 2. Qdrant SearchBuilder Hazırla
             Points.SearchPoints.Builder searchBuilder = Points.SearchPoints.newBuilder()

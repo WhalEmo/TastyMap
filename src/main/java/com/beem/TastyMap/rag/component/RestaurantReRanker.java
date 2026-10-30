@@ -98,7 +98,7 @@ public class RestaurantReRanker {
 
         doc.setCompositeScore(composite);
 
-        log.info("[Re-Rank] {} Boost: {} HealthBoost: {}", meta, relevanceBoost, healthBoost);
+        log.debug("[Re-Rank] {} Boost: {} HealthBoost: {}", meta, relevanceBoost, healthBoost);
     }
 
     private String extractDishesSection(String content) {
