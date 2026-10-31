@@ -1,14 +1,18 @@
 package com.beem.TastyMap.post.controller;
 
+import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
+import com.beem.TastyMap.post.dto.PostGridResponseDTO;
 import com.beem.TastyMap.post.dto.PostResponseDTO;
-import com.beem.TastyMap.post.service.PostService;
 import com.beem.TastyMap.post.dto.PostUpdateDTO;
 import com.beem.TastyMap.post.like.PostLikeDTO;
 import com.beem.TastyMap.post.like.PostLikeUserDTO;
+import com.beem.TastyMap.post.service.PostService;
 import jakarta.validation.Valid;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,28 +33,50 @@ public class PostController {
         return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
-    @GetMapping("/getUserPosts/{userId}")
-    public Page<PostResponseDTO> getUserPosts(
+    @PostMapping("/add")
+    public ResponseEntity<PostResponseDTO> addPost(
+            @Valid @RequestBody PostAndVisitRequestDTO dto,
+            Authentication authentication
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        PostResponseDTO response = postService.addPost(dto, myId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+
+    @GetMapping("/get-user-posts/{userId}")
+    public Page<PostGridResponseDTO> getUserPosts(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "15") int size,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        return postService.getPosts(userId, myId, page, size);
+        return postService.getUserGridPosts(userId, myId, page, size);
     }
 
-    @GetMapping("/getMePosts")
-    public Page<PostResponseDTO> getMyPosts(
+
+    @GetMapping("/get-me-posts")
+    public Page<PostGridResponseDTO> getMyPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "15") int size,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        return postService.getPosts(myId, myId, page, size);
+        return postService.getUserGridPosts(myId, myId, page, size);
     }
 
-    @DeleteMapping("/deletePost/{postId}")
+    @GetMapping("/{postId}")
+    public ResponseEntity<PostResponseDTO> getPostDetail(
+            @PathVariable Long postId,
+            Authentication authentication
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        PostResponseDTO postDetail = postService.getPostDetail(postId, myId);
+        return ResponseEntity.ok(postDetail);
+    }
+
+    @DeleteMapping("/delete-post/{postId}")
     public Map<String, String> deletePost(
             @PathVariable Long postId,
             Authentication authentication
@@ -60,18 +86,17 @@ public class PostController {
         return Map.of("message", getMessage("post.deleted.success"));
     }
 
-    @PatchMapping("/updatePost/{postId}")
-    public Map<String, String> updatePost(
+    @PatchMapping("/update-post/{postId}")
+    public void updatePost(
             @PathVariable Long postId,
             @Valid @RequestBody PostUpdateDTO dto,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
         postService.updatePost(postId, myId, dto);
-        return Map.of("message", getMessage("post.updated.success"));
     }
 
-    @PostMapping("/toggleLike/{postId}")
+    @PostMapping("/toggle-like/{postId}")
     public PostLikeDTO toggleLike(
             @PathVariable Long postId,
             Authentication authentication
@@ -80,23 +105,23 @@ public class PostController {
         return postService.toggleLike(postId, myId);
     }
 
-    @GetMapping("/whosLike/{postId}")
-    public Page<PostLikeUserDTO> whosLike(
+    @GetMapping("/liked-users/{postId}")
+    public Page<PostLikeUserDTO> getPostLikes(
             @PathVariable Long postId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        return postService.whosLike(postId, myId, page, size);
+        return postService.getPostLikes(postId, myId, page, size);
     }
 
-    @PutMapping("/togglePin/{postId}")
-    public PostResponseDTO togglePin(
+    @PutMapping("/toggle-pin/{postId}")
+    public void togglePin(
             @PathVariable Long postId,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        return postService.togglePinPost(postId, myId);
+        postService.togglePinPost(postId, myId);
     }
 }

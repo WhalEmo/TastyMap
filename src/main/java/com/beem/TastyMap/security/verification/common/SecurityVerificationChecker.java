@@ -55,13 +55,13 @@ public class SecurityVerificationChecker {
                 });
     }
 
-    public void applyProgressiveBan(UserEntity user, CommonRequestDTO dto, String ip) {
+    public void applyProgressiveBan(UserEntity user, String deviceId, String ip) {
         BannedDeviceEntity bannedDevice = bannedDeviceRepo
-                .findByUser_IdAndDeviceId(user.getId(), dto.getDeviceId())
+                .findByUser_IdAndDeviceId(user.getId(), deviceId)
                 .orElse(new BannedDeviceEntity());
 
         bannedDevice.setUser(user);
-        bannedDevice.setDeviceId(dto.getDeviceId());
+        bannedDevice.setDeviceId(deviceId);
         bannedDevice.setLastIpAddress(ip);
 
         int previousViolations = bannedDevice.getViolationCount();

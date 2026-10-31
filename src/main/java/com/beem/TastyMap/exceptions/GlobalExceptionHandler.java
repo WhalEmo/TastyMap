@@ -20,6 +20,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
 
     }
+    @ExceptionHandler(CustomExceptions.AlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleUserExists(CustomExceptions.AlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(ex.getMessage()));
+
+    }
 
     @ExceptionHandler(CustomExceptions.AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthException(CustomExceptions.AuthenticationException ex) {

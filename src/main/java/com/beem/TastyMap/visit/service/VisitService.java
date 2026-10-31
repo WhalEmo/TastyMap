@@ -48,7 +48,13 @@ public class VisitService {
         return null;
     }
 
-    private void saveVisit(VisitRequestDTO dto, Long myId) {
+    public VisitResponseDTO saveVisit(VisitRequestDTO dto, Long myId) {
+
+        boolean alreadyVisited = visitRepo.existsByUserIdAndPlaceEmbeddedPlaceIdAndIsDeleteFalse(myId, dto.getPlaceId());
+        if (alreadyVisited) {
+            throw new CustomExceptions.UserAlreadyExistsException(getMessage("visit.already.exists"));
+        }
+
         VisitEntity visit = new VisitEntity();
         visit.setUser(entityManager.getReference(UserEntity.class, myId));
 
@@ -61,11 +67,13 @@ public class VisitService {
         place.setLatitude(dto.getLatitude());
         place.setLongitude(dto.getLongitude());
         place.setCategories(dto.getCategories());
-        place.setAveragePuan(dto.getAveragePuan());
+        place.setAveragePuan(dto.getAveragePoint());
 
         visit.setPlaceEmbedded(place);
         visit.setCreatedAt(LocalDateTime.now());
         visitRepo.save(visit);
+
+        return new VisitResponseDTO(visit);
     }
 
     public Page<VisitResponseDTO> getVisits(Long userId, int page, int size){

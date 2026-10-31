@@ -110,7 +110,7 @@ public class EmailService {
         checkActiveTokenExistence(user.getId());
 
         if (isRateLimitExceeded(user.getId(), ip, dto.getDeviceId())) {
-            securityVerificationChecker.applyProgressiveBan(user, dto, ip);
+            securityVerificationChecker.applyProgressiveBan(user,  dto.getDeviceId(), ip);
         }
 
         String newToken = UUID.randomUUID().toString();

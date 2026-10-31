@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/Comments")
+@RequestMapping("/api/comments")
 public class CommentsController {
     private final CommentService commentService;
     private final MessageSource messageSource;
@@ -28,7 +28,7 @@ public class CommentsController {
         return messageSource.getMessage(code, null, LocaleContextHolder.getLocale());
     }
 
-    @GetMapping("/getComments/{postId}")
+    @GetMapping("/get-comments/{postId}")
     public Page<CommentsResponseDTO> getComments(
             @PathVariable Long postId,
             @RequestParam(defaultValue = "0") int page,
@@ -39,7 +39,7 @@ public class CommentsController {
         return commentService.getComments(postId, myId, page, size);
     }
 
-    @GetMapping("/getReplys/{postId}/{parentCommentId}")
+    @GetMapping("/get-replys/{postId}/{parentCommentId}")
     public Page<CommentsResponseDTO> getReplys(
             @PathVariable Long postId,
             @PathVariable Long parentCommentId,
@@ -51,7 +51,7 @@ public class CommentsController {
         return commentService.getReplys(postId, myId, parentCommentId, page, size);
     }
 
-    @PostMapping("/addComments/{postId}")
+    @PostMapping("/add-comments/{postId}")
     public CommentsResponseDTO addComment(
             @Valid @RequestBody CommentRequestDTO dto,
             @PathVariable Long postId,
@@ -61,7 +61,7 @@ public class CommentsController {
         return commentService.addComment(myId, postId, dto);
     }
 
-    @PostMapping("/addReply/{postId}/{parentCommentId}")
+    @PostMapping("/add-reply/{postId}/{parentCommentId}")
     public CommentsResponseDTO addReply(
             @Valid @RequestBody CommentRequestDTO dto,
             @PathVariable Long postId,
@@ -72,7 +72,7 @@ public class CommentsController {
         return commentService.addReplyComment(myId, postId, parentCommentId, dto);
     }
 
-    @DeleteMapping("/deleteComment/{postId}/{commentId}")
+    @DeleteMapping("/delete-comment/{postId}/{commentId}")
     public Map<String, String> deleteComment(
             @PathVariable Long postId,
             @PathVariable Long commentId,
@@ -84,19 +84,17 @@ public class CommentsController {
         return Map.of("message", getMessage("comment.deleted.success"));
     }
 
-    @PutMapping("/updateComments/{postId}/{commentId}")
-    public Map<String, String> updateComments(
+    @PutMapping("/update-comments/{commentId}")
+    public CommentsResponseDTO updateComments(
             @Valid @RequestBody CommentRequestDTO dto,
-            @PathVariable Long postId,
             @PathVariable Long commentId,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
-        commentService.updateComment(commentId, myId, dto);
-        return Map.of("message", getMessage("comment.updated.success"));
+        return commentService.updateComment(commentId, myId, dto);
     }
 
-    @PostMapping("/toggleLike/{commentId}")
+    @PostMapping("/toggle-like/{commentId}")
     public LikeResponseDTO toggleLike(
             @PathVariable Long commentId,
             Authentication authentication
@@ -106,7 +104,7 @@ public class CommentsController {
         return commentService.toggleLike(commentId, myId);
     }
 
-    @PutMapping("/togglePin/{postId}/{commentId}")
+    @PutMapping("/toggle-pin/{postId}/{commentId}")
     public CommentsResponseDTO togglePin(
             @PathVariable Long commentId,
             @PathVariable Long postId,

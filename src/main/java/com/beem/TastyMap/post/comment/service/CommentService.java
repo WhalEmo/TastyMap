@@ -76,6 +76,7 @@ public class CommentService {
         comment.setUser(commentRef);
         comment.setParentComment(null);
         comment.setContents(dto.getContents().trim());
+        comment.setReplyCount(0);
         commentRepo.save(comment);
         postRepo.incrementComment(postId);
 
@@ -84,6 +85,7 @@ public class CommentService {
         response.setPost_id(postId);
         response.setContents(comment.getContents());
         response.setNumberOfLikes(0);
+        response.setReplyCount(0);
         response.setDate(comment.getDate());
         response.setLiked(false);
         response.setPinned(false);
@@ -124,13 +126,17 @@ public class CommentService {
         reply.setParentComment(parentRef);
         reply.setContents(dto.getContents().trim());
         reply.setNumberofLikes(0);
+        reply.setReplyCount(0);
         commentRepo.save(reply);
+
+        commentRepo.incrementReplyCount(parentCommentId);
 
         CommentsResponseDTO response = new CommentsResponseDTO();
         response.setId(reply.getId());
         response.setPost_id(postId);
         response.setContents(reply.getContents());
         response.setNumberOfLikes(0);
+        response.setReplyCount(0);
         response.setDate(reply.getDate());
         response.setLiked(false);
         response.setPinned(false);
@@ -184,7 +190,11 @@ public class CommentService {
             throw new CustomExceptions.ForbiddenException(getMessage("comment.delete.unauthorized"));
         }
         commentRepo.deleteById(commentId);
-        postRepo.decrementComment(postId);
+        if (commentView.getParentCommentId() != null) {
+            commentRepo.decrementReplyCount(commentView.getParentCommentId());
+        } else {
+            postRepo.decrementComment(postId);
+        }
     }
 
     @Transactional
@@ -209,6 +219,7 @@ public class CommentService {
     public CommentsResponseDTO togglePinComment(Long commentId, Long userId, Long postId) {
         CommentEntity comment = commentRepo.findByIdWithUser(commentId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("comment.not.found")));
+
 
         if (!comment.getPost().getUser().getId().equals(userId)) {
             throw new CustomExceptions.ForbiddenException(getMessage("comment.pin.unauthorized"));

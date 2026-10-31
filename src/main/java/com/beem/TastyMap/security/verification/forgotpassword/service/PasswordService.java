@@ -2,6 +2,7 @@ package com.beem.TastyMap.security.verification.forgotpassword.service;
 
 import com.beem.TastyMap.event.model.PasswordMailEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
+import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordRequestDTO;
 import com.beem.TastyMap.security.verification.forgotpassword.repo.PasswordRepo;
 import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordResetResponseDTO;
 import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordResetRequestDTO;
@@ -70,8 +71,9 @@ public class PasswordService {
     }
 
     @Transactional
-    public PasswordResetResponseDTO forgotPassword(CommonRequestDTO dto) {
-        UserEntity user = userRepo.findByEmail(dto.getEmail())
+    public PasswordResetResponseDTO forgotPassword(PasswordRequestDTO dto) {
+        String identifier = dto.getIdentifier();
+        UserEntity user = userRepo.findByEmailOrUsername(identifier, identifier)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("password.reset.not.found")));
 
         String ip = IpUtils.getClientIp();
@@ -81,7 +83,7 @@ public class PasswordService {
         checkActiveTokenExistence(user.getId());
 
         if (isRateLimitExceeded(user.getId(), ip, dto.getDeviceId())) {
-            securityVerificationChecker.applyProgressiveBan(user, dto, ip);
+            securityVerificationChecker.applyProgressiveBan(user, dto.getDeviceId(), ip);
         }
 
         generateTokenAndSendMail(user, ip, dto.getDeviceId());

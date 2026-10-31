@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+
 public class CommentRepoCustomImpl implements CommentRepoCustom {
     private final JPAQueryFactory queryFactory;
 
@@ -35,7 +36,8 @@ public class CommentRepoCustomImpl implements CommentRepoCustom {
                         .from(like)
                         .where(like.comment.id.eq(comment.id).and(like.user.id.eq(myId)))
                         .exists(),
-                comment.isPinned
+                comment.isPinned,
+                comment.replyCount // YENİ EKLENEN ALAN BURADA
         );
     }
 
@@ -52,7 +54,10 @@ public class CommentRepoCustomImpl implements CommentRepoCustom {
                 .where(comment.post.id.eq(postId), comment.parentComment.id.isNull())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .orderBy(comment.date.desc())
+                .orderBy(
+                        comment.isPinned.desc(),
+                        comment.date.desc()
+                )
                 .fetch();
 
         Long total = queryFactory

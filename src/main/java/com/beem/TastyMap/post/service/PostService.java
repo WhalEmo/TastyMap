@@ -1,9 +1,10 @@
 package com.beem.TastyMap.post.service;
 
+import com.beem.TastyMap.event.model.FcmNotificationEvent;
 import com.beem.TastyMap.exceptions.CustomExceptions;
-import com.beem.TastyMap.user.account.entity.UserEntity;
-import com.beem.TastyMap.user.account.repo.UserRepo;
+import com.beem.TastyMap.file.FileStorageService;
 import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
+import com.beem.TastyMap.post.dto.PostGridResponseDTO;
 import com.beem.TastyMap.post.dto.PostResponseDTO;
 import com.beem.TastyMap.post.dto.PostUpdateDTO;
 import com.beem.TastyMap.post.entity.PlaceEmbedded;
@@ -13,17 +14,21 @@ import com.beem.TastyMap.post.like.PostLikeEntity;
 import com.beem.TastyMap.post.like.PostLikeRepo;
 import com.beem.TastyMap.post.like.PostLikeUserDTO;
 import com.beem.TastyMap.post.repo.PostRepo;
+import com.beem.TastyMap.user.account.entity.UserEntity;
+import com.beem.TastyMap.user.account.repo.UserRepo;
 import jakarta.persistence.EntityManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -32,21 +37,25 @@ public class PostService {
     private final UserRepo userRepo;
     private final AccessChecker accessChecker;
     private final EntityManager entityManager;
+    private final FileStorageService fileStorageService;
     private final PostLikeRepo likeRepo;
     private final MessageSource messageSource;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PostService(PostRepo postRepo,
                        UserRepo userRepo,
                        AccessChecker accessChecker,
-                       EntityManager entityManager,
+                       EntityManager entityManager, FileStorageService fileStorageService,
                        PostLikeRepo likeRepo,
-                       MessageSource messageSource) {
+                       MessageSource messageSource, ApplicationEventPublisher eventPublisher) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.accessChecker = accessChecker;
         this.entityManager = entityManager;
+        this.fileStorageService = fileStorageService;
         this.likeRepo = likeRepo;
         this.messageSource = messageSource;
+        this.eventPublisher = eventPublisher;
     }
 
     private String getMessage(String code) {
@@ -54,7 +63,10 @@ public class PostService {
     }
 
     @Transactional
-    public PostResponseDTO addPost(PostAndVisitRequestDTO dto, Long myId){
+    public PostResponseDTO addPost(PostAndVisitRequestDTO dto, Long myId) {
+        if (dto.getPhotoUrl() != null && dto.getPhotoUrl().size() > 3) {
+            throw new CustomExceptions.BadRequestException(getMessage("post.photo.limit.exceeded"));
+        }
         UserEntity userRef = entityManager.getReference(UserEntity.class, myId);
 
         var userView = userRepo.findUserProjectionById(myId)
@@ -64,7 +76,7 @@ public class PostService {
         place.setPlaceId(dto.getPlaceId());
         place.setCity(dto.getCity());
         place.setCategories(dto.getCategories());
-        place.setAveragePuan(dto.getAveragePuan());
+        place.setAveragePuan(dto.getAveragePoint());
         place.setDistrict(dto.getDistrict());
         place.setNeighbourhood(dto.getNeighbourhood());
         place.setPlaceName(dto.getPlaceName());
@@ -75,9 +87,8 @@ public class PostService {
         if (dto.getExplanation() != null) {
             post.setExplanation(dto.getExplanation().trim());
         }
-        post.setPuan(dto.getPuan());
         post.setUser(userRef);
-        post.setPhotoUrl(dto.getPhotoUrl());
+        post.setPhotoUrls(dto.getPhotoUrl());
         post.setPlaceEmbedded(place);
         post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
@@ -85,25 +96,49 @@ public class PostService {
         return convertToResponseDTO(post, false, userView);
     }
 
-    public Page<PostResponseDTO> getPosts(Long userId, Long myId, int page, int size) {
-        accessChecker.checkAccess(userId, myId);
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return postRepo.getUserPosts(userId, myId, pageable);
+    @Transactional(readOnly = true)
+    public Page<PostGridResponseDTO> getUserGridPosts(Long targetUserId, Long myId, int page, int size) {
+        if(!Objects.equals(targetUserId, myId)) {
+            accessChecker.checkAccess(targetUserId, myId);
+        }
+        Pageable pageable = PageRequest.of(page, size);
+        return postRepo.findUserGridPosts(targetUserId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public PostResponseDTO getPostDetail(Long postId, Long myId) {
+        PostEntity post = postRepo.findByIdWithUser(postId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
+
+        if(!Objects.equals(post.getUser().getId(),myId)){
+            accessChecker.checkAccess(post.getUser().getId(), myId);
+        }
+        boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
+
+        System.out.println("POST_ID: " + postId + " | MY_ID: " + myId + " | IS_LIKED: " + isLiked);
+
+        return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
     public void deletePost(Long postId, Long myId) {
-        PostRepo.PostStatusView postStatus = postRepo.findPostStatusById(postId)
+        PostEntity post = postRepo.findById(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
-        if (!postStatus.getAuthorId().equals(myId)) {
+
+        if (!post.getUser().getId().equals(myId)) {
             throw new CustomExceptions.AuthorizationException(getMessage("post.delete.unauthorized"));
         }
-        postRepo.deleteById(postId);
+
+        if (post.getPhotoUrls() != null && !post.getPhotoUrls().isEmpty()) {
+            fileStorageService.deleteFilesByUrls(post.getPhotoUrls());
+        }
+
+        postRepo.delete(post);
         userRepo.updatePostCount(myId, -1);
     }
 
     @Transactional
-    public PostResponseDTO updatePost(Long postId, Long myId, PostUpdateDTO dto) {
+    public void updatePost(Long postId, Long myId, PostUpdateDTO dto) {
         PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
         if (!post.getUser().getId().equals(myId)) {
@@ -112,20 +147,13 @@ public class PostService {
         if (dto.getExplanation() != null && !dto.getExplanation().equals(post.getExplanation())) {
             post.setExplanation(dto.getExplanation().trim());
         }
-        if (!dto.getPhotoUrl().equals(post.getPhotoUrl())) {
-            post.setPhotoUrl(dto.getPhotoUrl());
-        }
-        if (!dto.getPuan().equals(post.getPuan())) {
-            post.setPuan(dto.getPuan());
-        }
         post.setUpdateDate(LocalDateTime.now());
+        post.setCommentEnabled(dto.isCommentEnabled());
         postRepo.save(post);
-        boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
-        return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
-    public PostResponseDTO togglePinPost(Long postId, Long myId) {
+    public void togglePinPost(Long postId, Long myId) {
         PostEntity post = postRepo.findByIdWithUser(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
@@ -142,36 +170,48 @@ public class PostService {
             post.setPinned(true);
         }
         postRepo.save(post);
-        boolean isLiked = likeRepo.existsByPostIdAndUserId(postId, myId);
-        return convertToResponseDTO(post, isLiked);
     }
 
     @Transactional
     public PostLikeDTO toggleLike(Long postId, Long userId) {
-        var postView = postRepo.findStatsByCPostId(postId)
+        Long postOwnerId = postRepo.findOwnerIdByPostId(postId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("post.not.found")));
 
-        accessChecker.checkAccess(postView.getOwnerId(), userId);
         Optional<Long> existingLike = likeRepo.findIdByPostIdAndUserId(postId, userId);
+        boolean isLiked;
+
         if (existingLike.isPresent()) {
             likeRepo.deleteById(existingLike.get());
             postRepo.decrementLike(postId);
-            return new PostLikeDTO(false, postView.getNumberOfLikes() - 1);
+            isLiked = false;
         } else {
             UserEntity userRef = entityManager.getReference(UserEntity.class, userId);
             PostEntity postRef = entityManager.getReference(PostEntity.class, postId);
+
             PostLikeEntity like = new PostLikeEntity();
             like.setPost(postRef);
             like.setUser(userRef);
 
             likeRepo.save(like);
             postRepo.incrementLike(postId);
-            return new PostLikeDTO(true, postView.getNumberOfLikes() + 1);
+            isLiked = true;
+
+            if (!postOwnerId.equals(userId)) {
+                String likerUsername = userRepo.findUserProjectionById(userId)
+                        .map(UserRepo.UserProfileView::getUsername)
+                        .orElse("Bir kullanıcı");
+
+                sendPostLikeNotification(postOwnerId, likerUsername, postId);
+            }
         }
+
+        int updatedLikes = postRepo.findNumberOfLikesByPostId(postId).orElse(0);
+
+        return new PostLikeDTO(isLiked, updatedLikes);
     }
 
     @Transactional(readOnly = true)
-    public Page<PostLikeUserDTO> whosLike(
+    public Page<PostLikeUserDTO> getPostLikes(
             Long postId,
             Long myId,
             int page,
@@ -185,11 +225,10 @@ public class PostService {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
-        dto.setPuan(post.getPuan());
-        dto.setPhotoUrl(post.getPhotoUrl());
+        dto.setPhotoUrl(post.getPhotoUrls());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setCommentEnabled(post.isCommentEnabled());
-        dto.setNumberof_likes(post.getNumberofLikes());
+        dto.setLikeCount(post.getNumberofLikes());
         dto.setCommentCount(post.getCommentCount());
         dto.setPinned(post.isPinned());
         dto.setLiked(isLiked);
@@ -208,7 +247,7 @@ public class PostService {
             dto.setNeighbourhood(place.getNeighbourhood());
             dto.setLatitude(place.getLatitude());
             dto.setLongitude(place.getLongitude());
-            dto.setAveragePuan(place.getAveragePuan());
+            dto.setAveragePoint(place.getAveragePuan());
         }
 
         return dto;
@@ -218,12 +257,11 @@ public class PostService {
         PostResponseDTO dto = new PostResponseDTO();
         dto.setPostId(post.getId());
         dto.setExplanation(post.getExplanation());
-        dto.setPuan(post.getPuan());
-        dto.setPhotoUrl(post.getPhotoUrl());
+        dto.setPhotoUrl(post.getPhotoUrls());
         dto.setCreatedAt(post.getCreatedAt());
         dto.setUpdateDate(post.getUpdateDate());
         dto.setCommentEnabled(post.isCommentEnabled());
-        dto.setNumberof_likes(post.getNumberofLikes());
+        dto.setLikeCount(post.getNumberofLikes());
         dto.setCommentCount(post.getCommentCount());
         dto.setPinned(post.isPinned());
         dto.setLiked(isLiked);
@@ -242,8 +280,25 @@ public class PostService {
             dto.setNeighbourhood(place.getNeighbourhood());
             dto.setLatitude(place.getLatitude());
             dto.setLongitude(place.getLongitude());
-            dto.setAveragePuan(place.getAveragePuan());
+            dto.setAveragePoint(place.getAveragePuan());
         }
         return dto;
+    }
+
+    private void sendPostLikeNotification(Long recipientUserId, String likerUsername, Long postId) {
+        Map<String, String> payloadData = Map.of(
+                "type", "POST_LIKE",
+                "postId", String.valueOf(postId)
+        );
+
+        FcmNotificationEvent event = new FcmNotificationEvent(
+                recipientUserId,
+                "notification.post.like.title",
+                "notification.post.like.body",
+                new Object[]{likerUsername},
+                payloadData
+        );
+
+        eventPublisher.publishEvent(event);
     }
 }

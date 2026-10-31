@@ -1,5 +1,7 @@
 package com.beem.TastyMap.visit.dto;
 
+import com.beem.TastyMap.visit.entity.VisitEntity;
+
 import java.time.LocalDateTime;
 
 public class VisitResponseDTO {
@@ -14,9 +16,9 @@ public class VisitResponseDTO {
     private String neighbourhood;
     private double latitude;
     private double longitude;
-    private double averagePuan;
+    private double averagePoint;
 
-    public VisitResponseDTO(Long visitId, LocalDateTime createdAt, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePuan) {
+    public VisitResponseDTO(Long visitId, LocalDateTime createdAt, String placeId, String placeName, String categories, String city, String district, String neighbourhood, double latitude, double longitude, double averagePoint) {
         this.visitId = visitId;
         this.createdAt = createdAt;
         this.placeId = placeId;
@@ -27,7 +29,21 @@ public class VisitResponseDTO {
         this.neighbourhood = neighbourhood;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.averagePuan = averagePuan;
+        this.averagePoint = averagePoint;
+    }
+
+    public VisitResponseDTO(VisitEntity entity) {
+        this.visitId = entity.getId();
+        this.createdAt = entity.getCreatedAt();
+        this.placeId = entity.getPlaceEmbedded().getPlaceId();
+        this.placeName = entity.getPlaceEmbedded().getPlaceName();
+        this.categories = entity.getPlaceEmbedded().getCategories();
+        this.city = entity.getPlaceEmbedded().getCity();
+        this.district = entity.getPlaceEmbedded().getDistrict();
+        this.neighbourhood = entity.getPlaceEmbedded().getNeighbourhood();
+        this.latitude = entity.getPlaceEmbedded().getLatitude();
+        this.longitude = entity.getPlaceEmbedded().getLongitude();
+        this.averagePoint = entity.getPlaceEmbedded().getAveragePuan();
     }
 
     public Long getVisitId() {
@@ -110,12 +126,12 @@ public class VisitResponseDTO {
         this.longitude = longitude;
     }
 
-    public double getAveragePuan() {
-        return averagePuan;
+    public double getAveragePoint() {
+        return averagePoint;
     }
 
-    public void setAveragePuan(double averagePuan) {
-        this.averagePuan = averagePuan;
+    public void setAveragePoint(double averagePoint) {
+        this.averagePoint = averagePoint;
     }
 
 

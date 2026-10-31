@@ -2,12 +2,12 @@ package com.beem.TastyMap.post.dto;
 
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public class PostUpdateDTO {
     @Size(max = 500, message = "{validation.post.explanation.size}")
     private String explanation;
-
-    private Integer puan;
-    private String photoUrl;
+    private boolean commentEnabled;
 
     public String getExplanation() {
         return explanation;
@@ -17,19 +17,12 @@ public class PostUpdateDTO {
         this.explanation = explanation;
     }
 
-    public Integer getPuan() {
-        return puan;
+
+    public boolean isCommentEnabled() {
+        return commentEnabled;
     }
 
-    public void setPuan(Integer puan) {
-        this.puan = puan;
-    }
-
-    public String getPhotoUrl() {
-        return photoUrl;
-    }
-
-    public void setPhotoUrl(String photoUrl) {
-        this.photoUrl = photoUrl;
+    public void setCommentEnabled(boolean commentEnabled) {
+        this.commentEnabled = commentEnabled;
     }
 }

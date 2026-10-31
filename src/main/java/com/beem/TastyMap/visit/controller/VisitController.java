@@ -2,12 +2,15 @@ package com.beem.TastyMap.visit.controller;
 
 import com.beem.TastyMap.post.dto.PostAndVisitRequestDTO;
 import com.beem.TastyMap.post.dto.PostResponseDTO;
+import com.beem.TastyMap.visit.dto.VisitRequestDTO;
 import com.beem.TastyMap.visit.service.VisitService;
 import com.beem.TastyMap.visit.dto.VisitResponseDTO;
 import jakarta.validation.Valid;
+import kotlin.Unit;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -42,24 +45,32 @@ public class VisitController {
         }
         return ResponseEntity.ok(getMessage("visit.saved.success"));
     }
+    @PostMapping("/save-visit")
+    public ResponseEntity<VisitResponseDTO> createVisitAction(
+            @Valid @RequestBody VisitRequestDTO dto,
+            Authentication authentication
+    ) {
+        Long myId = (Long) authentication.getPrincipal();
+        VisitResponseDTO savedVisitDto = visitService.saveVisit(dto, myId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedVisitDto);
+    }
 
-    @GetMapping("/getVisit")
+    @GetMapping("/get-visit")
     public Page<VisitResponseDTO> getMyVisits(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "20") int size,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
         return visitService.getVisits(myId, page, size);
     }
 
-    @PatchMapping("/deleteVisit/{visitId}")
-    public Map<String, String> deleteVisit(
+    @PatchMapping("/delete-visit/{visitId}")
+    public void deleteVisit(
             @PathVariable Long visitId,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
         visitService.deleteVisit(visitId, myId);
-        return Map.of("message", getMessage("visit.deleted.success"));
     }
 }

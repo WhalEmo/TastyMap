@@ -1,20 +1,19 @@
 package com.beem.TastyMap.post.repo;
 
-
-import com.beem.TastyMap.post.dto.PostResponseDTO;
+import com.beem.TastyMap.post.dto.PostGridResponseDTO;
 import com.beem.TastyMap.post.entity.QPostEntity;
-import com.beem.TastyMap.post.like.QPostLikeEntity;
-import com.beem.TastyMap.user.account.entity.QUserEntity;
 import com.querydsl.core.types.Projections;
-import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 
-public class PostRepoCustomImpl implements PostRepoCustom{
+public class PostRepoCustomImpl implements PostRepoCustom {
     private final JPAQueryFactory queryFactory;
 
     public PostRepoCustomImpl(JPAQueryFactory queryFactory) {
@@ -22,53 +21,38 @@ public class PostRepoCustomImpl implements PostRepoCustom{
     }
 
     @Override
-    public Page<PostResponseDTO> getUserPosts(Long userId, Long myId, Pageable pageable) {
+    public Page<PostGridResponseDTO> findUserGridPosts(Long targetUserId, Pageable pageable) {
         QPostEntity post = QPostEntity.postEntity;
-        QUserEntity user = QUserEntity.userEntity;
-        QPostLikeEntity like = QPostLikeEntity.postLikeEntity;
 
-        List<PostResponseDTO> content = queryFactory
-                .select(Projections.constructor(PostResponseDTO.class,
-                        post.commentEnabled,
+        // ElementCollection içindeki fotoğraflar için sanal yol
+        StringPath photo = Expressions.stringPath("photo");
+
+        List<PostGridResponseDTO> content = queryFactory
+                .select(Projections.constructor(PostGridResponseDTO.class,
                         post.id,
-                        post.explanation,
-                        post.puan,
-                        post.photoUrl,
-                        post.numberofLikes,
+                        photo.min(), // Fotoğraflardan ilkini/birini seçer (fotoğraf yoksa null döner)
                         post.createdAt,
-                        post.updateDate,
-                        user.id,
-                        user.username,
-                        user.profile,
-                        post.placeEmbedded.placeId,
-                        post.placeEmbedded.placeName,
-                        post.placeEmbedded.categories,
-                        post.placeEmbedded.city,
-                        post.placeEmbedded.district,
-                        post.placeEmbedded.neighbourhood,
-                        post.placeEmbedded.latitude,
-                        post.placeEmbedded.longitude,
-                        post.placeEmbedded.averagePuan,
-                        JPAExpressions.selectOne()
-                                .from(like)
-                                .where(like.post.id.eq(post.id).and(like.user.id.eq(myId)))
-                                .exists(),
-                        post.commentCount,
                         post.isPinned
                 ))
                 .from(post)
-                .join(post.user, user)
-                .where(user.id.eq(userId))
+                .leftJoin(post.photoUrls, photo) // Fotoğraf listesine LEFT JOIN atıyoruz
+                .where(post.user.id.eq(targetUserId))
+                .groupBy(post.id, post.isPinned, post.createdAt) // Gruplama ekliyoruz
+                .orderBy(
+                        post.isPinned.desc(),
+                        post.createdAt.desc()
+                )
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .orderBy(post.createdAt.desc())
                 .fetch();
 
-        long total = queryFactory
-                .select(post.count())
-                .from(post)
-                .where(post.user.id.eq(userId))
-                .fetchOne();
+        long total = Optional.ofNullable(
+                queryFactory
+                        .select(post.count())
+                        .from(post)
+                        .where(post.user.id.eq(targetUserId))
+                        .fetchOne()
+        ).orElse(0L);
 
         return new PageImpl<>(content, pageable, total);
     }

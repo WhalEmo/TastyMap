@@ -40,21 +40,29 @@ public class OtherProfileService {
     }
 
     @Transactional(readOnly = true)
-    public ProfileDTOresponse getUserProfile(Long targetUserId, Long myId) {
-        if (targetUserId.equals(myId)) {
-            UserEntity user = userRepo.findById(myId)
-                    .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
+    public ProfileDTOresponse getUserProfileByUserId(Long targetUserId, Long myId) {
+        UserEntity user = userRepo.findById(targetUserId)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
+        return buildProfileResponse(user, targetUserId, myId);
+    }
 
+    @Transactional(readOnly = true)
+    public ProfileDTOresponse getUserProfileByUsername(String username, Long myId) {
+        UserEntity user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
+        return buildProfileResponse(user, user.getId(), myId);
+    }
+
+    private ProfileDTOresponse buildProfileResponse(UserEntity user, Long targetUserId, Long myId) {
+        if (targetUserId.equals(myId)) {
             return new ProfileDTOresponse(
+                    user.getId(),
                     user.getUsername(), user.getName(), user.getSurname(),
                     user.getProfile(), user.getRole(), user.getBiography(),
                     user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                    false, false, RelationStatus.SELF, false, false,user.isPrivateProfile()
+                    false, false, RelationStatus.SELF, false, false, user.isPrivateProfile()
             );
         }
-
-        UserEntity user = userRepo.findById(targetUserId)
-                .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("user.not.found.simple")));
 
         List<Long> blockerIds = blockRepo.findBlockerIdsBetween(myId, targetUserId);
         boolean blockedByMe = blockerIds.contains(myId);
@@ -62,12 +70,14 @@ public class OtherProfileService {
 
         if (blockedByMe || blockedMe) {
             return new ProfileDTOresponse(
+                    user.getId(),
                     user.getUsername(), user.getName(), user.getSurname(),
                     null, user.getRole(), user.getBiography(),
                     0, 0, 0,
-                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false,false,user.isPrivateProfile()
+                    blockedByMe, blockedMe, RelationStatus.NOT_FOLLOWING, false, false, user.isPrivateProfile()
             );
         }
+
         List<SubscribeEntity> relations = subscribeRepo.findRelationsBetween(myId, targetUserId);
 
         RelationStatus myStatus = RelationStatus.NOT_FOLLOWING;
@@ -81,8 +91,7 @@ public class OtherProfileService {
                 } else if (relation.getStatus() == SubscribeStatus.PENDING) {
                     myStatus = RelationStatus.PENDING;
                 }
-            }
-            else if (relation.getSubscriber().getId().equals(targetUserId)) {
+            } else if (relation.getSubscriber().getId().equals(targetUserId)) {
                 if (relation.getStatus() == SubscribeStatus.ACCEPTED) {
                     isFollower = true;
                 } else if (relation.getStatus() == SubscribeStatus.PENDING) {
@@ -96,10 +105,11 @@ public class OtherProfileService {
         }
 
         return new ProfileDTOresponse(
+                user.getId(),
                 user.getUsername(), user.getName(), user.getSurname(),
                 user.getProfile(), user.getRole(), user.getBiography(),
                 user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),
-                false, false, myStatus, hasPendingIncoming, isFollower,user.isPrivateProfile()
+                false, false, myStatus, hasPendingIncoming, isFollower, user.isPrivateProfile()
         );
     }
 }
