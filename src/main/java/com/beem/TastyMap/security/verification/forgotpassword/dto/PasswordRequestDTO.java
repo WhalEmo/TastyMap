@@ -4,9 +4,7 @@ public class PasswordRequestDTO {
     private String deviceId;
     private String identifier;
 
-    public PasswordRequestDTO(String deviceId, String identifier) {
-        this.deviceId = deviceId;
-        this.identifier = identifier;
+    public PasswordRequestDTO() {
     }
 
     public String getDeviceId() {
