@@ -138,6 +138,7 @@ public class MyProfileService {
         System.out.println("PROFILE_LOG [DB Entity]: User ID: {}, Username: {}, isPrivateProfile: {}"+ user.getId()+ user.getUsername()+ user.isPrivateProfile());
 
         ProfileDTOresponse response = new ProfileDTOresponse(
+                user.getId(),
                 user.getUsername(), user.getName(), user.getSurname(),
                 user.getProfile(), user.getRole(), user.getBiography(),
                 user.getPostCount(), user.getSubscriberCount(), user.getSubscribedCount(),

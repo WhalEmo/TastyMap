@@ -1,6 +1,7 @@
 package com.beem.TastyMap.security.verification.forgotpassword.controller;
 
 import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
+import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordRequestDTO;
 import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordResetResponseDTO;
 import com.beem.TastyMap.security.verification.forgotpassword.service.PasswordService;
 import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordResetRequestDTO;
@@ -20,7 +21,7 @@ public class PasswordController {
 
 
     @PostMapping("/forgotPassword")
-    public ResponseEntity<PasswordResetResponseDTO>requestResetPassword(@RequestBody CommonRequestDTO dto) {
+    public ResponseEntity<PasswordResetResponseDTO>requestResetPassword(@RequestBody PasswordRequestDTO dto) {
         PasswordResetResponseDTO response= passwordService.forgotPassword(dto);
         return ResponseEntity.ok(response);
     }

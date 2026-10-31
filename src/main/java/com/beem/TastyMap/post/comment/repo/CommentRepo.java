@@ -25,6 +25,7 @@ public interface CommentRepo extends JpaRepository<CommentEntity,Long>,CommentRe
    """)
 Optional<CommentEntity> findByIdWithUser(@Param("commentId") Long commentId);
 
+
     public interface CommentStatsView {
         Long getOwnerId();
         int getNumberOfLikes();

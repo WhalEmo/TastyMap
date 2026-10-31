@@ -220,6 +220,7 @@ public class CommentService {
         CommentEntity comment = commentRepo.findByIdWithUser(commentId)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("comment.not.found")));
 
+
         if (!comment.getPost().getUser().getId().equals(userId)) {
             throw new CustomExceptions.ForbiddenException(getMessage("comment.pin.unauthorized"));
         }

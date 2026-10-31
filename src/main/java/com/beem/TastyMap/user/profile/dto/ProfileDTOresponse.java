@@ -4,6 +4,7 @@ import com.beem.TastyMap.user.subscribe.model.RelationStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ProfileDTOresponse {
+    private Long userId;
     private String username;
     private String name;
     private String surname;
@@ -26,6 +27,7 @@ public class ProfileDTOresponse {
     }
 
     public ProfileDTOresponse(
+            Long userId,
             String username,
             String name,
             String surname,
@@ -40,6 +42,7 @@ public class ProfileDTOresponse {
             RelationStatus relationStatus,
             boolean hasPendingIncomingRequest,boolean isFollower,boolean privateProfile
     ) {
+        this.userId = userId;
         this.username = username;
         this.name = name;
         this.surname = surname;
@@ -176,5 +179,13 @@ public class ProfileDTOresponse {
 
     public void setPrivateProfile(boolean privateProfile) {
         this.privateProfile = privateProfile;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 }

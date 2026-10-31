@@ -9,20 +9,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/userProfile")
+@RequestMapping("/api/user-profile")
 public class UserProfileController {
     private final OtherProfileService otherProfileService;
 
     public UserProfileController(OtherProfileService otherProfileService) {
         this.otherProfileService = otherProfileService;
     }
-
-    @GetMapping("/profile/{userId}")
-    public ProfileDTOresponse getUserProfile(
-            @PathVariable Long userId,
-            Authentication authentication
-    ) {
-        Long myId=(Long)authentication.getPrincipal();
-        return otherProfileService.getUserProfile(userId,myId);
+    @GetMapping("/id/{userId}")
+    public ProfileDTOresponse getProfileById(@PathVariable Long userId, Authentication authentication) {
+        Long myId = (Long) authentication.getPrincipal();
+        return otherProfileService.getUserProfileByUserId(userId, myId);
     }
+
+    @GetMapping("/username/{username}")
+    public ProfileDTOresponse getProfileByUsername(@PathVariable String username, Authentication authentication) {
+        Long myId = (Long) authentication.getPrincipal();
+        return otherProfileService.getUserProfileByUsername(username, myId);
+    }
+
 }
