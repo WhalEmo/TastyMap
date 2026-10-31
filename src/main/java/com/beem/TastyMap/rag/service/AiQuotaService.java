@@ -2,6 +2,7 @@ package com.beem.TastyMap.rag.service;
 
 import com.beem.TastyMap.rag.data.dto.UserQuotaStatusDto;
 import com.beem.TastyMap.rag.data.enums.AiProvider;
+import com.beem.TastyMap.rag.data.response.QuotaFeedbackPayload;
 import com.beem.TastyMap.rag.entity.AiTokenUsageEntity;
 import com.beem.TastyMap.rag.entity.ChatMessageEntity;
 import com.beem.TastyMap.rag.entity.ChatSessionEntity;
@@ -94,13 +95,8 @@ public class AiQuotaService {
         );
     }
 
-    /**
-     * 2. İstek Sonrası Asenkron Muhasebe ve Kota Düşümü.
-     * Ana akışı ve WebSocket/SSE yanıtını geciktirmemek için ayrı bir thread havuzunda koşturulur.
-     */
-    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordUsageAndDeductQuota(
+    public QuotaFeedbackPayload recordUsageAndDeductQuota(
             Long userId,
             String sessionId,
             Long messageId,
@@ -110,54 +106,62 @@ public class AiQuotaService {
             int completionTokens,
             long durationMs
     ) {
-        try {
-            int totalTokens = promptTokens + completionTokens;
+        int totalTokens = promptTokens + completionTokens;
 
-            // Maliyet hesaplamaları
-            BigDecimal costUsd = calculateUsdCost(modelName, promptTokens, completionTokens);
-            BigDecimal costTry = costUsd.multiply(BigDecimal.valueOf(usdTryRate))
-                    .setScale(6, RoundingMode.HALF_UP);
+        // Maliyet hesaplamaları
+        BigDecimal costUsd = calculateUsdCost(modelName, promptTokens, completionTokens);
+        BigDecimal costTry = costUsd.multiply(BigDecimal.valueOf(usdTryRate))
+                .setScale(6, RoundingMode.HALF_UP);
 
-            ChatSessionEntity session = (sessionId != null)
-                    ? sessionRepository.getReferenceById(sessionId)
-                    : null;
+        ChatSessionEntity session = (sessionId != null)
+                ? sessionRepository.getReferenceById(sessionId)
+                : null;
 
-            ChatMessageEntity message = (messageId != null)
-                    ? messageRepository.getReferenceById(messageId)
-                    : null;
+        ChatMessageEntity message = (messageId != null)
+                ? messageRepository.getReferenceById(messageId)
+                : null;
 
-            // 1. Atomik Token Logunu Veritabanına Yaz
-            AiTokenUsageEntity usageRecord = new AiTokenUsageEntity(
-                    userId,
-                    session,
-                    message,
-                    provider,
-                    modelName,
-                    promptTokens,
-                    completionTokens,
-                    costUsd,
-                    costTry,
-                    durationMs
-            );
-            usageRepository.save(usageRecord);
+        // 1. Atomik Token Logunu Veritabanına Yaz
+        AiTokenUsageEntity usageRecord = new AiTokenUsageEntity(
+                userId,
+                session,
+                message,
+                provider,
+                modelName,
+                promptTokens,
+                completionTokens,
+                costUsd,
+                costTry,
+                durationMs
+        );
+        usageRepository.save(usageRecord);
 
-            // 2. Kullanıcı Kotasını Güncelle (Pessimistic Lock ile güvenli düşüm)
-            quotaRepository.findByUserIdForUpdate(userId).ifPresent(quota -> {
-                quota.recordConsumption(totalTokens, costTry);
-                quotaRepository.save(quota);
-            });
+        UserAiQuotaEntity quota = quotaRepository.findByUserIdForUpdate(userId)
+                .orElseGet(() -> createDefaultQuota(userId));
 
-            // 3. Oturumun Sayaçlarını Güncelle (Varsa)
-            if (session != null) {
-                sessionRepository.incrementSessionTotals(sessionId, totalTokens, costTry);
-            }
+        quota.recordConsumption(totalTokens, costTry);
+        quotaRepository.save(quota);
 
-            log.info("📊 [Quota & Cost Engine] Başarıyla İşlendi -> Kullanıcı: {} | Sağlayıcı: {} ({}) | Token: [In: {}, Out: {}, Tot: {}] | Süre: {} ms | Maliyet: ${} (~{} TL)",
-                    userId, provider, modelName, promptTokens, completionTokens, totalTokens, durationMs, costUsd.toPlainString(), costTry.toPlainString());
-
-        } catch (Exception e) {
-            log.error("❌ Token kotası düşülürken ve harcama kaydedilirken kritik hata: {}", e.getMessage(), e);
+        // 3. Oturumun Sayaçlarını Güncelle (Varsa)
+        if (session != null) {
+            sessionRepository.incrementSessionTotals(sessionId, totalTokens, costTry);
         }
+
+        log.info("📊 [Quota & Cost Engine] Başarıyla İşlendi -> Kullanıcı: {} | Sağlayıcı: {} ({}) | Token: [In: {}, Out: {}, Tot: {}] | Süre: {} ms | Maliyet: ${} (~{} TL)",
+                userId, provider, modelName, promptTokens, completionTokens, totalTokens, durationMs, costUsd.toPlainString(), costTry.toPlainString());
+
+        int limit = quota.getDailyTokenLimit();
+        int used = quota.getUsedTokensToday();
+        int remaining = Math.max(0, limit - used);
+        double remainingPct = limit > 0 ? (remaining * 100.0) / limit : 0.0;
+
+        return new QuotaFeedbackPayload(
+                totalTokens,
+                used,
+                limit,
+                Math.round(remainingPct * 100.0) / 100.0,
+                costTry
+        );
     }
 
     /**

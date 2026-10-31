@@ -8,6 +8,7 @@ import com.beem.TastyMap.rag.data.enums.UserIntentAction;
 import com.beem.TastyMap.rag.data.event.UserQueryEvent;
 import com.beem.TastyMap.rag.data.response.AiStreamPayload;
 import com.beem.TastyMap.rag.data.response.AiStreamPayload.StreamEventType;
+import com.beem.TastyMap.rag.data.response.QuotaFeedbackPayload;
 import com.beem.TastyMap.rag.entity.ChatMessageEntity;
 import com.beem.TastyMap.rag.factory.AiProviderFactory;
 import com.beem.TastyMap.rag.service.AiQuotaService;
@@ -15,7 +16,7 @@ import com.beem.TastyMap.rag.service.ChatMemoryManager;
 import com.beem.TastyMap.rag.service.RestaurantSearchService;
 import com.beem.TastyMap.rag.service.UserDataCollectorService;
 import com.beem.TastyMap.rag.util.CostTracker;
-import com.beem.TastyMap.rag.websocket.AiStreamWebSocketHandler;
+import com.beem.TastyMap.sse.SseEmitterManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,7 +47,7 @@ public class  AiRecommendationV3{
     private final AiProviderFactory aiProviderFactory;
     private final AiQuotaService aiQuotaService;
     private final ChatMemoryManager chatMemoryManager;
-    private final AiStreamWebSocketHandler webSocketHandler;
+    private final SseEmitterManager sseEmitterManager;
     private final RestaurantSearchService restaurantSearchService;
     private final UserDataCollectorService userDataCollectorService;
     private final ObjectMapper objectMapper;
@@ -101,7 +103,7 @@ public class  AiRecommendationV3{
             AiProviderFactory aiProviderFactory,
             AiQuotaService aiQuotaService,
             ChatMemoryManager chatMemoryManager,
-            AiStreamWebSocketHandler webSocketHandler,
+            SseEmitterManager sseEmitterManager,
             RestaurantSearchService restaurantSearchService,
             UserDataCollectorService userDataCollectorService,
             ObjectMapper objectMapper
@@ -109,7 +111,7 @@ public class  AiRecommendationV3{
         this.aiProviderFactory = aiProviderFactory;
         this.aiQuotaService = aiQuotaService;
         this.chatMemoryManager = chatMemoryManager;
-        this.webSocketHandler = webSocketHandler;
+        this.sseEmitterManager = sseEmitterManager;
         this.restaurantSearchService = restaurantSearchService;
         this.userDataCollectorService = userDataCollectorService;
         this.objectMapper = objectMapper;
@@ -188,8 +190,7 @@ public class  AiRecommendationV3{
                     );
                 }
             }
-
-            notifyUser(userId, StreamEventType.COMPLETED, "", false, 0);
+            
             ChatMessageEntity savedAssistantMessage = chatMemoryManager.recordAssistantMessage(
                     sessionId, userId, fullResponse.toString(), newlyFoundPlaces
             );
@@ -215,7 +216,7 @@ public class  AiRecommendationV3{
 
             CostTracker.logSummary("TOPLAM İSTEK MALİYETİ", totalPromptTokens, totalCompletionTokens);
 
-            aiQuotaService.recordUsageAndDeductQuota(
+            QuotaFeedbackPayload quotaPayload = aiQuotaService.recordUsageAndDeductQuota(
                     userId,
                     sessionId,
                     messageId,
@@ -225,6 +226,10 @@ public class  AiRecommendationV3{
                     totalCompletionTokens,
                     totalDuration
             );
+
+            sseEmitterManager.sendToUser(userId, false, "QUOTA_INFO", quotaPayload);
+
+            notifyUser(userId, StreamEventType.COMPLETED, "", false, 0);
 
             log.info("[V3 Worker] İşlem Tamamlandı. Toplam Süre: {} ms, Sunulan: {}", totalDuration, newlyFoundPlaces.size());
 
@@ -470,7 +475,10 @@ public class  AiRecommendationV3{
 
 
     private void notifyUser(Long userId, StreamEventType type, String content, boolean hasMore, int remaining) {
-        webSocketHandler.sendToUser(userId, new AiStreamPayload(userId, type, content, hasMore, remaining));
+        boolean isFinalEvent = (type == StreamEventType.COMPLETED || type == StreamEventType.ERROR);
+        AiStreamPayload payload = new AiStreamPayload(userId, type, content, hasMore, remaining);
+
+        sseEmitterManager.sendToUser(userId, isFinalEvent, type.name(), payload);
     }
 
     private static class ExecutionTokenUsage {

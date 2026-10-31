@@ -4,35 +4,53 @@ import com.beem.TastyMap.rag.data.event.UserQueryEvent;
 import com.beem.TastyMap.rag.data.request.RecommendationReq;
 import com.beem.TastyMap.rag.listener.AiRecommendationV3;
 import com.beem.TastyMap.rag.service.RestaurantIndexingService;
+import com.beem.TastyMap.sse.SseEmitterManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/v1/rag")
 public class RecommendationController {
 
+    private static final Logger log = LoggerFactory.getLogger(RecommendationController.class);
+
     private final KafkaTemplate<String, UserQueryEvent> kafkaTemplate;
     private final RestaurantIndexingService service;
     private final AiRecommendationV3 workerV2;
+    private final AsyncTaskExecutor taskExecutor;
+    private final SseEmitterManager emitterManager;
 
     public RecommendationController(
             KafkaTemplate<String, UserQueryEvent> kafkaTemplate,
             RestaurantIndexingService service,
-            AiRecommendationV3 workerV2
+            AiRecommendationV3 workerV2,
+            AsyncTaskExecutor taskExecutor,
+            SseEmitterManager emitterManager
     ) {
         this.kafkaTemplate = kafkaTemplate;
         this.service = service;
         this.workerV2 = workerV2;
+        this.taskExecutor = taskExecutor;
+        this.emitterManager = emitterManager;
     }
 
-    @PostMapping("/recommend")
-    public ResponseEntity<String> askRecommendation(
+    @PostMapping(value = "/recommend", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<SseEmitter> askRecommendation(
             @RequestBody RecommendationReq request,
             Authentication authentication
     ) {
         Long myId = (Long) authentication.getPrincipal();
+
+        SseEmitter emitter = emitterManager.createEmitter(myId);
+
         UserQueryEvent event = new UserQueryEvent(
                 request.sessionId(),
                 myId,
@@ -44,11 +62,19 @@ public class RecommendationController {
                 request.provider()
         );
 
-        //kafkaTemplate.send(KafkaConfig.RESTAURANT_AI_REQUESTS_TOPIC, myId.toString(), event);
-        workerV2.processAiRequest(event);
+        taskExecutor.execute(()-> {
+            try {
+                workerV2.processAiRequest(event);
+            } catch (Exception e) {
+                log.error("❌ [RAG Error] User: {}", myId, e);
+            }
+        });
 
-        return ResponseEntity.accepted()
-                .body("İsteğiniz alındı! Yapay zeka restoranları sizin için inceliyor...");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-transform")
+                .header(HttpHeaders.CONNECTION, "keep-alive")
+                .header("X-Accel-Buffering", "no")
+                .body(emitter);
     }
 
     @PostMapping("/admin/reindex-all")

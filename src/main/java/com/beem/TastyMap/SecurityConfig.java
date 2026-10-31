@@ -6,6 +6,7 @@ import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
 import com.beem.TastyMap.security.token.TokenBlacklistService;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -75,6 +76,7 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**","/places/**","/place-review/**").permitAll()
                         .requestMatchers("/ws/auth/**").permitAll()
