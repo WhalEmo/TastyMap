@@ -1,6 +1,7 @@
 package com.beem.TastyMap.event.listener;
 
 import com.beem.TastyMap.event.model.SecurityEmailEvent;
+import com.beem.TastyMap.user.account.model.ClientTypes; // Kendi paket yoluna göre düzenle
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -19,13 +20,16 @@ public class SecurityEmailListener {
     private final JavaMailSender javaMailSender;
     private final MessageSource messageSource;
 
+    @Value("${app.base-url.api}")
+    private String apiBaseUrl;
+
+    @Value("${app.base-url.web}")
+    private String webBaseUrl;
+
     public SecurityEmailListener(JavaMailSender javaMailSender, MessageSource messageSource) {
         this.javaMailSender = javaMailSender;
         this.messageSource = messageSource;
     }
-
-    @Value("${app.base-url}")
-    private String baseURL;
 
     private String getMessage(String code, Locale locale) {
         return messageSource.getMessage(code, null, locale);
@@ -43,8 +47,16 @@ public class SecurityEmailListener {
             helper.setTo(event.getEmail());
             helper.setSubject(getMessage("email.security.subject", locale));
 
-            String approveLink = baseURL + "/auth/verifyLogin?token=" + event.getToken() + "&action=approve";
-            String rejectLink = baseURL + "/auth/verifyLogin?token=" + event.getToken() + "&action=reject";
+            String approveLink;
+            String rejectLink;
+
+            if (ClientTypes.MOBILE.equalsIgnoreCase(event.getClientType())) {
+                approveLink = apiBaseUrl + "/auth/verifyLogin?token=" + event.getToken() + "&action=approve";
+                rejectLink = apiBaseUrl + "/auth/verifyLogin?token=" + event.getToken() + "&action=reject";
+            } else {
+                approveLink = webBaseUrl + "/verifyLogin?token=" + event.getToken() + "&action=approve";
+                rejectLink = webBaseUrl + "/verifyLogin?token=" + event.getToken() + "&action=reject";
+            }
 
             String htmlBody = """
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">

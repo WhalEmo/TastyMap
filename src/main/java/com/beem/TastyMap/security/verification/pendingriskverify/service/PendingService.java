@@ -97,7 +97,7 @@ public class PendingService {
     }
 
     @Transactional
-    public String resendSecurityAlertMail(String deviceId) throws Exception {
+    public String resendSecurityAlertMail(String deviceId,String clientType) throws Exception {
         LocalDateTime now = LocalDateTime.now();
 
         NotificationEntity notification = notificationRepo.findFirstByDeviceIdAndIsUsedFalseOrderByCreatedAtDesc(deviceId)
@@ -125,7 +125,7 @@ public class PendingService {
 
         notificationRepo.save(newNotification);
 
-        eventPublisher.publishEvent(new SecurityEmailEvent(newNotification.getUser().getEmail(), newNotification.getToken()));
+        eventPublisher.publishEvent(new SecurityEmailEvent(newNotification.getUser().getEmail(), newNotification.getToken(),clientType));
         return getMessage("security.email.sent");
     }
 

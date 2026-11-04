@@ -8,8 +8,9 @@ public class SecurityAlertEvent {
         private final String ip;
         private final String token;
         private final boolean isTrusted;
+        private String clientType;
 
-    public SecurityAlertEvent(Long userId, String email, String deviceId, String userAgent, String ip, String token, boolean isTrusted) {
+    public SecurityAlertEvent(Long userId, String email, String deviceId, String userAgent, String ip, String token, boolean isTrusted,String clientType) {
         this.userId = userId;
         this.email = email;
         this.deviceId = deviceId;
@@ -17,6 +18,7 @@ public class SecurityAlertEvent {
         this.ip = ip;
         this.token = token;
         this.isTrusted = isTrusted;
+        this.clientType = clientType;
     }
 
     public Long getUserId() {
@@ -46,5 +48,13 @@ public class SecurityAlertEvent {
 
     public boolean isTrusted() {
         return isTrusted;
+    }
+
+    public String getClientType() {
+        return clientType;
+    }
+
+    public void setClientType(String clientType) {
+        this.clientType = clientType;
     }
 }

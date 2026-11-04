@@ -11,7 +11,6 @@ import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import com.beem.TastyMap.security.verification.common.SecurityVerificationChecker;
 import com.beem.TastyMap.websocket.EmailVerifyEventService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -38,8 +37,7 @@ public class EmailService {
     private static final int IP_LIMIT = 10;
     private static final int TOKEN_EXPIRY = 10;
 
-    @Value("${app.base-url}")
-    private String baseURL;
+    // @Value("${app.base-url}") SİLİNDİ
 
     public EmailService(EmailRepo emailRepo,
                         UserRepo userRepo,
@@ -96,7 +94,7 @@ public class EmailService {
     }
 
     @Transactional
-    public Long resendVerification(CommonRequestDTO dto) {
+    public Long resendVerification(CommonRequestDTO dto, String clientType) {
         UserEntity user = userRepo.findByEmail(dto.getEmail())
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("email.resend.not.found")));
 
@@ -122,7 +120,7 @@ public class EmailService {
         verification.setExpiryDate(LocalDateTime.now().plusMinutes(TOKEN_EXPIRY));
         emailRepo.save(verification);
 
-        eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), newToken));
+        eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), newToken, clientType));
 
         return user.getId();
     }

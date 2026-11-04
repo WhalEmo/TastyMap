@@ -2,6 +2,7 @@ package com.beem.TastyMap.security.verification.emailVerify.controller;
 
 import com.beem.TastyMap.security.verification.common.CommonRequestDTO;
 import com.beem.TastyMap.security.verification.emailVerify.service.EmailService;
+import com.beem.TastyMap.user.account.model.ClientTypes;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,9 +29,10 @@ public class EmailController {
     }
     @PostMapping("/resendMail")
     public ResponseEntity<Long> resendMail(
-            @RequestBody CommonRequestDTO dto
+            @RequestBody CommonRequestDTO dto,
+            @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType
     ) {
-        long userId = emailService.resendVerification(dto);
+        long userId = emailService.resendVerification(dto,clientType);
         return ResponseEntity.ok(userId);
     }
 

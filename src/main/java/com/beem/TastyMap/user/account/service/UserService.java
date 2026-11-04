@@ -105,7 +105,7 @@ public class UserService implements UserDetailsService {
     }
 
     @Transactional
-    public UserResponseDTO register(UserRequestDTO user) {
+    public UserResponseDTO register(UserRequestDTO user,String clientType) {
         if (userRepo.existsByUsername(user.getUsername())) {
             throw new CustomExceptions.UserAlreadyExistsException(getMessage("user.username.already.exists"));
         }
@@ -137,12 +137,12 @@ public class UserService implements UserDetailsService {
         verification.setExpiryDate(LocalDateTime.now().plusMinutes(10));
         emailRepo.save(verification);
 
-        eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), token));
+        eventPublisher.publishEvent(new OnUserRegistrationEvent(user.getEmail(), token,clientType));
         return new UserResponseDTO(userEntity);
     }
 
     @Transactional
-    public LoginResponseDTO login(LoginRequestDTO dto, String userAgent) {
+    public LoginResponseDTO login(LoginRequestDTO dto, String userAgent,String clientType) {
 
         String username = dto.getUsername().trim();
         String deviceId = dto.getDeviceId();
@@ -194,7 +194,7 @@ public class UserService implements UserDetailsService {
 
         if (riskResult.getScore() >=70) {
             System.out.println("USerservıce ife gırdı");
-            return handleHighRiskLogin(user, dto, userAgent, ip, cachedDevice);
+            return handleHighRiskLogin(user, dto, userAgent, ip, cachedDevice, clientType);
         }
         RefreshTokenEntity existingToken = refreshTokenRepo
                 .findByUserIdAndDeviceIdAndRevokedFalse(user.getId(), dto.getDeviceId())
@@ -243,7 +243,7 @@ public class UserService implements UserDetailsService {
         );
     }
 
-    private LoginResponseDTO handleHighRiskLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, UserDeviceDTO cachedDevice) {
+    private LoginResponseDTO handleHighRiskLogin(UserEntity user, LoginRequestDTO dto, String userAgent, String ip, UserDeviceDTO cachedDevice,String clientType) {
         String deviceId = dto.getDeviceId();
         LocalDateTime now = LocalDateTime.now();
 
@@ -258,7 +258,7 @@ public class UserService implements UserDetailsService {
 
             boolean isTrusted = cachedDevice != null && cachedDevice.isTrusted();
 
-            eventPublisher.publishEvent(new SecurityAlertEvent(user.getId(), user.getEmail(), dto.getDeviceId(), userAgent, ip, token, isTrusted));
+            eventPublisher.publishEvent(new SecurityAlertEvent(user.getId(), user.getEmail(), dto.getDeviceId(), userAgent, ip, token, isTrusted,clientType));
         }
 
         return LoginResponseDTO.pendingSecurity(getMessage("login.status.pending.security"));
