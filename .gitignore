@@ -47,3 +47,5 @@ lucene/
 src/main/resources/firebase-service-account.json
 
 prompt_logs/
+
+uploads/
