@@ -6,7 +6,9 @@ import com.beem.TastyMap.security.servletFilter.RateLimitingFilter;
 import com.beem.TastyMap.security.servletFilter.JWTUtill;
 import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
 import com.beem.TastyMap.security.token.TokenBlacklistService;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -43,6 +45,13 @@ public class SecurityConfig {
     }
 
     @Bean
+    public FilterRegistrationBean<RateLimitingFilter> disableRateLimitingFilterAutoRegistration(RateLimitingFilter filter) {
+        FilterRegistrationBean<RateLimitingFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, UserService service, RedisRateLimitService rateLimitService, TokenBlacklistService tokenBlacklistService) throws Exception {
         JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, service, tokenBlacklistService);
         RateLimitingFilter rateLimitingFilter = new RateLimitingFilter(rateLimitService);
@@ -75,6 +84,7 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers( "/api/users/**","/auth/**","/places/**","/place-review/**").permitAll()
                         .requestMatchers("/ws/auth/**").permitAll()
@@ -107,7 +117,8 @@ public class SecurityConfig {
                 "http://localhost:8080",
                 "http://localhost:8081",
                 "https://*.ngrok-free.dev",
-                "https://coleman-nonethic-marinda.ngrok-free.dev"
+                "https://coleman-nonethic-marinda.ngrok-free.dev",
+                "https://shaneka-unfactual-shaneka.ngrok-free.dev"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(

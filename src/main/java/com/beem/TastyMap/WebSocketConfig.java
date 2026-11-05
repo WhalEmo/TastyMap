@@ -1,5 +1,6 @@
 package com.beem.TastyMap;
 
+import com.beem.TastyMap.rag.websocket.AiStreamWebSocketHandler;
 import com.beem.TastyMap.websocket.AuthWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.server.ServerHttpRequest;
@@ -16,9 +17,14 @@ import java.util.Map;
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
     private final AuthWebSocketHandler authWebSocketHandler;
+    private final AiStreamWebSocketHandler aiStreamWebSocketHandler;
 
-    public WebSocketConfig(AuthWebSocketHandler authWebSocketHandler) {
+    public WebSocketConfig(
+            AuthWebSocketHandler authWebSocketHandler,
+            AiStreamWebSocketHandler aiStreamWebSocketHandler
+    ) {
         this.authWebSocketHandler = authWebSocketHandler;
+        this.aiStreamWebSocketHandler = aiStreamWebSocketHandler;
     }
 
     @Override
@@ -35,5 +41,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                         return true;
                     }
                 });
+        registry.addHandler(aiStreamWebSocketHandler, "/ws/ai")
+                .setAllowedOriginPatterns("*");
     }
 }

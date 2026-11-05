@@ -2,6 +2,7 @@ package com.beem.TastyMap.maps.repository;
 
 
 import com.beem.TastyMap.maps.entity.PlaceEntity;
+import com.beem.TastyMap.maps.repository.custom.PlaceQueryRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 
 @Repository
-public interface PlaceRepo extends JpaRepository<PlaceEntity, Long> {
+public interface PlaceRepo extends JpaRepository<PlaceEntity, Long>, PlaceQueryRepository {
 
 
 

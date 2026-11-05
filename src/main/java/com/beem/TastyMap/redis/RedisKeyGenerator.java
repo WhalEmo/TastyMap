@@ -48,4 +48,8 @@ public class RedisKeyGenerator {
         return cell.getGridKey() + ":UpdateEvent";
     }
 
+    public static String createChatSessionKey(String sessionId){
+        return "chat:session:" + sessionId + ":messages";
+    }
+
 }

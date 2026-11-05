@@ -14,7 +14,7 @@ java {
         languageVersion = JavaLanguageVersion.of(17)
     }
 }
-val springAiVersion = "1.0.0-M1"
+val springAiVersion = "1.0.0-M2"
 
 dependencyManagement {
     imports {
@@ -70,6 +70,8 @@ dependencies {
     implementation(kotlin("stdlib-jdk8"))
 
     implementation("org.springframework.kafka:spring-kafka")
+
+    implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
     implementation("org.springframework.ai:spring-ai-ollama-spring-boot-starter")
     implementation("org.springframework.ai:spring-ai-qdrant-store-spring-boot-starter")
 }

@@ -21,8 +21,5 @@ public class CounterDlqListener {
                 command.getTargetField(),
                 command.getAction(),
                 command.getUserIdsToUpdate().size());
-
-        // Bu noktada veri kaybı yaşanmaz. Başarısız olan 2000 kişilik paket loglanır.
-        // İsteğe bağlı olarak DB'deki bir 'failed_jobs' tablosuna yazılıp admin panelinden manuel tetiklenebilir.
     }
 }

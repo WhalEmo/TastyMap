@@ -1,18 +1,28 @@
 package com.beem.TastyMap.rag.data.request;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class RecommendationReq {
-    private String query;
-    private boolean ignoreAllergies = false;
-    private Boolean isOpenNow;
-    private Double latitude;   // Yeni
-    private Double longitude;  // Yeni
-    private Double radiusKm;   // Opsiyonel (Örn: 5.0 km yarıçap)
-    private boolean isMoreRequest;
+public record RecommendationReq(
+        String sessionId,
+
+        @NotBlank(message = "Arama sorgusu boş olamaz")
+        String query,
+
+        Double latitude,
+        Double longitude,
+        Double radiusKm,
+        Boolean ignoreHealthProfile,
+        String provider
+) {
+    public RecommendationReq {
+        if (radiusKm == null || radiusKm <= 0) {
+            radiusKm = 5.0; // Varsayılan arama yarıçapı: 5 km
+        }
+        if (ignoreHealthProfile == null) {
+            ignoreHealthProfile = Boolean.FALSE;
+        }
+        if (sessionId != null && sessionId.isBlank()) {
+            sessionId = null;
+        }
+    }
 }
