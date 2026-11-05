@@ -71,7 +71,7 @@ public class PasswordService {
     }
 
     @Transactional
-    public PasswordResetResponseDTO forgotPassword(PasswordRequestDTO dto) {
+    public PasswordResetResponseDTO forgotPassword(PasswordRequestDTO dto,String clientType) {
         String identifier = dto.getIdentifier();
         UserEntity user = userRepo.findByEmailOrUsername(identifier, identifier)
                 .orElseThrow(() -> new CustomExceptions.NotFoundException(getMessage("password.reset.not.found")));
@@ -86,7 +86,7 @@ public class PasswordService {
             securityVerificationChecker.applyProgressiveBan(user, dto.getDeviceId(), ip);
         }
 
-        generateTokenAndSendMail(user, ip, dto.getDeviceId());
+        generateTokenAndSendMail(user, ip, dto.getDeviceId(),clientType);
         return new PasswordResetResponseDTO(
                 user.getId(),
                 dto.getDeviceId(),
@@ -117,7 +117,7 @@ public class PasswordService {
         return false;
     }
 
-    private void generateTokenAndSendMail(UserEntity user, String ip, String deviceId) {
+    private void generateTokenAndSendMail(UserEntity user, String ip, String deviceId,String clientType) {
         String token = UUID.randomUUID().toString();
         PasswordEntity passwordEntity = new PasswordEntity();
         passwordEntity.setToken(token);
@@ -128,7 +128,7 @@ public class PasswordService {
         passwordEntity.setExpiryDate(LocalDateTime.now().plusMinutes(TOKEN_EXPIRY));
         passwordRepo.save(passwordEntity);
 
-        eventPublisher.publishEvent(new PasswordMailEvent(user.getEmail(), token));
+        eventPublisher.publishEvent(new PasswordMailEvent(user.getEmail(), token,clientType));
     }
 
     @Transactional

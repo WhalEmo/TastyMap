@@ -52,7 +52,7 @@ public class SecurityNotificationHandler {
         n.setTrusted(event.isTrusted());
 
         NotificationEntity savedNotification = notificationRepo.saveAndFlush(n);
-        eventPublisher.publishEvent(new SecurityEmailEvent(event.getEmail(),event.getToken()));
+        eventPublisher.publishEvent(new SecurityEmailEvent(event.getEmail(),event.getToken(),event.getClientType()));
 
 
         Map<String, String> payloadData = Map.of(

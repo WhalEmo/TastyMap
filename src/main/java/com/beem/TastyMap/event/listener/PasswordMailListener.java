@@ -1,6 +1,7 @@
 package com.beem.TastyMap.event.listener;
 
 import com.beem.TastyMap.event.model.PasswordMailEvent;
+import com.beem.TastyMap.user.account.model.ClientTypes; // Kendi paket yolunuza göre düzeltin
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -18,8 +19,11 @@ public class PasswordMailListener {
     private final JavaMailSender javaMailSender;
     private final MessageSource messageSource;
 
-    @Value("${app.base-url}")
-    private String baseURL;
+    @Value("${app.base-url.api}")
+    private String apiBaseUrl;
+
+    @Value("${app.base-url.web}")
+    private String webBaseUrl;
 
     public PasswordMailListener(JavaMailSender javaMailSender, MessageSource messageSource) {
         this.javaMailSender = javaMailSender;
@@ -35,10 +39,16 @@ public class PasswordMailListener {
     public void passwordEvent(PasswordMailEvent event) {
         Locale locale = LocaleContextHolder.getLocale();
 
-        String resetLinkB = "http://localhost:8081/#reset?token=" + event.getToken();
+        String resetLink;
+
+        if (ClientTypes.MOBILE.equalsIgnoreCase(event.getClientType())) {
+            resetLink = apiBaseUrl + "/auth/resetPassword/validate?token=" + event.getToken();
+        } else {
+            resetLink = webBaseUrl + "/#reset?token=" + event.getToken();
+        }
 
         String subject = getMessage("email.password.reset.subject", null, locale);
-        String body = getMessage("email.password.reset.body", new Object[]{resetLinkB}, locale);
+        String body = getMessage("email.password.reset.body", new Object[]{resetLink}, locale);
 
         SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
         simpleMailMessage.setFrom("beemdevops@gmail.com");

@@ -5,6 +5,7 @@ import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordReques
 import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordResetResponseDTO;
 import com.beem.TastyMap.security.verification.forgotpassword.service.PasswordService;
 import com.beem.TastyMap.security.verification.forgotpassword.dto.PasswordResetRequestDTO;
+import com.beem.TastyMap.user.account.model.ClientTypes;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +22,11 @@ public class PasswordController {
 
 
     @PostMapping("/forgotPassword")
-    public ResponseEntity<PasswordResetResponseDTO>requestResetPassword(@RequestBody PasswordRequestDTO dto) {
-        PasswordResetResponseDTO response= passwordService.forgotPassword(dto);
+    public ResponseEntity<PasswordResetResponseDTO>requestResetPassword(
+            @RequestBody PasswordRequestDTO dto,
+            @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType
+    ) {
+        PasswordResetResponseDTO response= passwordService.forgotPassword(dto,clientType);
         return ResponseEntity.ok(response);
     }
 

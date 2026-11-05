@@ -3,10 +3,12 @@ package com.beem.TastyMap.event.model;
 public class OnUserRegistrationEvent {
     private final String Email;
     private final String token;
+    private String clientType;
 
-    public OnUserRegistrationEvent(String email, String token) {
+    public OnUserRegistrationEvent(String email, String token, String clientType) {
         Email = email;
         this.token = token;
+        this.clientType = clientType;
     }
 
     public String getEmail() {
@@ -15,5 +17,13 @@ public class OnUserRegistrationEvent {
 
     public String getToken() {
         return token;
+    }
+
+    public String getClientType() {
+        return clientType;
+    }
+
+    public void setClientType(String clientType) {
+        this.clientType = clientType;
     }
 }

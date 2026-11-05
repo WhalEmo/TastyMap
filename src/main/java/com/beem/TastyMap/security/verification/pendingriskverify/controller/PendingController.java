@@ -3,6 +3,7 @@ package com.beem.TastyMap.security.verification.pendingriskverify.controller;
 import com.beem.TastyMap.exceptions.CustomExceptions;
 import com.beem.TastyMap.securitynotification.NotificationResponse;
 import com.beem.TastyMap.security.verification.pendingriskverify.service.PendingService;
+import com.beem.TastyMap.user.account.model.ClientTypes;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
@@ -86,10 +87,11 @@ public class PendingController {
 
     @PostMapping("/resend-security-mail")
     public ResponseEntity<String> resendSecurityMail(
-            @RequestParam String deviceId
+            @RequestParam String deviceId,
+            @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType
     ) {
         try {
-            String result = pendingService.resendSecurityAlertMail(deviceId);
+            String result = pendingService.resendSecurityAlertMail(deviceId, clientType);
             return ResponseEntity.ok(result);
 
         } catch (CustomExceptions.AlreadyVerifiedException e) {

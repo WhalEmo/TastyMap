@@ -24,6 +24,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitingFilter.class);
     private final RedisRateLimitService rateLimitService;
+    private static final String AUTH_COOKIE_NAME = "access_token";
 
     public RateLimitingFilter(RedisRateLimitService rateLimitService) {
         this.rateLimitService = rateLimitService;

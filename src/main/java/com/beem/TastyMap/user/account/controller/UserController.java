@@ -30,8 +30,11 @@ public class UserController {
         this.refreshTokenService = refreshTokenService;
     }
     @PostMapping("/register")
-    public UserResponseDTO register(@Valid @RequestBody UserRequestDTO dto){
-        return userService.register(dto);
+    public UserResponseDTO register(
+            @Valid @RequestBody UserRequestDTO dto,
+            @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType
+    ){
+        return userService.register(dto,clientType);
     }
 
     @PostMapping("/login")
@@ -40,7 +43,7 @@ public class UserController {
             @RequestHeader("User-Agent") String userAgent,
             @RequestHeader(value = "X-Client-Type", defaultValue = ClientTypes.WEB) String clientType
     ) {
-        LoginResponseDTO loginResponse = userService.login(dto, userAgent);
+        LoginResponseDTO loginResponse = userService.login(dto, userAgent,clientType);
 
         if (ClientTypes.MOBILE.equalsIgnoreCase(clientType)) {
             return ResponseEntity.ok().body(loginResponse);
