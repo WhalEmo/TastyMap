@@ -8,6 +8,7 @@ import com.beem.TastyMap.security.servletFilter.JwtAuthenticationFilter;
 import com.beem.TastyMap.security.token.TokenBlacklistService;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,6 +42,13 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitingFilter> disableRateLimitingFilterAutoRegistration(RateLimitingFilter filter) {
+        FilterRegistrationBean<RateLimitingFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
@@ -109,7 +117,8 @@ public class SecurityConfig {
                 "http://localhost:8080",
                 "http://localhost:8081",
                 "https://*.ngrok-free.dev",
-                "https://coleman-nonethic-marinda.ngrok-free.dev"
+                "https://coleman-nonethic-marinda.ngrok-free.dev",
+                "https://shaneka-unfactual-shaneka.ngrok-free.dev"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList(

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
-@RequestMapping("/api/v1/rag")
+@RequestMapping("/api/v1/ai/chat")
 public class RecommendationController {
 
     private static final Logger log = LoggerFactory.getLogger(RecommendationController.class);

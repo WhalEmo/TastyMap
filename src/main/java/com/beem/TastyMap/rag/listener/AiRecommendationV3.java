@@ -1,5 +1,7 @@
 package com.beem.TastyMap.rag.listener;
 
+import com.beem.TastyMap.maps.entity.PlaceEntity;
+import com.beem.TastyMap.maps.repository.PlaceRepo;
 import com.beem.TastyMap.rag.data.document.RestaurantMetadata;
 import com.beem.TastyMap.rag.data.dto.*;
 import com.beem.TastyMap.rag.data.enums.AiProvider;
@@ -7,7 +9,8 @@ import com.beem.TastyMap.rag.data.enums.MessageRole;
 import com.beem.TastyMap.rag.data.enums.UserIntentAction;
 import com.beem.TastyMap.rag.data.event.UserQueryEvent;
 import com.beem.TastyMap.rag.data.response.AiStreamPayload;
-import com.beem.TastyMap.rag.data.response.AiStreamPayload.StreamEventType;
+import com.beem.TastyMap.rag.data.response.HydratedPlaceCardDto;
+import com.beem.TastyMap.rag.data.response.StreamEventType;
 import com.beem.TastyMap.rag.data.response.QuotaFeedbackPayload;
 import com.beem.TastyMap.rag.entity.ChatMessageEntity;
 import com.beem.TastyMap.rag.factory.AiProviderFactory;
@@ -33,6 +36,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Component
 public class  AiRecommendationV3{
@@ -50,6 +54,7 @@ public class  AiRecommendationV3{
     private final SseEmitterManager sseEmitterManager;
     private final RestaurantSearchService restaurantSearchService;
     private final UserDataCollectorService userDataCollectorService;
+    private final PlaceRepo placeRepository;
     private final ObjectMapper objectMapper;
 
     private static final String INTENT_SYSTEM_PROMPT = """
@@ -106,6 +111,7 @@ public class  AiRecommendationV3{
             SseEmitterManager sseEmitterManager,
             RestaurantSearchService restaurantSearchService,
             UserDataCollectorService userDataCollectorService,
+            PlaceRepo placeRepository,
             ObjectMapper objectMapper
     ) {
         this.aiProviderFactory = aiProviderFactory;
@@ -114,6 +120,7 @@ public class  AiRecommendationV3{
         this.sseEmitterManager = sseEmitterManager;
         this.restaurantSearchService = restaurantSearchService;
         this.userDataCollectorService = userDataCollectorService;
+        this.placeRepository = placeRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -196,6 +203,11 @@ public class  AiRecommendationV3{
             );
             Long messageId = (savedAssistantMessage != null) ? savedAssistantMessage.getId() : null;
 
+            if (!newlyFoundPlaces.isEmpty()) {
+                List<HydratedPlaceCardDto> hydratedCards = hydratePlaces(newlyFoundPlaces);
+                sseEmitterManager.sendToUser(userId, false, StreamEventType.PLACES.getEventName(), hydratedCards);
+            }
+
             if (intent.action() != UserIntentAction.CHITCHAT && !fullResponse.isEmpty()) {
                 if (stage2Tokens.outputTokens.get() == 0) {
                     int estimatedOutput = Math.max(1, fullResponse.length() / 4);
@@ -227,7 +239,7 @@ public class  AiRecommendationV3{
                     totalDuration
             );
 
-            sseEmitterManager.sendToUser(userId, false, "QUOTA_INFO", quotaPayload);
+            sseEmitterManager.sendToUser(userId, false, StreamEventType.QUOTA_INFO.getEventName(), quotaPayload);
 
             notifyUser(userId, StreamEventType.COMPLETED, "", false, 0);
 
@@ -478,11 +490,87 @@ public class  AiRecommendationV3{
         boolean isFinalEvent = (type == StreamEventType.COMPLETED || type == StreamEventType.ERROR);
         AiStreamPayload payload = new AiStreamPayload(userId, type, content, hasMore, remaining);
 
-        sseEmitterManager.sendToUser(userId, isFinalEvent, type.name(), payload);
+        sseEmitterManager.sendToUser(userId, isFinalEvent, type.getEventName(), payload);
     }
 
     private static class ExecutionTokenUsage {
         final AtomicLong inputTokens = new AtomicLong(0);
         final AtomicLong outputTokens = new AtomicLong(0);
     }
+
+
+    /**
+     * Qdrant'tan dönen canlı öneri mekanlarını Querydsl üzerinden tek sorguda hydrate eder.
+     */
+    private List<HydratedPlaceCardDto> hydratePlaces(List<RestaurantMetadata> places) {
+        if (places == null || places.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. Snapshot metadata içindeki geçerli DB ID'lerini topla
+        Set<Long> placeDbIds = places.stream()
+                .map(RestaurantMetadata::getDbId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // 2. Querydsl özel metodumuz ile mekanları tek sorguda çek
+        Map<Long, PlaceEntity> livePlacesMap = placeRepository.findHydrationPlacesByIds(placeDbIds);
+
+        // 3. HydratedPlaceCardDto listesine dönüştür
+        List<HydratedPlaceCardDto> hydratedList = new ArrayList<>();
+        for (RestaurantMetadata metadata : places) {
+            Long dbId = metadata.getDbId();
+            PlaceEntity liveEntity = (dbId != null) ? livePlacesMap.get(dbId) : null;
+
+            List<String> highlightedFoods = metadata.getHighlightedFoods() != null
+                    ? metadata.getHighlightedFoods()
+                    : Collections.emptyList();
+
+            if (liveEntity != null) {
+                Boolean isOpenNow = (liveEntity.getOpeningHours() != null)
+                        ? liveEntity.getOpeningHours().getOpenNow()
+                        : null;
+
+                String address = liveEntity.getVicinity() != null
+                        ? liveEntity.getVicinity()
+                        : liveEntity.getFormattedAddress();
+
+                hydratedList.add(new HydratedPlaceCardDto(
+                        liveEntity.getId(),
+                        liveEntity.getPlaceId(),
+                        liveEntity.getName(),
+                        address,
+                        liveEntity.getLatitude(),
+                        liveEntity.getLongitude(),
+                        liveEntity.getGoogleRating(),
+                        liveEntity.getTastyMapRating(),
+                        liveEntity.getPriceLevel(),
+                        isOpenNow,
+                        liveEntity.getBusinessStatus(),
+                        highlightedFoods,
+                        true
+                ));
+            } else {
+                // DB'de mekan bulunamazsa snapshot metadatayı koru
+                hydratedList.add(new HydratedPlaceCardDto(
+                        dbId,
+                        metadata.getPlaceId(),
+                        metadata.getName() != null ? metadata.getName() : "Bilinmeyen Mekan",
+                        null,
+                        metadata.getLatitude(),
+                        metadata.getLongitude(),
+                        metadata.getGoogleRating(),
+                        metadata.getTastymapRating(),
+                        null,
+                        null,
+                        "UNAVAILABLE",
+                        highlightedFoods,
+                        false
+                ));
+            }
+        }
+
+        return hydratedList;
+    }
+
 }

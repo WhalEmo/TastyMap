@@ -7,10 +7,4 @@ public record AiStreamPayload(
         boolean hasMore,      // Daha fazla mekan var mı?
         int remainingCount    // Kalan mekan sayısı
 ) {
-    public enum StreamEventType {
-        STATUS,     // "Yakınınızdaki mekanlar taranıyor...", "Öneriler hazırlanıyor..."
-        TOKEN,      // Canlı akan her bir kelime/hece
-        COMPLETED,  // Akış bitti (Footer mesajı ve buton bilgisi taşır)
-        ERROR       // Hata durumu
-    }
 }
