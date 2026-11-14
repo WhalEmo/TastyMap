@@ -125,7 +125,13 @@ public class PendingService {
 
         notificationRepo.save(newNotification);
 
-        eventPublisher.publishEvent(new SecurityEmailEvent(newNotification.getUser().getEmail(), newNotification.getToken(),clientType));
+        eventPublisher.publishEvent(
+                new SecurityEmailEvent(
+                        clientType,
+                        newNotification.getToken(),
+                        newNotification.getUser().getEmail()
+                )
+        );
         return getMessage("security.email.sent");
     }
 
