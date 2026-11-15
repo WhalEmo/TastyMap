@@ -55,8 +55,8 @@ public class SecurityEmailListener {
                 rejectLink = apiBaseUrl + "/auth/verifyLogin?token=" + event.getToken() + "&action=reject";
             } else {
                 //BURASI WEB BASE URL OLCAK SADECE TEELFONDAN WEB HESABIMIZA SUPHELI ISTEKTE BU CALSIIR MAIL PCDEN ONAYLANIR
-                approveLink = apiBaseUrl + "/verifyLogin?token=" + event.getToken() + "&action=approve";
-                rejectLink = apiBaseUrl + "/verifyLogin?token=" + event.getToken() + "&action=reject";
+                approveLink = apiBaseUrl + "/auth/verifyLogin?token=" + event.getToken() + "&action=approve";
+                rejectLink = apiBaseUrl + "/auth/verifyLogin?token=" + event.getToken() + "&action=reject";
             }
 
             String htmlBody = """

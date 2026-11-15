@@ -139,6 +139,6 @@ public class PendingService {
         NotificationStatusSummary notification = notificationRepo.findLatestNotificationStatus(deviceId)
                 .orElseThrow(() -> new CustomExceptions.InvalidException(getMessage("security.no.active.request")));
 
-        return new NotificationResponse(notification.getStatus(), notification.isUsed());
+        return new NotificationResponse(notification.getStatus(), notification.getIsUsed());
     }
 }
