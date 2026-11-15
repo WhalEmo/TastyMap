@@ -1,16 +1,21 @@
 package com.beem.TastyMap.mapsReview;
 
 import com.beem.TastyMap.BaseApiResponse;
+import com.beem.TastyMap.ai.AiSummaryResponse;
+import com.beem.TastyMap.ai.AiSummaryService;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
 import com.beem.TastyMap.mapsReview.data.request.SentReviewReq;
 import com.beem.TastyMap.mapsReview.data.request.UpdateReviewReq;
 import com.beem.TastyMap.mapsReview.data.response.CreatedReviewRes;
 import com.beem.TastyMap.mapsReview.data.response.ReviewResponse;
 import com.beem.TastyMap.mapsReview.data.response.UpdatedReviewRes;
+import com.beem.TastyMap.mapsReview.entity.ReviewEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -18,9 +23,11 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewController {
 
     private final ReviewService service;
+    private final AiSummaryService aiSummaryService;
 
-    public ReviewController(ReviewService service) {
+    public ReviewController(ReviewService service, AiSummaryService aiSummaryService) {
         this.service = service;
+        this.aiSummaryService = aiSummaryService;
     }
 
     @GetMapping("/place-reviews/{placeId}")
@@ -36,6 +43,21 @@ public class ReviewController {
                         size
                 )
         );
+    }
+
+    @GetMapping("/place/{placeId}/ai-summary")
+    public ResponseEntity<AiSummaryResponse> getSummary(
+            @PathVariable Long placeId
+    ) {
+        List<ReviewEntity> optimalAiReviews = service.getProportionalReviewsForAi(placeId);
+
+        if (optimalAiReviews == null || optimalAiReviews.isEmpty()) {
+            return ResponseEntity.ok(new AiSummaryResponse(false, null));
+        }
+
+        AiSummaryResponse summaryResponse = aiSummaryService.getRestaurantSummary(optimalAiReviews);
+
+        return ResponseEntity.ok(summaryResponse);
     }
 
     @PostMapping("/send-review")

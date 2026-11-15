@@ -42,10 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -83,6 +80,66 @@ public class ReviewService {
         this.queryFactory = queryFactory;
         this.reviewQueryRepository = reviewQueryRepository;
         this.messageSource = messageSource;
+    }
+    private static final int AI_SAMPLE_SIZE = 25;
+    private static final long TWO_YEARS_IN_MILLIS = 2L * 365 * 24 * 60 * 60 * 1000;
+    private static final int PREMIUM_LENGTH = 50;
+    private static final int FALLBACK_LENGTH = 15;
+
+    public List<ReviewEntity> getProportionalReviewsForAi(Long placeId) {
+        long currentTime = System.currentTimeMillis();
+        long minTimeLimit = currentTime - TWO_YEARS_IN_MILLIS;
+
+        long totalRecentReviews = reviewRepo.countByPlaceIdAndTimeGreaterThanEqual(placeId, minTimeLimit);
+
+        if (totalRecentReviews <= 15) {
+            return null;
+        }
+
+        long positiveCount = reviewRepo.countByPlaceIdAndRatingGreaterThanEqualAndTimeGreaterThanEqual(placeId, 4.0, minTimeLimit);
+        long neutralCount = reviewRepo.countByPlaceIdAndRatingBetweenAndTimeGreaterThanEqual(placeId, 3.0, 3.9, minTimeLimit);
+        long negativeCount = reviewRepo.countByPlaceIdAndRatingLessThanAndTimeGreaterThanEqual(placeId, 3.0, minTimeLimit);
+
+        int positiveLimit = (int) Math.round((double) positiveCount / totalRecentReviews * AI_SAMPLE_SIZE);
+        int neutralLimit = (int) Math.round((double) neutralCount / totalRecentReviews * AI_SAMPLE_SIZE);
+        int negativeLimit = (int) Math.round((double) negativeCount / totalRecentReviews * AI_SAMPLE_SIZE);
+
+        List<ReviewEntity> proportionalSample = new ArrayList<>();
+
+        if (positiveLimit > 0) {
+            proportionalSample.addAll(fetchWithFallback(placeId, 4.0, 5.0, minTimeLimit, positiveLimit));
+        }
+        if (neutralLimit > 0) {
+            proportionalSample.addAll(fetchWithFallback(placeId, 3.0, 3.9, minTimeLimit, neutralLimit));
+        }
+        if (negativeLimit > 0) {
+            proportionalSample.addAll(fetchWithFallback(placeId, 1.0, 2.9, minTimeLimit, negativeLimit));
+        }
+
+        Collections.shuffle(proportionalSample);
+        return proportionalSample;
+    }
+
+    private List<ReviewEntity> fetchWithFallback(Long placeId, Double minRating, Double maxRating, Long minTimeLimit, int quota) {
+        if (quota <= 0) return new ArrayList<>();
+
+        List<ReviewEntity> reviews = new ArrayList<>(reviewRepo.findQualityReviewsByRatingRangeAndTime(
+                placeId, minRating, maxRating, minTimeLimit, PREMIUM_LENGTH, PageRequest.of(0, quota)));
+
+        if (reviews.size() == quota) {
+            return reviews;
+        }
+
+        int missingCount = quota - reviews.size();
+
+        List<ReviewEntity> fallbackReviews = reviewRepo.findFallbackReviews(
+                placeId, minRating, maxRating, minTimeLimit,
+                FALLBACK_LENGTH, PREMIUM_LENGTH,
+                PageRequest.of(0, missingCount)
+        );
+
+        reviews.addAll(fallbackReviews);
+        return reviews;
     }
 
     private String getMessage(String code) {
