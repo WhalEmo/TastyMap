@@ -139,7 +139,7 @@ public class  AiRecommendationV3{
             return;
         }
 
-        notifyUser(userId, StreamEventType.STATUS, "İsteğiniz inceleniyor... 🔍", false, 0);
+        notifyUser(userId, StreamEventType.STATUS, "İsteğiniz inceleniyor", false, 0);
 
         UserDataCollectorService.UserContextData userContext = userDataCollectorService.collectUserData(userId);
         UserHealthProfile healthProfile = userContext.healthProfile();
@@ -168,6 +168,7 @@ public class  AiRecommendationV3{
             switch (intent.action()) {
                 case CONTEXT_QA -> {
                     log.info("🧠 [Router] CONTEXT_QA tetiklendi. Hedef Mekan: '{}'", intent.targetPlaceName());
+                    notifyUser(userId, StreamEventType.STATUS, "Mekan detayları inceleniyor", false, 0);
                     handleContextQa(client, userId, event.userQuery(), intent.targetPlaceName(), activePlaces, fullResponse, stage2Tokens, activeModelName);
                     newlyFoundPlaces = activePlaces;
                 }
@@ -177,6 +178,7 @@ public class  AiRecommendationV3{
                 }
                 case FETCH_MORE -> {
                     log.info("🔄 [Router] FETCH_MORE tetiklendi. Önceki mekanlar dışlanıyor.");
+                    notifyUser(userId, StreamEventType.STATUS, "Alternatif mekanlar taranıyor", false, 0);
                     newlyFoundPlaces = executeSearchAndStream(
                             client, event, sessionId, userId, intent.semanticQuery(), false, healthProfile,
                             allPresentedIds, fullResponse, stage2Tokens, activeModelName
@@ -184,6 +186,10 @@ public class  AiRecommendationV3{
                 }
                 case NAMED_ENTITY_SEARCH -> {
                     log.info("🎯 [Router] NAMED_ENTITY_SEARCH tetiklendi: '{}'", intent.targetPlaceName());
+                    String targetLabel = (intent.targetPlaceName() != null && !intent.targetPlaceName().isBlank())
+                            ? intent.targetPlaceName() + " bilgileri getiriliyor"
+                            : "Mekan bilgileri getiriliyor";
+                    notifyUser(userId, StreamEventType.STATUS, targetLabel, false, 0);
                     newlyFoundPlaces = executeSearchAndStream(
                             client, event, sessionId, userId, intent.semanticQuery(), true, healthProfile,
                             Collections.emptySet(), fullResponse, stage2Tokens, activeModelName
@@ -191,6 +197,7 @@ public class  AiRecommendationV3{
                 }
                 case NEW_SEARCH -> {
                     log.info("🔍 [Router] NEW_SEARCH tetiklendi: '{}'", intent.semanticQuery());
+                    notifyUser(userId, StreamEventType.STATUS, "Çevrenizdeki mekanlar taranıyor", false, 0);
                     newlyFoundPlaces = executeSearchAndStream(
                             client, event, sessionId, userId, intent.semanticQuery(), false, healthProfile,
                             Collections.emptySet(), fullResponse, stage2Tokens, activeModelName
@@ -349,8 +356,7 @@ public class  AiRecommendationV3{
                         }).toList();
 
         log.info("[V3 Worker] {} mekan bulundu. Canlı Streaming başlatılıyor...", places.size());
-        notifyUser(userId, StreamEventType.STATUS, "Mekanlar bulundu, öneriler hazırlanıyor... ✨", false, 0);
-
+        notifyUser(userId, StreamEventType.STATUS, places.size() + " mekan bulundu, öneriler hazırlanıyor", false, 0);
         StringBuilder sb = new StringBuilder();
 
         sb.append("GÜNCEL KULLANICI SORUSU: \"").append(event.userQuery()).append("\"\n\n");

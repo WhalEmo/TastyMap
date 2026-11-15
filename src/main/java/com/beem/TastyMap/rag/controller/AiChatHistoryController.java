@@ -23,10 +23,6 @@ public class AiChatHistoryController {
         this.chatHistoryService = chatHistoryService;
     }
 
-    /**
-     * Sol panel için kullanıcının geçmiş sohbet oturumlarını sayfalı (Slice) döner.
-     * Örnek istek: GET /api/v1/ai/sessions?page=0&size=20
-     */
     @GetMapping
     public ResponseEntity<Slice<AiSessionSummaryResponse>> getSessions(
             @PageableDefault(size = 20, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable,
@@ -36,10 +32,6 @@ public class AiChatHistoryController {
         return ResponseEntity.ok(chatHistoryService.getUserSessions(userId, pageable));
     }
 
-    /**
-     * Tıklanan bir oturumun tüm mesajlarını ve canlı zenginleştirilmiş (hydrated) mekan kartlarını getirir.
-     * Örnek istek: GET /api/v1/ai/sessions/{sessionId}/messages
-     */
     @GetMapping("/{sessionId}/messages")
     public ResponseEntity<List<AiChatMessageResponse>> getSessionMessages(
             @PathVariable String sessionId,
@@ -49,10 +41,6 @@ public class AiChatHistoryController {
         return ResponseEntity.ok(chatHistoryService.getSessionMessages(sessionId, userId));
     }
 
-    /**
-     * Oturumu ve ona bağlı mesajları veritabanından tamamen siler.
-     * Örnek istek: DELETE /api/v1/ai/sessions/{sessionId}
-     */
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<Void> deleteSession(
             @PathVariable String sessionId,

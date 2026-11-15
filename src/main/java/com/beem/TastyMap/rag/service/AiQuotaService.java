@@ -77,12 +77,20 @@ public class AiQuotaService {
     /**
      * Kullanıcının güncel kota durumunu mobil arayüze döner.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public UserQuotaStatusDto getUserQuotaStatus(Long userId) {
         UserAiQuotaEntity quota = quotaRepository.findById(userId)
-                .orElseGet(() -> new UserAiQuotaEntity(userId, defaultDailyQuota));
+                .orElseGet(() -> createDefaultQuota(userId));
 
-        int remaining = Math.max(0, quota.getDailyTokenLimit() - quota.getUsedTokensToday());
+        if (quota.checkAndResetDailyUsage()) {
+            quotaRepository.save(quota);
+        }
+
+        int limit = quota.getDailyTokenLimit();
+        int used = quota.getUsedTokensToday();
+        int remaining = Math.max(0, limit - used);
+
+        double remainingPct = limit > 0 ? (remaining * 100.0) / limit : 0.0;
 
         return new UserQuotaStatusDto(
                 userId,
@@ -90,6 +98,7 @@ public class AiQuotaService {
                 quota.getUsedTokensToday(),
                 remaining,
                 remaining > 0,
+                Math.round(remainingPct * 100.0) / 100.0,
                 quota.getLifetimeSpentTry(),
                 quota.getLastResetDate()
         );

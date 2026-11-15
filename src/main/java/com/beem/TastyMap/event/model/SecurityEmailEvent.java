@@ -5,7 +5,7 @@ public class SecurityEmailEvent {
     private final String token;
     private String clientType;
 
-    public SecurityEmailEvent(String clientType, String token, String email) {
+    public SecurityEmailEvent(String email, String token, String clientType) {
         this.clientType = clientType;
         this.token = token;
         Email = email;

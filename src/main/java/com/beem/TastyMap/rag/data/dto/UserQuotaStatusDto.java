@@ -9,6 +9,7 @@ public record UserQuotaStatusDto(
         int usedToday,
         int remainingTokens,
         boolean hasQuota,
+        double remainingPercentage,
         BigDecimal lifetimeSpentTry,
         LocalDate resetDate
 ) {}
