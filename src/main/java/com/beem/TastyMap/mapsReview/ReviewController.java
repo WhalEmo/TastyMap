@@ -1,6 +1,7 @@
 package com.beem.TastyMap.mapsReview;
 
 import com.beem.TastyMap.BaseApiResponse;
+import com.beem.TastyMap.ai.AiOrchestratorService;
 import com.beem.TastyMap.ai.AiSummaryResponse;
 import com.beem.TastyMap.ai.AiSummaryService;
 import com.beem.TastyMap.mapsReview.data.ReviewResult;
@@ -23,12 +24,13 @@ import java.util.List;
 public class ReviewController {
 
     private final ReviewService service;
-    private final AiSummaryService aiSummaryService;
+    private final AiOrchestratorService aiOrchestratorService;
 
-    public ReviewController(ReviewService service, AiSummaryService aiSummaryService) {
+    public ReviewController(ReviewService service, AiOrchestratorService aiOrchestratorService) {
         this.service = service;
-        this.aiSummaryService = aiSummaryService;
+        this.aiOrchestratorService = aiOrchestratorService;
     }
+
 
     @GetMapping("/place-reviews/{placeId}")
     public BaseApiResponse<ReviewResponse> getPlaceReviews(
@@ -49,13 +51,7 @@ public class ReviewController {
     public ResponseEntity<AiSummaryResponse> getSummary(
             @PathVariable Long placeId
     ) {
-        List<ReviewEntity> optimalAiReviews = service.getProportionalReviewsForAi(placeId);
-
-        if (optimalAiReviews == null || optimalAiReviews.isEmpty()) {
-            return ResponseEntity.ok(new AiSummaryResponse(false, null));
-        }
-
-        AiSummaryResponse summaryResponse = aiSummaryService.getRestaurantSummary(optimalAiReviews);
+        AiSummaryResponse summaryResponse = aiOrchestratorService.getCachedAiSummary(placeId);
 
         return ResponseEntity.ok(summaryResponse);
     }

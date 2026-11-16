@@ -20,8 +20,6 @@ import java.util.Map;
 @Service
 public class AiSummaryService {
 
-    private static final int MAX_PROMPT_LENGTH = 5000;
-
     private final RestTemplate restTemplate;
 
     public AiSummaryService(RestTemplate restTemplate) {
