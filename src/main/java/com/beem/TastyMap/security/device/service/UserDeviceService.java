@@ -90,4 +90,20 @@ public class UserDeviceService {
 
         userDeviceRepo.save(device);
     }
+
+    @Transactional
+    public void updateNotificationPreference(Long userId, String deviceId, boolean isEnabled) {
+        userDeviceRepo.findByUser_IdAndDeviceId(userId, deviceId)
+                .ifPresent(device -> {
+                    device.setNotificationsEnabled(isEnabled);
+                    userDeviceRepo.save(device);
+                });
+    }
+
+    @Transactional(readOnly = true)
+    public boolean getNotificationPreference(Long userId, String deviceId) {
+        return userDeviceRepo.findNotificationPreference(userId, deviceId)
+                .orElse(true);
+    }
+
 }

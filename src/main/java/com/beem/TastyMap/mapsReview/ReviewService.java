@@ -86,19 +86,19 @@ public class ReviewService {
     private static final int PREMIUM_LENGTH = 50;
     private static final int FALLBACK_LENGTH = 15;
 
-    public List<ReviewEntity> getProportionalReviewsForAi(Long placeId) {
+    public List<ReviewEntity> getProportionalReviewsForAi(String placeId) {
         long currentTime = System.currentTimeMillis();
         long minTimeLimit = currentTime - TWO_YEARS_IN_MILLIS;
 
-        long totalRecentReviews = reviewRepo.countByPlaceIdAndTimeGreaterThanEqual(placeId, minTimeLimit);
+        long totalRecentReviews = reviewRepo.countByPlace_PlaceIdAndTimeGreaterThanEqual(placeId, minTimeLimit);
 
         if (totalRecentReviews <= 15) {
             return null;
         }
 
-        long positiveCount = reviewRepo.countByPlaceIdAndRatingGreaterThanEqualAndTimeGreaterThanEqual(placeId, 4.0, minTimeLimit);
-        long neutralCount = reviewRepo.countByPlaceIdAndRatingBetweenAndTimeGreaterThanEqual(placeId, 3.0, 3.9, minTimeLimit);
-        long negativeCount = reviewRepo.countByPlaceIdAndRatingLessThanAndTimeGreaterThanEqual(placeId, 3.0, minTimeLimit);
+        long positiveCount = reviewRepo.countByPlace_PlaceIdAndRatingGreaterThanEqualAndTimeGreaterThanEqual(placeId, 4.0, minTimeLimit);
+        long neutralCount = reviewRepo.countByPlace_PlaceIdAndRatingBetweenAndTimeGreaterThanEqual(placeId, 3.0, 3.9, minTimeLimit);
+        long negativeCount = reviewRepo.countByPlace_PlaceIdAndRatingLessThanAndTimeGreaterThanEqual(placeId, 3.0, minTimeLimit);
 
         int positiveLimit = (int) Math.round((double) positiveCount / totalRecentReviews * AI_SAMPLE_SIZE);
         int neutralLimit = (int) Math.round((double) neutralCount / totalRecentReviews * AI_SAMPLE_SIZE);
@@ -120,7 +120,7 @@ public class ReviewService {
         return proportionalSample;
     }
 
-    private List<ReviewEntity> fetchWithFallback(Long placeId, Double minRating, Double maxRating, Long minTimeLimit, int quota) {
+    private List<ReviewEntity> fetchWithFallback(String placeId, Double minRating, Double maxRating, Long minTimeLimit, int quota) {
         if (quota <= 0) return new ArrayList<>();
 
         List<ReviewEntity> reviews = new ArrayList<>(reviewRepo.findQualityReviewsByRatingRangeAndTime(

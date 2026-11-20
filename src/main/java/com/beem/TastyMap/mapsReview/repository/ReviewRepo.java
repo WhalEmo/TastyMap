@@ -19,24 +19,24 @@ import java.util.Set;
 @Repository
 public interface ReviewRepo extends JpaRepository<ReviewEntity, Long> {
 
-    long countByPlaceIdAndTimeGreaterThanEqual(Long placeId, Long minTime);
-    long countByPlaceIdAndRatingGreaterThanEqualAndTimeGreaterThanEqual(Long placeId, Double minRating, Long minTime);
-    long countByPlaceIdAndRatingBetweenAndTimeGreaterThanEqual(Long placeId, Double minRating, Double maxRating, Long minTime);
-    long countByPlaceIdAndRatingLessThanAndTimeGreaterThanEqual(Long placeId, Double maxRating, Long minTime);
+    long countByPlace_PlaceIdAndTimeGreaterThanEqual(String placeId, Long minTime);
+    long countByPlace_PlaceIdAndRatingGreaterThanEqualAndTimeGreaterThanEqual(String placeId, Double minRating, Long minTime);
+    long countByPlace_PlaceIdAndRatingBetweenAndTimeGreaterThanEqual(String placeId, Double minRating, Double maxRating, Long minTime);
+    long countByPlace_PlaceIdAndRatingLessThanAndTimeGreaterThanEqual(String placeId, Double maxRating, Long minTime);
 
-
-    @Query("SELECT r FROM ReviewEntity r WHERE r.place.id = :placeId AND r.rating >= :minRating AND r.rating <= :maxRating AND r.time >= :minTime AND LENGTH(r.text) >= :minLength ORDER BY r.likeCount DESC, r.time DESC")
+    @Query("SELECT r FROM ReviewEntity r WHERE r.place.placeId = :placeId AND r.rating >= :minRating AND r.rating <= :maxRating AND r.time >= :minTime AND LENGTH(r.text) >= :minLength ORDER BY r.likeCount DESC, r.time DESC")
     List<ReviewEntity> findQualityReviewsByRatingRangeAndTime(
-            @Param("placeId") Long placeId,
+            @Param("placeId") String placeId,
             @Param("minRating") Double minRating,
             @Param("maxRating") Double maxRating,
             @Param("minTime") Long minTime,
             @Param("minLength") Integer minLength,
             Pageable pageable
     );
-    @Query("SELECT r FROM ReviewEntity r WHERE r.place.id = :placeId AND r.rating >= :minRating AND r.rating <= :maxRating AND r.time >= :minTime AND LENGTH(r.text) >= :minLength AND LENGTH(r.text) < :maxLength ORDER BY r.likeCount DESC, r.time DESC")
+
+    @Query("SELECT r FROM ReviewEntity r WHERE r.place.placeId = :placeId AND r.rating >= :minRating AND r.rating <= :maxRating AND r.time >= :minTime AND LENGTH(r.text) >= :minLength AND LENGTH(r.text) < :maxLength ORDER BY r.likeCount DESC, r.time DESC")
     List<ReviewEntity> findFallbackReviews(
-            @Param("placeId") Long placeId,
+            @Param("placeId") String placeId,
             @Param("minRating") Double minRating,
             @Param("maxRating") Double maxRating,
             @Param("minTime") Long minTime,

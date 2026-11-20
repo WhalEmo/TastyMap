@@ -29,7 +29,7 @@ public class FcmListener {
 
     @EventListener
     public void handleFcm(FcmNotificationEvent event) {
-        List<String> fcmTokens = userDeviceRepo.findActiveFcmTokensByUserId(event.getUserId());
+        List<String> fcmTokens = userDeviceRepo.findActiveAndEnabledFcmTokensByUserId(event.getUserId());
 
         if (fcmTokens.isEmpty()) {
             System.out.println("⚠️ Kullanıcı ID " + event.getUserId() + " için aktif FCM token bulunamadı, bildirim atlanıyor.");

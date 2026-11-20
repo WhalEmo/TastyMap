@@ -34,6 +34,7 @@ public class UserDeviceEntity {
     private boolean isTrusted = false;
 
     private LocalDateTime lastLoginAt;
+    private boolean notificationsEnabled = true;
 
     public Long getId() {
         return id;
@@ -107,4 +108,11 @@ public class UserDeviceEntity {
         this.lastCity = lastCity;
     }
 
+    public boolean isNotificationsEnabled() {
+        return notificationsEnabled;
+    }
+
+    public void setNotificationsEnabled(boolean notificationsEnabled) {
+        this.notificationsEnabled = notificationsEnabled;
+    }
 }

@@ -12,8 +12,11 @@ import java.util.Optional;
 public interface UserDeviceRepo extends JpaRepository<UserDeviceEntity,Long> {
     Optional<UserDeviceEntity>findByUser_IdAndDeviceId(Long userId, String deviceId);
 
-    @Query("SELECT d.fcmToken FROM UserDeviceEntity d WHERE d.user.id = :userId AND d.fcmToken IS NOT NULL")
-    List<String> findActiveFcmTokensByUserId(@Param("userId") Long userId);
+    @Query("SELECT d.notificationsEnabled FROM UserDeviceEntity d WHERE d.user.id = :userId AND d.deviceId = :deviceId")
+    Optional<Boolean> findNotificationPreference(@Param("userId") Long userId, @Param("deviceId") String deviceId);
+
+    @Query("SELECT d.fcmToken FROM UserDeviceEntity d WHERE d.user.id = :userId AND d.fcmToken IS NOT NULL AND d.notificationsEnabled = true")
+    List<String> findActiveAndEnabledFcmTokensByUserId(@Param("userId") Long userId);
 
     boolean existsByUser_IdAndLastCityIgnoreCase(Long userId, String lastCity);
 

@@ -49,7 +49,7 @@ public class ReviewController {
 
     @GetMapping("/place/{placeId}/ai-summary")
     public ResponseEntity<AiSummaryResponse> getSummary(
-            @PathVariable Long placeId
+            @PathVariable String placeId
     ) {
         AiSummaryResponse summaryResponse = aiOrchestratorService.getCachedAiSummary(placeId);
 

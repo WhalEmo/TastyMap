@@ -17,7 +17,7 @@ public class AiOrchestratorService {
         this.aiSummaryService = aiSummaryService;
     }
     @Cacheable(value = "ai_summaries", key = "#placeId")
-    public AiSummaryResponse getCachedAiSummary(Long placeId) {
+    public AiSummaryResponse getCachedAiSummary(String placeId) {
 
         List<ReviewEntity> reviews = reviewService.getProportionalReviewsForAi(placeId);
 
