@@ -99,6 +99,10 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(body, HttpStatus.FORBIDDEN);
     }
+    @ExceptionHandler(CustomExceptions.TooManyRequestsException.class)
+    public ResponseEntity<?> handleTooManyRequests(CustomExceptions.TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ex.getMessage());
+    }
 
 }
 

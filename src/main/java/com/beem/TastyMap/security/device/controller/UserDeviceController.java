@@ -57,4 +57,5 @@ public class UserDeviceController {
         boolean isEnabled = userDeviceService.getNotificationPreference(myId, deviceId);
         return ResponseEntity.ok(isEnabled);
     }
+
 }
